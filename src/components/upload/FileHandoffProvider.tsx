@@ -6,6 +6,8 @@ import type { SpreadsheetFormat } from "@/lib/file-validation";
 export interface HandoffFile {
   file: File;
   format: SpreadsheetFormat;
+  /** Large-file advisory from validation, if any. */
+  warning?: string;
 }
 
 interface HandoffContextValue {

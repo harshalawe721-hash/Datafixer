@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { useFileHandoff, type HandoffFile } from "@/components/upload/FileHandoffProvider";
 import { ToolInDevelopment } from "@/components/tools/ToolInDevelopment";
 import { Card } from "@/components/ui/Card";
@@ -45,6 +45,12 @@ export function DetectorWorkspace() {
                   <dd className="font-medium">{FORMAT_LABELS[handoff.format]}</dd>
                 </div>
               </dl>
+              {handoff.warning && (
+                <p role="status" className="mt-3 flex items-start gap-2 rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>{handoff.warning}</span>
+                </p>
+              )}
               <p className="mt-3 text-xs text-muted">
                 The file passed the format check on your device. Nothing has been uploaded.
               </p>

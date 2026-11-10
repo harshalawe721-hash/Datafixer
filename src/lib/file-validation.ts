@@ -13,8 +13,26 @@ export const FORMAT_LABELS: Record<SpreadsheetFormat, string> = {
 };
 
 export type ValidationResult =
-  | { ok: true; format: SpreadsheetFormat }
+  | { ok: true; format: SpreadsheetFormat; /** Advisory for large-but-accepted files. */ warning?: string }
   | { ok: false; error: string };
+
+export interface ValidationOptions {
+  accept: readonly string[];
+  /** Inclusive maximum: a file of exactly this many bytes is accepted. */
+  maxBytes: number;
+  /** Accepted files larger than this get a performance advisory. */
+  warnAboveBytes?: number;
+}
+
+/** "150 MB" for 157,286,400 bytes (binary megabytes, as Windows/Excel show them). */
+export function formatLimit(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
+}
+
+function formatMB(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function extensionOf(filename: string): string {
   const dot = filename.lastIndexOf(".");
@@ -48,7 +66,22 @@ export function looksLikeText(bytes: Uint8Array): boolean {
 export function validateSpreadsheet(
   file: { name: string; size: number },
   head: Uint8Array,
-  options: { accept: readonly string[]; maxBytes: number },
+  options: ValidationOptions,
+): ValidationResult {
+  const result = checkSpreadsheet(file, head, options);
+  if (result.ok && options.warnAboveBytes !== undefined && file.size > options.warnAboveBytes) {
+    return {
+      ...result,
+      warning: `This is a large file (${formatMB(file.size)}). It will be processed on your device, which can take longer and use a lot of memory. If your browser slows down, close other tabs or try a computer instead of a phone.`,
+    };
+  }
+  return result;
+}
+
+function checkSpreadsheet(
+  file: { name: string; size: number },
+  head: Uint8Array,
+  options: ValidationOptions,
 ): ValidationResult {
   const ext = extensionOf(file.name);
   if (!options.accept.includes(ext)) {
@@ -60,10 +93,15 @@ export function validateSpreadsheet(
     return { ok: false, error: `“${file.name}” is empty (0 bytes). Please choose a file that contains data.` };
   }
   if (file.size > options.maxBytes) {
-    const mb = Math.round(options.maxBytes / (1024 * 1024));
+    // Just over the limit rounds to "150.0 MB", so show exact bytes in that case.
+    const nearLimit = file.size - options.maxBytes < 1024 * 1024;
+    const actual = nearLimit ? `${file.size.toLocaleString("en-US")} bytes` : formatMB(file.size);
+    const limit = nearLimit
+      ? `${formatLimit(options.maxBytes)} (${options.maxBytes.toLocaleString("en-US")} bytes)`
+      : formatLimit(options.maxBytes);
     return {
       ok: false,
-      error: `“${file.name}” is larger than the ${mb} MB limit. Large files are processed on your device, so this limit keeps your browser responsive.`,
+      error: `“${file.name}” is ${actual}, which is over the ${limit} maximum file size. Please choose a file of ${formatLimit(options.maxBytes)} or less, or split it into smaller files.`,
     };
   }
 

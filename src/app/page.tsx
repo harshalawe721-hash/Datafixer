@@ -102,7 +102,7 @@ const faqs = [
   },
   {
     q: "Which file formats are supported?",
-    a: "You can open Excel workbooks (.xlsx and the older .xls format) and CSV files. Files up to 50 MB are accepted; very large files may take longer depending on your device.",
+    a: "You can open Excel workbooks (.xlsx and the older .xls format) and CSV files. Files up to 150 MB are accepted. Because processing happens on your device, very large files can be slow, and on phones or older computers they may need more memory than the browser allows.",
   },
   {
     q: "Will DataFixer change my original file?",

@@ -2,14 +2,17 @@
   "name": "datafixer",
   "version": "0.1.0",
   "private": true,
-  "description": "DataFixer – find spreadsheet problems, fix them, get better data.",
+  "type": "module",
+  "description": "DataFixer \u2013 find spreadsheet problems, fix them, get better data.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "node scripts/smoke-test.mjs"
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "test:large": "node scripts/large-file-test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.71.0",

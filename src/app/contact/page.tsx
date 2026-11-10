@@ -4,6 +4,7 @@ import { ProsePage } from "@/components/layout/ProsePage";
 import { ContactForm } from "@/components/layout/ContactForm";
 import { pageMetadata } from "@/lib/metadata";
 import { siteConfig } from "@/config/site";
+import { formatLimit } from "@/lib/file-validation";
 
 export const metadata: Metadata = pageMetadata({
   title: "Contact DataFixer",
@@ -36,8 +37,8 @@ export default function ContactPage() {
       <ul>
         <li>Please do not send confidential spreadsheets or personal data by email.</li>
         <li>
-          If a file will not open, check that it is an XLSX, XLS or CSV file under{" "}
-          {Math.round(siteConfig.maxFileSizeBytes / 1024 / 1024)} MB.
+          If a file will not open, check that it is an XLSX, XLS or CSV file of{" "}
+          {formatLimit(siteConfig.maxFileSizeBytes)} or less.
         </li>
         <li>
           For privacy questions, our <Link href="/privacy-policy">Privacy Policy</Link> explains how DataFixer handles

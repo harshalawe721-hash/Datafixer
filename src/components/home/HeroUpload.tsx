@@ -34,8 +34,8 @@ export function HeroDropzone() {
   const router = useRouter();
   const { setPending } = useFileHandoff();
 
-  function onFileAccepted(file: File, format: SpreadsheetFormat) {
-    setPending({ file, format });
+  function onFileAccepted(file: File, format: SpreadsheetFormat, warning?: string) {
+    setPending({ file, format, warning });
     router.push("/spreadsheet-error-detector");
   }
 

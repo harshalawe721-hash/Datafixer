@@ -11,8 +11,15 @@ export const siteConfig = {
     "Free online tools to find and fix spreadsheet problems. Detect duplicates, missing data and formatting issues in Excel and CSV files, clean them, and download better data.",
   url: rawUrl.replace(/\/+$/, ""),
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "",
-  /** Maximum accepted upload size. Files are processed in the browser, so this protects the device. */
-  maxFileSizeBytes: 50 * 1024 * 1024,
+  /**
+   * Maximum accepted file size: 150 MB (150 × 1024 × 1024 = 157,286,400 bytes).
+   * A file of exactly this size is accepted; one byte more is rejected.
+   * This is an upper bound on what we accept, not a promise that every file of
+   * this size can be processed on every device (processing happens locally).
+   */
+  maxFileSizeBytes: 157_286_400,
+  /** Files above this size get a "large file" advisory (slower, more memory). */
+  largeFileWarningBytes: 50 * 1024 * 1024,
   acceptedExtensions: [".xlsx", ".xls", ".csv"] as const,
 } as const;
 

@@ -3,15 +3,14 @@
 import { useId, useRef, useState } from "react";
 import { AlertCircle, FileUp, Loader2, ShieldCheck } from "lucide-react";
 import { siteConfig } from "@/config/site";
-import { formatBytes } from "@/lib/format";
-import { readFileHead, validateSpreadsheet, type SpreadsheetFormat } from "@/lib/file-validation";
+import { formatLimit, readFileHead, validateSpreadsheet, type SpreadsheetFormat } from "@/lib/file-validation";
 import { cn } from "@/lib/cn";
 
 export interface FileDropzoneProps {
   /** Accepted extensions, e.g. [".xlsx", ".xls", ".csv"]. */
   accept?: readonly string[];
   /** Called with a file that passed extension, size and signature checks. */
-  onFileAccepted: (file: File, format: SpreadsheetFormat) => void;
+  onFileAccepted: (file: File, format: SpreadsheetFormat, warning?: string) => void;
   title?: string;
   className?: string;
   /** Larger padding for hero placement. */
@@ -59,12 +58,17 @@ export function FileDropzone({
     setChecking(true);
     try {
       const head = await readFileHead(file);
-      const result = validateSpreadsheet(file, head, { accept, maxBytes: siteConfig.maxFileSizeBytes });
+      // Drag-and-drop and the file picker both end up here, so one rule set applies.
+      const result = validateSpreadsheet(file, head, {
+        accept,
+        maxBytes: siteConfig.maxFileSizeBytes,
+        warnAboveBytes: siteConfig.largeFileWarningBytes,
+      });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      onFileAccepted(file, result.format);
+      onFileAccepted(file, result.format, result.warning);
     } catch {
       setError("The file could not be read. It may have been moved, or your browser blocked access to it.");
     } finally {
@@ -121,7 +125,7 @@ export function FileDropzone({
         <span id={hintId} className="mt-1 text-sm text-muted">
           or <span className="font-semibold text-primary underline-offset-2 group-hover:underline">browse your device</span>
           {" · "}
-          {formats} up to {formatBytes(siteConfig.maxFileSizeBytes)}
+          {formats} up to {formatLimit(siteConfig.maxFileSizeBytes)}
         </span>
         <input
           ref={inputRef}

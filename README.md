@@ -32,7 +32,13 @@ npm run dev                  # http://localhost:3000
 | `npm run build` / `npm start` | Production build / server |
 | `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript rules) |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Unit tests (Node's built-in test runner), including file-size boundary tests |
+| `npm run test:large` | Real-browser test of the 150 MB limit at 50/100/149/150/150 MB+1 byte/151 MB, using both the file picker and drag-and-drop (writes ~900 MB of temp files, then deletes them) |
 | `npm run test:smoke` | Playwright end-to-end smoke test against a running server (`BASE_URL`, optional `SCREENSHOT_DIR`). Needs Playwright with Chromium available (locally or via `NODE_PATH`). |
+
+## File size limit
+
+Files up to **150 MB (157,286,400 bytes)** are accepted; the limit is set in `src/config/site.ts`. Processing happens on the visitor's device, so 150 MB is the most DataFixer accepts, not a guarantee that every device can process a file that size. See [`docs/large-file-processing.md`](docs/large-file-processing.md) for the processing design and the testing that is required before large-file support is claimed.
 
 ## Project structure
 
