@@ -31,7 +31,8 @@ const cases = [
 let passes = 0;
 let failures = 0;
 function check(cond, label) {
-  cond ? passes++ : failures++;
+  if (cond) passes++;
+  else failures++;
   console.log(`  ${cond ? "✓" : "✗"} ${label}`);
 }
 
