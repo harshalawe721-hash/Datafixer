@@ -11,7 +11,7 @@ const PHASE_LABEL: Record<ProgressEvent["phase"], string> = {
   reading: "Reading file",
   inspecting: "Checking workbook structure and safety",
   parsing: "Reading data",
-  indexing: "Preparing preview",
+  indexing: "Preparing data",
 };
 
 /** Progress bar with a Cancel button. Indeterminate when a step can't report a fraction. */
@@ -48,7 +48,11 @@ export function ProcessingProgress({
           <p className="text-sm text-muted" aria-live="polite">
             {progress ? PHASE_LABEL[progress.phase] : "Starting"}
             {pct !== null && ` · ${pct}%`}
-            {progress?.loaded != null && progress.total ? ` (${formatBytes(progress.loaded)} of ${formatBytes(progress.total)})` : ""}
+            {progress?.loaded != null && progress.total
+              ? progress.phase === "indexing"
+                ? ` (${progress.loaded.toLocaleString("en-US")} of ${progress.total.toLocaleString("en-US")} rows)`
+                : ` (${formatBytes(progress.loaded)} of ${formatBytes(progress.total)})`
+              : ""}
             {` · ${seconds}s`}
           </p>
           <div

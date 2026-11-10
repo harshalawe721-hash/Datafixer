@@ -10,7 +10,7 @@ Page (React)                                    Web Worker
 useSpreadsheetEngine ──► EngineClient ─postMessage─► engine.worker.ts ──► EngineCore
   progress bar + Cancel    lazy worker,                                   ├─ csv/      Papa Parse, chunked
   FileSummary              cancel = terminate()                           ├─ xlsx/     safety inspection (fflate)
-  SpreadsheetPreview       crash → clear error                            │            Excel cell reader (pending SheetJS)
+  SpreadsheetPreview       crash → clear error                            │            Excel cell reader (SheetJS 0.20.3)
                            memory budget                                  ├─ grid.ts   compact cell storage
                                                                           └─ query/    paging, search, sort
 ```
@@ -18,10 +18,10 @@ useSpreadsheetEngine ──► EngineClient ─postMessage─► engine.worker.t
 | File | Role |
 |---|---|
 | `src/engine/types.ts` | Shared model: `SheetModel`, `WorkbookSummary`, `FeatureInventory`, cell keys |
-| `src/engine/grid.ts` | `CellGrid` interface; `CompactTextGrid` (CSV) and `ArrayGrid` (small data/XLSX) |
+| `src/engine/grid.ts` | `CellGrid` interface; `CompactTextGrid` (CSV), `WorkbookGrid` (Excel: raw values + per-row number-format ids, formatted on display), `ArrayGrid` (tests) |
 | `src/engine/csv/` | Encoding detection, delimiter detection, chunked CSV parsing |
 | `src/engine/xlsx/inspect.ts` | Streaming ZIP inspection: limits, unsafe content, sheet list, features |
-| `src/engine/xlsx/read-workbook.ts` | Excel cell reader. **Not implemented yet** (waiting for the vendored SheetJS package) |
+| `src/engine/xlsx/read-workbook.ts` | Excel cell reader (official SheetJS 0.20.3 from `vendor/`), loaded on demand inside the worker |
 | `src/engine/query/query.ts` | `SheetQuery`: pages of rows, worker-side search and sort |
 | `src/engine/core.ts` | `EngineCore`: holds the open file and answers requests (unit-testable) |
 | `src/engine/worker/engine.worker.ts` | Worker entry point (message plumbing only) |
@@ -47,8 +47,9 @@ The preview already takes `highlights` (cell key to tone) for marking affected c
 | Format | Status | Notes |
 |---|---|---|
 | CSV / TSV / semicolon / pipe | ✅ Works | Text encodings: UTF-8 (with or without BOM), UTF-16 LE/BE (with BOM), and Windows-1252 as the fallback. The separator is detected automatically or chosen by the user. |
-| XLSX | ⚠️ Partly | Safety check, sheet names, visibility, declared sizes and feature list work. **Reading cell data is not available yet**: it needs the official SheetJS package (see `vendor/README.md`). |
-| XLS (Excel 97–2003) | ❌ Not yet | Needs SheetJS. Accepted files currently get a clear "not available yet" message. |
+| XLSX | ✅ Works | Values, number formats (dates, currency, 1904 date system), booleans, error values, formulas (as text, with saved results), hyperlinks, merged cells, hidden rows/columns/sheets, column widths and row heights. Only the selected sheet is converted. |
+| XLS (Excel 97–2003) | ✅ Works (smaller files) | Same data as XLSX. SheetJS parses every sheet of an XLS file, which needs about 40 × the file size in memory, so XLS files above roughly 40 MB are refused with advice to save them as XLSX. |
+| Password-protected XLSX/XLS | ❌ Refused | Clear message explaining how to remove the password. |
 | XLSM, XLSB, ODS | ❌ Not accepted | Rejected by upload validation or inspection with a specific message. |
 
 ## Security measures
@@ -87,12 +88,16 @@ The CSV reader stops with a clear message when its data would exceed the budget.
 
 ## Limitations (honest list)
 
-- **Excel cell data can't be read yet** (SheetJS not yet vendored).
-- **Large single-sheet XLSX files.** A worksheet whose XML is larger than about 500 MB can't be turned into one JavaScript string, which the SheetJS parser needs. In the generated test files, 100 MB of XLSX held 544 MB of sheet XML. So single-sheet XLSX files much above about 90 MB are refused with a clear explanation. Multi-sheet files with smaller sheets are fine as far as inspection is concerned. A streaming XLSX reader would lift this limit; it is not built (as agreed: measure first).
+- **Large single-sheet XLSX files.** A worksheet whose XML is larger than about 500 MB can't be turned into one JavaScript string, which the parser needs. In the generated test files, 100 MB of XLSX held about 530 MB of sheet XML. Single-sheet XLSX files much above about 90 MB are therefore refused with a clear explanation. A streaming XLSX reader would lift this limit; it is not built.
+- **XLSX memory.** SheetJS decompresses every part of a workbook, even when only one sheet is requested. Peak memory is therefore about the file size, plus 2 × all XML, plus about 100 bytes per parsed cell. The memory budget refuses workbooks that would exceed it.
+- **XLS memory.** About 40 × the file size, because every sheet is parsed. In practice, XLS files above about 40 MB are refused.
 - **Heavily compressed XLSX files** that expand to more than 2 GB are refused.
-- XLSX progress during the SheetJS parse step can't show a percentage, only stages. Cancel always works.
-- A full-text search of about 2M rows takes 1–2 s, and sorting a text column takes about 1–2 s. The page stays responsive throughout, because both run in the worker.
-- Reading UTF-16 files without a BOM, or encodings other than UTF-8, UTF-16 and Windows-1252, is not detected automatically.
+- **Excel parsing can't report a percentage.** During the SheetJS step the progress bar shows a stage, not a percentage. Cancel always works.
+- **Very hidden sheets** are shown with a "hidden" badge. Chartsheets are listed but have no cells to show.
+- **Formulas are never calculated.** Saved results are shown. Formulas saved without a result (for example by openpyxl or pandas) show as empty, and the user is told.
+- **A SheetJS 0.20.3 bug** corrupts characters above U+FFFF when a file stores them as numeric references (files from openpyxl and pandas). DataFixer restores them when that is unambiguous and warns otherwise (see `vendor/README.md`).
+- Searching about 2M rows takes 1–2 s, and sorting a text column takes about 1–3 s. The page stays responsive throughout, because both run in the worker.
+- UTF-16 CSV files without a BOM, and CSV encodings other than UTF-8, UTF-16 and Windows-1252, are not detected automatically.
 - Real-device testing (Android, iOS, Safari, Firefox) has **not** been done. Use `/diagnostics` on each device.
 
 ## Workbook features and preservation
@@ -101,10 +106,10 @@ The engine reads cell data. **Nothing is written yet**, so nothing is lost yet. 
 
 | Feature | Detected now | SheetJS (free edition) can write it |
 |---|---|---|
-| Formulas | Planned (SheetJS) | ✅ |
+| Formulas | ✅ read (text + saved result) | ✅ |
 | Multiple worksheets | ✅ | ✅ |
-| Merged cells, hyperlinks | Planned (SheetJS) | ✅ |
-| Column widths, row heights, hidden rows and columns | Planned (SheetJS) | ✅ |
+| Merged cells, hyperlinks | ✅ read | ✅ |
+| Column widths, row heights, hidden rows and columns | ✅ read (XLSX: from the safety inspection) | ✅ |
 | Hidden sheets | ✅ | ✅ |
 | Cell styles (fonts, fills, borders) | — | ❌ |
 | Charts, images | ✅ | ❌ |
