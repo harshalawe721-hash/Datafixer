@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DataFixer – find spreadsheet problems, fix them, get better data.",
+  "description": "DataFixer \u2013 find spreadsheet problems, fix them, get better data.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test": "node --test \"tests/**/*.test.ts\"",
-    "test:large": "node scripts/large-file-test.mjs"
+    "test:large": "node scripts/large-file-test.mjs",
+    "test:engine": "node scripts/engine-e2e.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",

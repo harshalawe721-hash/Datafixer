@@ -202,7 +202,7 @@ console.log("\nUpload area");
   await input.setInputFiles({ name: "customers.csv", mimeType: "text/csv", buffer: Buffer.from("name,email\nAnn,ann@example.com\n") });
   await page.waitForURL("**/spreadsheet-error-detector");
   check(await visible(page.getByText("customers.csv")), "Valid CSV opens in Error Detector with filename shown");
-  check(await page.getByText("Comma-Separated Values (CSV)").isVisible(), "Detected format shown");
+  check(await visible(page.locator("dd[title='Comma-Separated Values (CSV)']")), "Detected format shown");
   check(await page.evaluate(() => window.__noReload === true), "Handoff happened via client navigation (no reload/upload)");
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "desktop-detector-handoff.png"), fullPage: true });
   await page.reload();

@@ -107,6 +107,8 @@ export interface SheetInfo {
   state: "visible" | "hidden" | "veryHidden";
   /** Chartsheets/dialog sheets have no cell grid. */
   kind: "worksheet" | "chartsheet" | "other";
+  /** Size declared inside the file before parsing (XLSX), if known. */
+  declared?: { rows: number; columns: number } | null;
 }
 
 export interface CsvMeta {
@@ -135,6 +137,10 @@ export interface WorkbookSummary {
   warnings: string[];
   issueCount: number;
   issues: ParseIssue[];
+  /** Set when the active sheet's cells could not be loaded (file info is still valid). */
+  sheetError: { code: string; message: string } | null;
+  /** Whether the first row looks like column headers. */
+  headerGuess: boolean;
   timings: { totalMs: number };
 }
 
