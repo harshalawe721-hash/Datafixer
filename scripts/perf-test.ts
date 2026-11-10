@@ -212,7 +212,8 @@ async function run(name: string, file: string, opts: { cancelAt?: number } = {})
   } else {
     outcome = await Promise.race([
       page.getByText("Opened on your device").waitFor({ timeout: 300000 }).then(async () => {
-        const status = await page.getByRole("status").filter({ hasText: /too large|more data than|memory/ }).first().textContent({ timeout: 500 }).catch(() => null);
+        // Sheet-level refusal messages only (not the general "large file" notice).
+        const status = await page.getByRole("status").filter({ hasText: /too large to open safely|more data than a web browser|need much more memory|needs more memory than/ }).first().textContent({ timeout: 500 }).catch(() => null);
         return status ? `file info shown; sheet refused: ${status.slice(0, 80)}…` : "opened";
       }),
       page.getByText("This file couldn't be opened").waitFor({ timeout: 300000 }).then(async () => `error: ${(await page.getByRole("alert").first().textContent())?.slice(0, 90)}…`),
@@ -272,6 +273,7 @@ const cases: { name: string; make: (f: string) => unknown; ext: string; cancelAt
   { name: "csv-wide-150", ext: "csv", make: (f) => writeCsv(f, 150 * MB, "wide") },
   { name: "csv-unicode-100", ext: "csv", make: (f) => writeCsv(f, 100 * MB, "unicode") },
   { name: "csv-150-cancel", ext: "csv", make: (f) => writeCsv(f, 150 * MB, "normal"), cancelAt: 40 },
+  { name: "xlsx-normal-10", ext: "xlsx", make: (f) => writeXlsx(f, 13 * MB, { sheets: 1, kind: "normal" }) },
   { name: "xlsx-normal-50", ext: "xlsx", make: (f) => writeXlsx(f, 50 * MB, { sheets: 1, kind: "normal" }) },
   { name: "xlsx-normal-100", ext: "xlsx", make: (f) => writeXlsx(f, 100 * MB, { sheets: 1, kind: "normal" }) },
   { name: "xlsx-normal-150", ext: "xlsx", make: (f) => writeXlsx(f, 150 * MB, { sheets: 1, kind: "normal" }) },
@@ -280,6 +282,7 @@ const cases: { name: string; make: (f: string) => unknown; ext: string; cancelAt
   { name: "xlsx-compressed-50", ext: "xlsx", make: (f) => writeXlsx(f, 50 * MB, { sheets: 1, kind: "compressed" }) },
   { name: "xlsx-150-cancel", ext: "xlsx", make: (f) => writeXlsx(f, 150 * MB, { sheets: 6, kind: "normal" }), cancelAt: 30 },
   // Genuine .xls via LibreOffice (needs python3 + openpyxl + soffice).
+  { name: "xls-5", ext: "xls", make: (f) => makeXls(f, 5) },
   { name: "xls-20", ext: "xls", make: (f) => makeXls(f, 20) },
   { name: "xls-50", ext: "xls", make: (f) => makeXls(f, 50) },
   { name: "xls-100", ext: "xls", make: (f) => makeXls(f, 100) },

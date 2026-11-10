@@ -9,7 +9,7 @@ DataFixer is a free, privacy-first website for finding and fixing problems in Ex
 - Next.js 16 (App Router, static pre-rendering) · React 19 · TypeScript 5.9
 - Tailwind CSS 4 (design tokens in `src/app/globals.css`, light + dark themes)
 - Lucide React icons
-- Spreadsheet engine (in a Web Worker): Papa Parse 5.7 (CSV), fflate 0.8 (XLSX safety inspection); official SheetJS for XLSX/XLS cell data is pending (see `vendor/README.md`)
+- Spreadsheet engine (in a Web Worker): Papa Parse 5.7 (CSV), fflate 0.8 (XLSX safety inspection), official SheetJS Community Edition 0.20.3 for XLSX/XLS (vendored in `vendor/`, see `vendor/README.md`)
 - Planned: Chart.js
 
 ## Getting started
@@ -78,7 +78,7 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | Stage | Scope | Status |
 | --- | --- | --- |
 | 1 | Project setup, design system, header/footer, homepage, navigation, responsive layout | Done |
-| 2 | Spreadsheet engine, upload + preview system | In progress: CSV path complete; XLSX/XLS cell reading waits for the official SheetJS package |
+| 2 | Spreadsheet engine, upload + preview system | Implemented; all automated tests pass. Awaiting owner checks: independent SheetJS checksum, real-device tests (`/diagnostics`) |
 | 3 | Spreadsheet Error Detector (incl. formula errors) | Planned |
 | 4 | Spreadsheet Cleaner (incl. duplicates, formatting cleanup, repair) | Planned |
 | 5 | CSV Validator | Planned |
