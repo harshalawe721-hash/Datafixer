@@ -103,6 +103,7 @@ export function Diagnostics() {
           e.preventDefault();
           reject(new Error("The browser ran out of memory while generating test data."));
         };
+        gen.postMessage({ bytes: size * MB });
       });
       gen.terminate();
       genRef.current = null;
@@ -128,7 +129,14 @@ export function Diagnostics() {
       result.searchMs = Math.round(performance.now() - t3);
       result.outcome = "ok";
     } catch (err) {
-      result.outcome = err instanceof EngineError ? `${err.code}: ${err.message}` : err instanceof Error ? err.message : String(err);
+      result.outcome =
+        err instanceof EngineError
+          ? err.code === "cancelled"
+            ? "Cancelled"
+            : `${err.code}: ${err.message}`
+          : err instanceof Error
+            ? err.message
+            : String(err);
     } finally {
       result.maxFrameGapMs = stopFrames();
       result.mainHeapMB = mainHeapMB();

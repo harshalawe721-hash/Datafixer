@@ -59,7 +59,21 @@ Cancel terminates the worker, which frees its heap. The remaining RSS above base
 
 ## Low-memory environment
 
-LOW_MEMORY_RESULTS
+Chromium with its JavaScript heap capped at 512 MB (`HEAP_MB=512`; the reported limit is about 630 MB), to imitate a device with little memory. DataFixer's memory budget is then about 280 MB.
+
+| Case | File size | Outcome | Time | Peak renderer RSS | Max frame gap | SHA-256 unchanged |
+|---|---|---|---|---|---|---|
+| CSV, 6 columns | 50 MB | Opened | 1.8 s | 341 MB | 17 ms | ✅ |
+| CSV, 6 columns | 100 MB | Opened | 2.3 s | 399 MB | 17 ms | ✅ |
+| CSV, 6 columns | 150 MB | **Stopped safely:** "too large to open safely … needs roughly 320 MB" | 2.8 s | 492 MB | 17 ms | ✅ |
+| CSV, 40 columns | 150 MB | **Stopped safely:** "needs roughly 440 MB" | 2.8 s | 531 MB | 17 ms | ✅ |
+| CSV, Unicode | 100 MB | Opened | 2.8 s | 515 MB | 17 ms | ✅ |
+| XLSX, 1 sheet | 47 MB | Structure and safety check OK; cells: "not available yet" | 4.3 s | 492 MB | 17 ms | ✅ |
+| XLSX, 6 sheets | 147 MB | Structure and safety check OK; cells: "not available yet" | 12.9 s | 492 MB | 17 ms | ✅ |
+
+**No tab crashed.** With a 256 MB cap (tested earlier), a 100 MB CSV was stopped after 1.8 s with the clear message, and a small file opened afterwards in the same tab. Before the memory budget existed, that same test crashed the tab.
+
+A capped heap in desktop Chromium is only an approximation of a phone. Real phones also have slower CPUs, and the operating system can kill a browser tab that uses too much memory overall. Real-device numbers are still needed (see `/diagnostics`).
 
 ## Conclusions
 
@@ -70,4 +84,13 @@ LOW_MEMORY_RESULTS
 
 ## Regression checks
 
-REGRESSION_RESULTS
+Run after all Stage 2 changes:
+
+| Suite | Result |
+|---|---|
+| `npm test` | 100 / 100 pass |
+| `npm run test:smoke` | 114 / 114 pass |
+| `npm run test:engine` | 42 / 42 pass |
+| `npm run test:large` (50/100/149/150 MB accepted, 150 MB + 1 byte and 151 MB rejected; picker and drag-and-drop; SHA-256 unchanged) | 64 / 64 pass |
+| `/diagnostics` at 1280 px and 390 px wide: test runs, Cancel works, results shown, `noindex` present, not in the sitemap, no POST requests, no console errors | Pass (manual Playwright script) |
+| Lint, type check, production build | Clean |
