@@ -52,6 +52,16 @@ export interface InspectionResult {
   features: FeatureInventory;
   /** "transitional" (normal) or "strict" OOXML. */
   conformance: "transitional" | "strict";
+  /** Decompressed size of xl/sharedStrings.xml (0 if none). */
+  sharedStringsBytes: number;
+  /**
+   * Characters outside the Basic Multilingual Plane (emoji, rare CJK) written as
+   * numeric references such as "&#128512;". SheetJS 0.20.3 decodes these with
+   * String.fromCharCode, which keeps only the low 16 bits (😀 becomes U+F600).
+   * `repair` maps each corrupted character back to the real one where that is
+   * unambiguous; `ambiguous` counts characters that cannot be restored safely.
+   */
+  astralRefs: { repair: Record<string, string>; ambiguous: number };
 }
 
 export interface InspectOptions {
@@ -171,8 +181,29 @@ interface PartState {
   head: string;
 }
 
+const OLE2_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+
+/** Parts whose text ends up in cell values or sheet names. */
+function carriesCellText(name: string): boolean {
+  return (
+    name === "xl/sharedStrings.xml" ||
+    name === "xl/workbook.xml" ||
+    /^xl\/worksheets\/[^/]+\.xml$/i.test(name) ||
+    /^xl\/comments\d*\.xml$/i.test(name)
+  );
+}
+
+const NUMERIC_REF = /&#(x[0-9a-fA-F]{1,6}|\d{1,7});/g;
+
 export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Promise<InspectionResult> {
   const limits = { ...DEFAULT_LIMITS, ...options.limits };
+  const sig = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+  if (OLE2_SIGNATURE.every((b, i) => sig[i] === b)) {
+    throw new EngineError(
+      "encrypted-file",
+      "This workbook is password-protected (encrypted), so it can't be opened. Remove the password in Excel (File → Info → Protect Workbook) and save it again, then try once more.",
+    );
+  }
   const chunkBytes = options.chunkBytes ?? 4 * 1024 * 1024;
   const features = emptyFeatures();
   const kept = new Map<string, Uint8Array>();
@@ -182,6 +213,11 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
   let largest = { name: "", bytes: 0 };
   let failure: EngineError | null = null;
   let strict = false;
+  let sharedStringsBytes = 0;
+  /** low 16 bits → set of astral code points referenced numerically */
+  const astral = new Map<number, Set<number>>();
+  /** BMP code points referenced numerically (legitimate uses of a low-16 value) */
+  const bmpRefs = new Set<number>();
   const open = new Set<PartState>();
 
   const fail = (e: EngineError) => {
@@ -260,11 +296,25 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
           if (!features.conditionalFormatting && /<(?:\w+:)?conditionalFormatting\b/.test(text)) features.conditionalFormatting = true;
         }
         if (name === "xl/workbook.xml" && text.includes("purl.oclc.org/ooxml")) strict = true;
+        if (carriesCellText(name) && text.includes("&#")) {
+          for (const m of text.matchAll(NUMERIC_REF)) {
+            const ref = m[1]!;
+            const cp = ref[0] === "x" ? parseInt(ref.slice(1), 16) : parseInt(ref, 10);
+            if (!(cp >= 0 && cp <= 0x10ffff)) continue;
+            if (cp > 0xffff) {
+              const low = cp & 0xffff;
+              let set = astral.get(low);
+              if (!set) astral.set(low, (set = new Set()));
+              set.add(cp);
+            } else bmpRefs.add(cp);
+          }
+        }
         st.carry = text.slice(-CARRY);
       }
       if (final) {
         open.delete(st);
         if (st.bytes > largest.bytes) largest = { name, bytes: st.bytes };
+        if (name === "xl/sharedStrings.xml") sharedStringsBytes = st.bytes;
         if (st.keep) kept.set(name, concat(st.keep));
         if (st.isSheet) {
           const dim = /<(?:\w+:)?dimension\b[^>]*\bref\s*=\s*"([^"]+)"/.exec(st.head)?.[1] ?? null;
@@ -326,7 +376,29 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
     throw new EngineError("corrupt-file", "This workbook does not list any sheets. It may be damaged.");
   }
 
+  // Work out which corrupted characters can be restored unambiguously: exactly
+  // one astral character maps to that low-16 value, and the low-16 character
+  // itself never appears legitimately (as a reference or as raw text).
+  const repair: Record<string, string> = {};
+  let ambiguous = 0;
+  if (astral.size > 0) {
+    const candidates = new Map<string, string>();
+    for (const [low, cps] of astral) {
+      if (cps.size === 1 && !bmpRefs.has(low)) candidates.set(String.fromCharCode(low), String.fromCodePoint([...cps][0]!));
+      else ambiguous += cps.size;
+    }
+    if (candidates.size > 0) {
+      const seenRaw = await findRawChars(blob, new Set(candidates.keys()), chunkBytes, options.cancel);
+      for (const [low, real] of candidates) {
+        if (seenRaw.has(low)) ambiguous++;
+        else repair[low] = real;
+      }
+    }
+  }
+
   return {
+    sharedStringsBytes,
+    astralRefs: { repair, ambiguous },
     entries,
     compressedBytes: blob.size,
     uncompressedBytes: total,
@@ -335,6 +407,33 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
     features,
     conformance: strict ? "strict" : "transitional",
   };
+}
+
+/**
+ * Second, targeted pass (only when astral references exist): which of the given
+ * characters appear as raw text in parts that carry cell text?
+ */
+async function findRawChars(blob: Blob, chars: Set<string>, chunkBytes: number, cancel?: CancelToken): Promise<Set<string>> {
+  const found = new Set<string>();
+  const unzip = new Unzip((file: UnzipFile) => {
+    if (!carriesCellText(file.name)) return;
+    const decoder = new TextDecoder("utf-8");
+    file.ondata = (err, data, final) => {
+      if (err || found.size === chars.size) return;
+      const text = decoder.decode(data, { stream: !final });
+      for (const ch of chars) if (!found.has(ch) && text.includes(ch)) found.add(ch);
+    };
+    file.start();
+  });
+  unzip.register(UnzipInflate);
+  for (let offset = 0; offset < blob.size && found.size < chars.size; ) {
+    throwIfCancelled(cancel);
+    const end = Math.min(offset + chunkBytes, blob.size);
+    unzip.push(new Uint8Array(await blob.slice(offset, end).arrayBuffer()), end >= blob.size);
+    offset = end;
+    await yieldToEventLoop();
+  }
+  return found;
 }
 
 function concat(parts: Uint8Array[]): Uint8Array {

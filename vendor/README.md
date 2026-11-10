@@ -1,46 +1,37 @@
 # Vendored dependencies
 
-## SheetJS Community Edition (status: not yet added)
-
-DataFixer will read XLSX and XLS files with the **official** SheetJS Community Edition build (approved Stage 2 decision, Option A).
+## SheetJS Community Edition 0.20.3
 
 | | |
 |---|---|
-| Package | `xlsx` (SheetJS Community Edition) |
-| Version | 0.20.3 is the newest patched release known at the time of writing. **Check <https://cdn.sheetjs.com/> for a newer release before downloading.** |
-| Official source | `https://cdn.sheetjs.com/xlsx-<version>/xlsx-<version>.tgz` (SheetJS no longer publishes to npm; `xlsx@0.18.5` on npm has two unfixed high-severity advisories) |
-| License | Apache License 2.0 (included in the package as `LICENSE`) |
-| Not used | `@e965/xlsx` (third-party republish). Using it requires explicit approval. |
+| File | `vendor/xlsx-0.20.3.tgz` (2,409,319 bytes) |
+| SHA-256 | `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8` (also in `CHECKSUMS.txt`) |
+| npm integrity (package-lock) | `sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==` |
+| Source | Downloaded by the project owner from the official SheetJS CDN (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`) and committed on 10 November 2026 |
+| Version | 0.20.3 (`package.json`, `XLSX.version`, CHANGELOG) |
+| License | Apache License 2.0 (`LICENSE` inside the package) |
+| Installed as | `"xlsx": "file:vendor/xlsx-0.20.3.tgz"` in `package.json` |
+| Not used | `@e965/xlsx` (third-party republish) |
 
-### Why it isn't here yet
+### Verification performed
 
-The development environment's network policy blocks `cdn.sheetjs.com` and `git.sheetjs.com` (HTTP 403). The one-time permission request was declined, so the package couldn't be downloaded automatically.
+| Check | Result |
+|---|---|
+| SHA-256 recorded and pinned (CHECKSUMS.txt plus the package-lock integrity hash) | ✅ |
+| Compared byte-for-byte with an independent official copy | ❌ **Not possible**: SheetJS publishes no checksums or signatures, and `cdn.sheetjs.com`, `git.sheetjs.com` and mirrors are blocked from the development environment. Provenance rests on the owner's download from the official CDN. |
+| `package.json` name `xlsx`, version 0.20.3, license Apache-2.0, no runtime dependencies | ✅ |
+| CHANGELOG lists the CVE-2023-30533 fix (0.19.3) and the CVE-2024-22363 fix (0.20.2) | ✅ |
+| No install hooks (`preinstall`/`install`/`postinstall`) | ✅ |
+| Browser build (`xlsx.mjs`) contains no `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `eval(`, `new Function` or `child_process` | ✅ |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| Behavioural tests: prototype-pollution names and pathological XML (regression guards for both CVE classes) | ✅ (`tests/engine/excel.test.ts`) |
 
-### How to add it
+To strengthen verification later, compare the SHA-256 above with a fresh download from `https://cdn.sheetjs.com/` made from any normal internet connection.
 
-Either allow `cdn.sheetjs.com` in the cloud environment's network settings and ask Claude to continue, or do it yourself on a computer with normal internet access:
+### Known issue in this version
 
-```bash
-# 1. Check https://cdn.sheetjs.com/ for the latest version, then:
-VERSION=0.20.3
-curl -fLO "https://cdn.sheetjs.com/xlsx-$VERSION/xlsx-$VERSION.tgz"
+SheetJS 0.20.3 decodes XML numeric character references above U+FFFF with `String.fromCharCode`, so `&#128512;` (😀) becomes U+F600. Excel writes raw UTF-8 and is not affected. openpyxl (and pandas, which uses it) writes every non-ASCII character as a numeric reference. DataFixer works around this without modifying the package: see `src/engine/xlsx/inspect.ts` (`astralRefs`) and `read-workbook.ts`.
 
-# 2. Record the checksum
-sha256sum "xlsx-$VERSION.tgz"     # macOS: shasum -a 256 "xlsx-$VERSION.tgz"
+### Updating
 
-# 3. Commit it to this folder on the development branch
-mv "xlsx-$VERSION.tgz" vendor/
-git add "vendor/xlsx-$VERSION.tgz"
-git commit -m "Vendor official SheetJS $VERSION"
-git push
-```
-
-Then share the checksum from step 2. The next step installs it with `npm install ./vendor/xlsx-<version>.tgz`, which pins the exact file in `package-lock.json` through its integrity hash. The checksum is also recorded in `vendor/CHECKSUMS.txt`.
-
-### Verification
-
-SheetJS does not publish signatures or official checksums. To verify the package, we will:
-
-1. compare the SHA-256 of your download with a second, independent download (for example, from a different network) when one is available;
-2. check that `package.json` inside the tarball says the expected version and Apache-2.0 license;
-3. run `npm audit` and the engine's malformed-file test suite against it.
+Download a newer official release, add it here, update `CHECKSUMS.txt`, run `npm install ./vendor/xlsx-<version>.tgz`, delete the old file, and run the full test suite.

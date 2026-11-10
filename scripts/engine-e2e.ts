@@ -104,20 +104,49 @@ const xlsx = buildXlsx(
   { "xl/charts/chart1.xml": "<c/>", "xl/vbaProject.bin": new Uint8Array([0]) },
 );
 await openFile({ name: "book.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from(xlsx) });
-check(await opened(), "XLSX opened (structure)");
+check(await opened(), "XLSX opened");
 check((await stat("Sheets")) === "3", "3 sheets listed");
-check((await stat("Total rows"))?.includes("3 (declared)"), "declared size shown before parsing");
+check((await stat("Total rows")) === "3", "rows counted from the parsed sheet");
+check((await firstCell(0)) === "1" && (await firstCell(1)) === "2", "XLSX cells shown");
 check(await visible(page.getByRole("button", { name: /Archive.*hidden/ })), "hidden sheet badge");
 check(await visible(page.getByText(/contains 1 chart/)), "chart feature warning");
 check(await visible(page.getByText("This workbook contains macros. DataFixer never runs macros.")), "macro notice");
-check(await visible(page.getByRole("status").filter({ hasText: "not available yet" })), "honest 'not available yet' for cell data");
 await page.getByRole("button", { name: /^Notes/ }).click();
 check(await visible(page.locator("button[aria-pressed=true]", { hasText: "Notes" })), "sheet switch works");
 
+console.log("\nReal workbooks (LibreOffice / openpyxl fixtures)");
+const FIX = path.join(import.meta.dirname, "..", "tests", "fixtures", "excel");
+for (const name of ["lo-features.xlsx", "lo-features.xls"]) {
+  await openFile(path.join(FIX, name));
+  check(await opened(), `${name} opened`);
+  check((await stat("Format")) === name.split(".").pop()!.toUpperCase(), `${name}: format shown`);
+  await page.getByRole("checkbox", { name: "First row contains column names" }).check();
+  await page.waitForTimeout(300);
+  const row = await page.locator("tbody tr").first().locator("td").allTextContents();
+  check(row[0] === "Ann" && row[1] === "10.50" && row[2] === "2024-01-31" && row[3] === "fxTRUE" /* LibreOffice stores TRUE as the formula TRUE() */, `${name}: values with number/date formats (${row.slice(0, 4).join(" | ")})`);
+  check(row[4] === "fx21", `${name}: formula cell marked fx and shows saved result`);
+  const err = page.locator("tbody tr").nth(2).locator("td").nth(4);
+  check((await err.textContent()) === "fx#DIV/0!" && (await err.getAttribute("class"))?.includes("text-danger"), `${name}: error cell highlighted`);
+  check(await visible(page.getByRole("button", { name: /Archive.*hidden/ })), `${name}: hidden sheet listed`);
+  await page.getByRole("button", { name: /^Summary/ }).click();
+  check(await visible(page.locator("tbody td", { hasText: "1240.067" })), `${name}: switch sheet, cross-sheet formula result`);
+}
+await openFile(path.join(FIX, "openpyxl-features.xlsx"));
+check(await opened(), "openpyxl workbook opened");
+check(await visible(page.locator("tbody td", { hasText: "Zoë 東京 😀" })), "emoji restored (SheetJS numeric-reference bug worked around)");
+check(await visible(page.getByText(/restored/)), "user told about restored characters");
+check(await visible(page.getByText(/4 formula cells have no saved result/)), "formulas without results reported");
+await page.getByRole("button", { name: /^Chart1/ }).click();
+check(await visible(page.getByRole("status").filter({ hasText: "contains a chart" })), "chartsheet explained");
+
+console.log("\nPassword-protected workbook");
+await openFile(path.join(FIX, "encrypted.xlsx"));
+check(await visible(page.getByRole("alert").filter({ hasText: /password-protected/ })), "encrypted file: clear message at upload");
+
 console.log("\nXLS, unsafe and damaged files");
 const ole = Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(512)]);
-await openFile({ name: "old.xls", mimeType: "application/vnd.ms-excel", buffer: ole });
-check(await visible(page.getByText(/97–2003 \(\.xls\) files is not available yet/)), "XLS: clear not-available message");
+await openFile({ name: "bad.xls", mimeType: "application/vnd.ms-excel", buffer: ole });
+check(await visible(page.getByRole("alert").filter({ hasText: /could not be read|damaged|password/ })), "broken XLS: clear error");
 const evil = buildXlsx([{ name: "S", xml: '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]><worksheet/>' }]);
 await openFile({ name: "evil.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from(evil) });
 check(await visible(page.getByRole("alert").filter({ hasText: "not opened for safety" })), "DOCTYPE workbook rejected");

@@ -26,6 +26,9 @@ interface OpenState {
   csv: CsvMeta | null;
   activeSheet: string;
   sheetError: { code: string; message: string } | null;
+  /** Warnings produced while reading the active sheet (Excel). */
+  sheetWarnings: string[];
+  memoryBudgetBytes: number | undefined;
   startedAt: number;
 }
 
@@ -106,6 +109,8 @@ export class EngineCore {
         csv: meta,
         activeSheet: sheet.name,
         sheetError: null,
+        sheetWarnings: [],
+        memoryBudgetBytes: options.memoryBudgetBytes,
         startedAt,
       };
       return this.summary();
@@ -125,7 +130,7 @@ export class EngineCore {
         declared: dimensionSize(s.dimension),
       }));
     } else {
-      // XLS (binary) cannot be inspected without the Excel reader.
+      // XLS (binary): the sheet list is discovered while reading.
       sheets = [];
     }
 
@@ -140,38 +145,64 @@ export class EngineCore {
       csv: null,
       activeSheet: first?.name ?? sheets[0]?.name ?? "",
       sheetError: null,
+      sheetWarnings: [],
+      memoryBudgetBytes: options.memoryBudgetBytes,
       startedAt,
     };
     if (first) await this.loadSheet(first.name, onProgress, cancel);
-    else if (format === "xls") await this.loadSheet("", onProgress, cancel);
+    else if (format === "xls") {
+      await this.loadExcelSheet(0, onProgress, cancel);
+      // If the first sheet is hidden or a chart, open the first visible worksheet instead.
+      const st = this.requireState();
+      const visible = st.sheets.findIndex((s) => s.kind === "worksheet" && s.state === "visible");
+      if (visible > 0 && st.sheets[0]?.state !== "visible") await this.loadSheet(st.sheets[visible]!.name, onProgress, cancel);
+    }
     return this.summary();
   }
 
   async loadSheet(name: string, onProgress: Progress, cancel?: CancelToken): Promise<WorkbookSummary> {
     const st = this.requireState();
-    const info = st.sheets.find((s) => s.name === name);
-    if (st.format !== "xls" && !info) throw new EngineError("sheet-not-found", `There is no sheet called “${name}” in this file.`);
+    const index = st.sheets.findIndex((s) => s.name === name);
+    const info = st.sheets[index];
+    if (!info) throw new EngineError("sheet-not-found", `There is no sheet called “${name}” in this file.`);
     st.activeSheet = name;
     st.sheetError = null;
     if (st.loaded.has(name)) return this.summary();
-    if (info && info.kind !== "worksheet") {
+    if (info.kind !== "worksheet") {
+      st.sheetWarnings = [];
       st.sheetError = { code: "chartsheet", message: "This sheet contains a chart, not cells, so there is no data to show." };
       return this.summary();
     }
     if (st.format === "csv") return this.summary();
-    onProgress({ phase: "parsing", loaded: null, total: null });
+    await this.loadExcelSheet(index, onProgress, cancel);
+    return this.summary();
+  }
+
+  /** Parse one Excel sheet. Only one Excel sheet is kept in memory at a time. */
+  private async loadExcelSheet(index: number, onProgress: Progress, cancel?: CancelToken): Promise<void> {
+    const st = this.requireState();
+    if (st.format === "csv") return;
+    st.loaded.clear(); // release the previously loaded sheet before parsing the next one
+    st.sheetWarnings = [];
+    st.sheetError = null;
     try {
-      // Only the requested sheet is parsed; other sheets are not loaded.
-      const sheet = await readExcelSheet(st.file, st.format, { sheetName: name, inspection: st.inspection });
-      if (cancel?.cancelled) throw new EngineError("cancelled", "Processing was cancelled.");
-      st.loaded.set(name, { sheet, query: new SheetQuery(sheet) });
+      const result = await readExcelSheet(st.file, st.format, {
+        sheetIndex: index,
+        inspection: st.inspection,
+        memoryBudgetBytes: st.memoryBudgetBytes,
+        cancel,
+        onProgress: (phase, loaded, total) => onProgress({ phase, loaded, total }),
+      });
+      if (result.sheets) st.sheets = result.sheets;
+      st.activeSheet = result.sheet.name;
+      st.loaded.set(result.sheet.name, { sheet: result.sheet, query: new SheetQuery(result.sheet) });
+      st.sheetWarnings = result.warnings;
     } catch (err) {
-      if (err instanceof EngineError && (err.code === "not-implemented" || err.code === "too-large-for-engine" || err.code === "out-of-memory")) {
+      if (err instanceof EngineError && (err.code === "too-large-for-engine" || err.code === "out-of-memory") && st.sheets.length > 0) {
         // File-level information stays valid; only this sheet's cells are unavailable.
         st.sheetError = { code: err.code, message: err.message };
       } else throw err;
     }
-    return this.summary();
   }
 
   getRows(sheetName: string, query: RowQuery): RowPage {
@@ -212,7 +243,7 @@ export class EngineCore {
       sheetStats,
       features,
       csv: st.csv,
-      warnings: [...(st.csv ? csvWarnings(st.csv) : []), ...featureWarnings(features)],
+      warnings: [...(st.csv ? csvWarnings(st.csv) : []), ...st.sheetWarnings, ...featureWarnings(features)],
       issueCount,
       issues,
       sheetError: st.sheetError,

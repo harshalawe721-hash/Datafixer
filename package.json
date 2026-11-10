@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DataFixer \u2013 find spreadsheet problems, fix them, get better data.",
+  "description": "DataFixer – find spreadsheet problems, fix them, get better data.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,7 +22,8 @@
     "next": "^16.4.6",
     "papaparse": "^5.7.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",

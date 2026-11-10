@@ -147,7 +147,7 @@ export class SheetQuery {
       const len = grid.rowLength(r);
       for (let c = 0; c < len; c++) {
         const v = grid.get(r, c);
-        if (v !== null && v !== "" && cellText(v).toLowerCase().includes(term)) {
+        if (v !== null && v !== "" && (grid.display ? grid.display(r, c) : cellText(v)).toLowerCase().includes(term)) {
           out[n++] = base[i]!;
           break;
         }
@@ -181,7 +181,7 @@ export class SheetQuery {
       let formulaColumns: number[] | undefined;
       let errorColumns: number[] | undefined;
       for (let c = colOffset; c < colEnd; c++) {
-        cells[c - colOffset] = cellText(sheet.grid.get(r, c));
+        cells[c - colOffset] = sheet.grid.display ? sheet.grid.display(r, c) : cellText(sheet.grid.get(r, c));
         if (hasFormulas && sheet.formulas.has(cellKey(r, c))) (formulaColumns ??= []).push(c);
         if (hasErrors && sheet.errors.has(cellKey(r, c))) (errorColumns ??= []).push(c);
       }
@@ -191,7 +191,7 @@ export class SheetQuery {
     let header: string[] | null = null;
     if (q.headerRow) {
       header = [];
-      for (let c = colOffset; c < colEnd; c++) header.push(cellText(sheet.grid.get(0, c)));
+      for (let c = colOffset; c < colEnd; c++) header.push(sheet.grid.display ? sheet.grid.display(0, c) : cellText(sheet.grid.get(0, c)));
     }
 
     return { total: order.length, totalUnfiltered, columnCount: sheet.columnCount, columnOffset: colOffset, header, rows };

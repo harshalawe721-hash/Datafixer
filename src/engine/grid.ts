@@ -21,6 +21,12 @@ export interface CellGrid {
   get(r: number, c: number): CellValue;
   /** Materialise one row (for small reads only). */
   row(r: number): CellValue[];
+  /**
+   * Text as a spreadsheet app would show it (e.g. a date serial formatted as
+   * "2024-01-31"). Grids without number formats omit this; callers then fall
+   * back to the raw value.
+   */
+  display?(r: number, c: number): string;
   /** Approximate bytes used, for memory budgeting. */
   readonly approxBytes: number;
 }
@@ -166,5 +172,72 @@ export class CompactTextGrid implements CellGrid {
     const out = new Array<CellValue>(n);
     for (let c = 0; c < n; c++) out[c] = this.get(r, c);
     return out;
+  }
+}
+
+/** Formats a raw cell value with an Excel number format (injected: SheetJS SSF in the worker). */
+export type NumberFormatter = (format: string, value: number) => string;
+
+/**
+ * Grid for Excel sheets: raw values in row arrays (positions match Excel, so
+ * row 0 is Excel row 1), plus number-format ids per row in small Uint16Arrays,
+ * only for rows that have non-General formats. Formatting (dates, currency)
+ * happens only when a cell is displayed, so millions of formatted strings are
+ * never stored.
+ */
+export class WorkbookGrid implements CellGrid {
+  private readonly rows: (CellValue[] | undefined)[];
+  private readonly formatIds: (Uint16Array | undefined)[];
+  private readonly formats: string[];
+  private readonly formatter: NumberFormatter | null;
+  readonly approxBytes: number;
+
+  constructor(
+    rows: (CellValue[] | undefined)[],
+    formatIds: (Uint16Array | undefined)[],
+    formats: string[],
+    formatter: NumberFormatter | null,
+    approxBytes: number,
+  ) {
+    this.rows = rows;
+    this.formatIds = formatIds;
+    this.formats = formats;
+    this.formatter = formatter;
+    this.approxBytes = approxBytes;
+  }
+  get rowCount() {
+    return this.rows.length;
+  }
+  rowLength(r: number) {
+    return this.rows[r]?.length ?? 0;
+  }
+  get(r: number, c: number): CellValue {
+    return this.rows[r]?.[c] ?? null;
+  }
+  row(r: number): CellValue[] {
+    const row = this.rows[r];
+    return row ? Array.from(row, (v) => v ?? null) : [];
+  }
+  /** Number format of a cell, or null for General/none. */
+  format(r: number, c: number): string | null {
+    const id = this.formatIds[r]?.[c] ?? 0;
+    return id === 0 ? null : (this.formats[id] ?? null);
+  }
+  display(r: number, c: number): string {
+    const v = this.get(r, c);
+    if (v === null) return "";
+    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+    if (typeof v === "number") {
+      const fmt = this.format(r, c);
+      if (fmt && this.formatter) {
+        try {
+          return this.formatter(fmt, v);
+        } catch {
+          return String(v);
+        }
+      }
+      return String(v);
+    }
+    return v;
   }
 }

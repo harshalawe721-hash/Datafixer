@@ -30,7 +30,7 @@ test("progress is reported while parsing CSV", async () => {
   assert.ok(phases.includes("parsing"));
 });
 
-test("XLSX: inspection works and cell reading reports 'not available yet' honestly", async () => {
+test("XLSX: inspection plus cell reading", async () => {
   const core = new EngineCore();
   const zip = buildXlsx([
     { name: "Data", xml: sheetXml([["a", "b"], ["1", "2"]]) },
@@ -42,16 +42,17 @@ test("XLSX: inspection works and cell reading reports 'not available yet' honest
   assert.equal(s.activeSheet, "Data");
   assert.equal(s.features?.charts, 1);
   assert.ok(s.warnings.some((w) => /1 chart/.test(w)));
-  assert.equal(s.sheetError?.code, "not-implemented");
-  assert.throws(() => core.getRows("Data", { offset: 0, limit: 5, headerRow: false }), (e: unknown) => e instanceof EngineError && e.code === "sheet-not-found");
+  assert.equal(s.sheetError, null);
+  assert.deepEqual(s.sheetStats.Data, { rows: 2, columns: 2 });
+  const page = core.getRows("Data", { offset: 0, limit: 5, headerRow: true });
+  assert.deepEqual(page.header, ["a", "b"]);
+  assert.deepEqual(page.rows[0]!.cells, ["1", "2"]);
 });
 
-test("XLS: reports not available yet", async () => {
+test("XLS: a file with an OLE header but no workbook is reported as unreadable", async () => {
   const core = new EngineCore();
   const ole = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0]);
-  const s = await core.open(new File([ole as BlobPart], "old.xls"), "xls", {}, noop);
-  assert.equal(s.sheetError?.code, "not-implemented");
-  assert.match(s.sheetError!.message, /\.xls/);
+  await assert.rejects(core.open(new File([ole as BlobPart], "old.xls"), "xls", {}, noop), (e: unknown) => e instanceof EngineError);
 });
 
 test("unsafe XLSX is rejected before any parsing", async () => {
