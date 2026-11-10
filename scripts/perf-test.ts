@@ -16,7 +16,7 @@
  */
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { closeSync, createReadStream, mkdirSync, openSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -212,8 +212,8 @@ async function run(name: string, file: string, opts: { cancelAt?: number } = {})
   } else {
     outcome = await Promise.race([
       page.getByText("Opened on your device").waitFor({ timeout: 300000 }).then(async () => {
-        const status = await page.getByRole("status").filter({ hasText: /not available yet|too large/ }).first().textContent({ timeout: 500 }).catch(() => null);
-        return status ? `opened (structure); cells: ${status.slice(0, 70)}…` : "opened";
+        const status = await page.getByRole("status").filter({ hasText: /too large|more data than|memory/ }).first().textContent({ timeout: 500 }).catch(() => null);
+        return status ? `file info shown; sheet refused: ${status.slice(0, 80)}…` : "opened";
       }),
       page.getByText("This file couldn't be opened").waitFor({ timeout: 300000 }).then(async () => `error: ${(await page.getByRole("alert").first().textContent())?.slice(0, 90)}…`),
       page.getByRole("alert").filter({ hasText: "maximum file size" }).waitFor({ timeout: 300000 }).then(() => "rejected at upload: over 150 MB"),
@@ -279,7 +279,16 @@ const cases: { name: string; make: (f: string) => unknown; ext: string; cancelAt
   { name: "xlsx-formulas-50", ext: "xlsx", make: (f) => writeXlsx(f, 50 * MB, { sheets: 1, kind: "formulas" }) },
   { name: "xlsx-compressed-50", ext: "xlsx", make: (f) => writeXlsx(f, 50 * MB, { sheets: 1, kind: "compressed" }) },
   { name: "xlsx-150-cancel", ext: "xlsx", make: (f) => writeXlsx(f, 150 * MB, { sheets: 6, kind: "normal" }), cancelAt: 30 },
+  // Genuine .xls via LibreOffice (needs python3 + openpyxl + soffice).
+  { name: "xls-20", ext: "xls", make: (f) => makeXls(f, 20) },
+  { name: "xls-50", ext: "xls", make: (f) => makeXls(f, 50) },
+  { name: "xls-100", ext: "xls", make: (f) => makeXls(f, 100) },
 ];
+
+function makeXls(file: string, mb: number) {
+  const script = path.join(import.meta.dirname, "fixtures", "make_large_xls.py");
+  execFileSync("python3", [script, file, String(mb)], { stdio: "ignore", timeout: 3600_000 });
+}
 
 console.log(`Chromium headless${HEAP_MB ? `, JS heap capped at ${HEAP_MB} MB` : ""}`);
 try {

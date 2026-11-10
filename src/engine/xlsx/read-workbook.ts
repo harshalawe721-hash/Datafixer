@@ -80,7 +80,12 @@ export interface ExcelReadResult {
  */
 export const XLSX_BYTES_PER_CELL = 100;
 export const XLSX_XML_BYTES_PER_CELL = 30;
-export const XLS_FILE_MULTIPLIER = 16;
+/**
+ * SheetJS parses EVERY sheet of an .xls file (it ignores the `sheets` option
+ * for this format). Measured: a 50 MB .xls (6 sheets, 3.1M cells) peaked at
+ * 2.0 GB = 40× the file size, with or without styles.
+ */
+export const XLS_FILE_MULTIPLIER = 42;
 
 export function estimateExcelMemory(fileBytes: number, format: "xlsx" | "xls", inspection: InspectionResult | null, sheetIndex: number): number {
   if (format === "xls" || !inspection) return fileBytes * XLS_FILE_MULTIPLIER;
@@ -143,7 +148,17 @@ interface SheetJSCell {
 export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options: ReadSheetOptions): Promise<ExcelReadResult> {
   const { sheetIndex, inspection, cancel } = options;
   const need = estimateExcelMemory(file.size, format, inspection, sheetIndex);
-  if (options.memoryBudgetBytes && need > options.memoryBudgetBytes) throw tooLargeForDevice(need);
+  if (options.memoryBudgetBytes && need > options.memoryBudgetBytes) {
+    if (format === "xls") {
+      const mb = Math.ceil(need / (1024 * 1024) / 10) * 10;
+      throw new EngineError(
+        "too-large-for-engine",
+        `Older Excel 97–2003 (.xls) files need much more memory to open than newer ones: this one needs roughly ${mb.toLocaleString("en-US")} MB, more than this browser allows. Nothing was changed. Open it in Excel and save it as .xlsx (which needs far less memory), or as CSV, then try again.`,
+        `estimated ${need} bytes`,
+      );
+    }
+    throw tooLargeForDevice(need);
+  }
 
   options.onProgress?.("reading", 0, file.size);
   const XLSX = await loadSheetJS(format === "xls");
