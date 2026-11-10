@@ -119,3 +119,22 @@ test("sorting 300k rows completes quickly", () => {
   assert.equal(last.rows.length, 1);
   assert.ok(ms < 3000, `took ${ms} ms`);
 });
+
+test("text sort keys: case, accents and natural numbers", async () => {
+  const { textSortKey } = await import("../../src/engine/query/query.ts");
+  const items = ["item 10", "Item 2", "item 1", "Éclair", "eclair b", "zebra", "Ålesund", "apple"];
+  const sorted = [...items].sort((a, b) => (textSortKey(a) < textSortKey(b) ? -1 : textSortKey(a) > textSortKey(b) ? 1 : 0));
+  assert.deepEqual(sorted, ["Ålesund", "apple", "Éclair", "eclair b", "item 1", "Item 2", "item 10", "zebra"]);
+});
+
+test("text sort of 1M rows is fast", () => {
+  const rows: CellValue[][] = [["name"]];
+  const w = ["alpha", "bravo", "Zürich", "café", "delta"];
+  for (let i = 0; i < 1_000_000; i++) rows.push([`${w[i % 5]} ${(i * 7919) % 1000003}`]);
+  const q = new SheetQuery(sheetOf(rows));
+  const t = Date.now();
+  q.getPage({ offset: 0, limit: 5, headerRow: true, sort: { column: 0, direction: "asc" } });
+  const ms = Date.now() - t;
+  console.log(`    1M-row text sort: ${ms} ms`);
+  assert.ok(ms < 4000, `took ${ms} ms`);
+});

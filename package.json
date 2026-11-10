@@ -13,7 +13,8 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test": "node --test \"tests/**/*.test.ts\"",
     "test:large": "node scripts/large-file-test.mjs",
-    "test:engine": "node scripts/engine-e2e.ts"
+    "test:engine": "node scripts/engine-e2e.ts",
+    "test:perf": "node scripts/perf-test.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",

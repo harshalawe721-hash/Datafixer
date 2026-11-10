@@ -4,17 +4,23 @@ DataFixer accepts files up to **150 MB (157,286,400 bytes)**. That is the most w
 
 This document describes how parsing, scanning, cleaning and export (Stages 2 to 6) must be built so that large files don't freeze the page or use more memory than needed.
 
-## What is implemented today
+## What is implemented today (Stage 2)
 
 | Area | Status |
 | --- | --- |
-| Size limit (inclusive: 157,286,400 bytes accepted, 157,286,401 rejected) | Done, in `src/config/site.ts` |
-| One validation path for drag-and-drop and the file picker | Done, in `FileDropzone.handleFiles` |
-| Validation reads only the first 8 KB of the file (`Blob.slice`), never the whole file | Done |
-| Clear rejection message that states the 150 MB limit (exact bytes shown when just over) | Done |
-| Large-file advisory for accepted files over 50 MB | Done |
-| Unit tests at the boundaries (`npm test`) and a real-browser test at 50/100/149/150/150+1/151 MB (`npm run test:large`) | Done |
-| Parsing, scanning, cleaning, export | **Not built yet.** Its performance at 150 MB has **not** been measured. |
+| 150 MB limit, one validation path for drag-and-drop and the file picker, reading only the first 8 KB | Done (Stage 1) |
+| All parsing, inspection, search and sort run in a Web Worker | Done |
+| CSV read in 4 MB slices, decoded with a streaming `TextDecoder`, then parsed by Papa Parse | Done |
+| Compact cell storage (`CompactTextGrid`): 1.7–2.2 × file size, down from 5.1–7.9 × | Done |
+| The `File` is passed to the worker by reference; the file is read with `Blob.slice` and never copied whole | Done |
+| XLSX safety inspection by streaming decompression, keeping only small metadata parts | Done |
+| Progress (percentage for CSV and inspection) and a Cancel button that terminates the worker (measured: about 50 ms) | Done |
+| Memory budget, so parsing stops with a clear message instead of crashing the tab | Done |
+| Paged preview with column windowing, so the page never renders the whole sheet | Done |
+| XLSX/XLS cell reading with SheetJS (whole file in memory, selected sheet only) | **Waiting for the vendored package** |
+| Undo without copying the dataset, worker-side exports | Later stages |
+
+Measured results are in [`stage-2-test-report.md`](stage-2-test-report.md). The engine's design, its security measures and its limitations are in [`spreadsheet-engine.md`](spreadsheet-engine.md).
 
 ## Rules for the processing stages
 
