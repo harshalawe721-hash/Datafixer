@@ -7,6 +7,8 @@ import type { RowPage, RowQuery } from "./query/query.ts";
 export interface OpenOptions {
   delimiter?: string;
   encoding?: string;
+  /** Memory budget computed on the main thread (see memory-budget.ts). */
+  memoryBudgetBytes?: number;
 }
 
 export type EngineRequest =

@@ -5,6 +5,7 @@
  * tables keyed by `cellKey(row, col)` so the common case stays compact.
  */
 import type { SpreadsheetFormat } from "@/lib/file-validation";
+import { ArrayGrid, type CellGrid } from "./grid.ts";
 
 export type CellValue = string | number | boolean | null;
 
@@ -37,8 +38,8 @@ export interface ParseIssue {
 
 export interface SheetModel {
   name: string;
-  /** rows[r][c]; rows may be shorter than columnCount (missing trailing cells). */
-  rows: CellValue[][];
+  /** Cell storage; rows may be shorter than columnCount (missing trailing cells). */
+  grid: CellGrid;
   columnCount: number;
   /** Formula text (without leading "=") for cells that contain formulas. */
   formulas: Map<number, string>;
@@ -63,7 +64,7 @@ export interface SheetModel {
 export function createSheet(name: string): SheetModel {
   return {
     name,
-    rows: [],
+    grid: new ArrayGrid([]),
     columnCount: 0,
     formulas: new Map(),
     errors: new Map(),

@@ -91,6 +91,7 @@ export class EngineCore {
       const { sheet, meta } = await parseCsv(file, "Sheet1", {
         delimiter: options.delimiter,
         encoding: options.encoding,
+        memoryBudgetBytes: options.memoryBudgetBytes,
         cancel,
         onProgress: (loaded, total) => onProgress({ phase: "parsing", loaded, total }),
       });
@@ -196,7 +197,7 @@ export class EngineCore {
     let issueCount = 0;
     const issues: WorkbookSummary["issues"] = [];
     for (const [name, { sheet }] of st.loaded) {
-      sheetStats[name] = { rows: sheet.rows.length, columns: sheet.columnCount };
+      sheetStats[name] = { rows: sheet.grid.rowCount, columns: sheet.columnCount };
       issueCount += sheet.issueCount;
       issues.push(...sheet.issues.slice(0, 50));
     }

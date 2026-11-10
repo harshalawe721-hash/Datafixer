@@ -77,7 +77,9 @@ export class SheetQuery {
   /** Row indexes in sorted order (cached per column/direction/header setting). */
   private sorted(headerRow: boolean, sort: SortSpec | null | undefined): Uint32Array {
     const start = headerRow ? 1 : 0;
-    const n = Math.max(0, this.sheet.rows.length - start);
+    const grid = this.sheet.grid;
+    const total = grid.rowCount;
+    const n = Math.max(0, total - start);
     const key = `${start}:${sort ? `${sort.column}:${sort.direction}` : "none"}`;
     const cached = this.sortCache.get(key);
     if (cached) return cached;
@@ -86,14 +88,13 @@ export class SheetQuery {
     for (let i = 0; i < n; i++) order[i] = i + start;
     if (sort) {
       const col = sort.column;
-      const rows = this.sheet.rows;
       // Precompute keys once: 0 = number, 1 = text, 2 = empty (always last).
-      const kind = new Uint8Array(rows.length);
-      const num = new Float64Array(rows.length);
-      const text: (string | undefined)[] = new Array(rows.length);
-      for (let i = start; i < rows.length; i++) {
-        const v = rows[i]![col];
-        if (v === null || v === undefined || v === "") kind[i] = 2;
+      const kind = new Uint8Array(total);
+      const num = new Float64Array(total);
+      const text: (string | undefined)[] = new Array(total);
+      for (let i = start; i < total; i++) {
+        const v = grid.get(i, col);
+        if (v === null || v === "") kind[i] = 2;
         else if (typeof v === "number") num[i] = v;
         else if (typeof v === "string" && NUMERIC.test(v)) num[i] = Number(v);
         else {
@@ -123,14 +124,15 @@ export class SheetQuery {
   private filtered(base: Uint32Array, search: string, cacheKey: string): Uint32Array {
     if (this.filterCache?.key === cacheKey) return this.filterCache.rows;
     const term = search.toLowerCase();
-    const rows = this.sheet.rows;
+    const grid = this.sheet.grid;
     const out = new Uint32Array(base.length);
     let n = 0;
     for (let i = 0; i < base.length; i++) {
-      const row = rows[base[i]!]!;
-      for (let c = 0; c < row.length; c++) {
-        const v = row[c];
-        if (v !== null && v !== undefined && v !== "" && cellText(v).toLowerCase().includes(term)) {
+      const r = base[i]!;
+      const len = grid.rowLength(r);
+      for (let c = 0; c < len; c++) {
+        const v = grid.get(r, c);
+        if (v !== null && v !== "" && cellText(v).toLowerCase().includes(term)) {
           out[n++] = base[i]!;
           break;
         }
@@ -144,7 +146,7 @@ export class SheetQuery {
   getPage(q: RowQuery): RowPage {
     const sheet = this.sheet;
     const start = q.headerRow ? 1 : 0;
-    const totalUnfiltered = Math.max(0, sheet.rows.length - start);
+    const totalUnfiltered = Math.max(0, sheet.grid.rowCount - start);
     const sort = q.sort && q.sort.column >= 0 && q.sort.column < sheet.columnCount ? q.sort : null;
     let order = this.sorted(q.headerRow, sort);
     const search = (q.search ?? "").trim();
@@ -160,12 +162,11 @@ export class SheetQuery {
     const rows: PageRow[] = [];
     for (let i = offset; i < Math.min(order.length, offset + limit); i++) {
       const r = order[i]!;
-      const src = sheet.rows[r]!;
       const cells = new Array<string>(colEnd - colOffset);
       let formulaColumns: number[] | undefined;
       let errorColumns: number[] | undefined;
       for (let c = colOffset; c < colEnd; c++) {
-        cells[c - colOffset] = cellText(src[c]);
+        cells[c - colOffset] = cellText(sheet.grid.get(r, c));
         if (hasFormulas && sheet.formulas.has(cellKey(r, c))) (formulaColumns ??= []).push(c);
         if (hasErrors && sheet.errors.has(cellKey(r, c))) (errorColumns ??= []).push(c);
       }
@@ -174,9 +175,8 @@ export class SheetQuery {
 
     let header: string[] | null = null;
     if (q.headerRow) {
-      const h = sheet.rows[0] ?? [];
       header = [];
-      for (let c = colOffset; c < colEnd; c++) header.push(cellText(h[c]));
+      for (let c = colOffset; c < colEnd; c++) header.push(cellText(sheet.grid.get(0, c)));
     }
 
     return { total: order.length, totalUnfiltered, columnCount: sheet.columnCount, columnOffset: colOffset, header, rows };
@@ -188,9 +188,8 @@ export class SheetQuery {
  * (not numbers), and values not repeated. Users can override this in the UI.
  */
 export function guessHeaderRow(sheet: SheetModel): boolean {
-  const first = sheet.rows[0];
-  if (!first || first.length === 0 || sheet.rows.length < 2) return false;
-  const values = first.map(cellText);
+  if (sheet.grid.rowCount < 2 || sheet.grid.rowLength(0) === 0) return false;
+  const values = sheet.grid.row(0).map(cellText);
   const nonEmpty = values.filter((v) => v.trim() !== "");
   if (nonEmpty.length < Math.max(1, Math.ceil(sheet.columnCount * 0.8))) return false;
   const numeric = nonEmpty.filter((v) => NUMERIC.test(v)).length;

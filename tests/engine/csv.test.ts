@@ -3,13 +3,15 @@ import assert from "node:assert/strict";
 import { parseCsv, isFormulaLike } from "../../src/engine/csv/parse-csv.ts";
 import { detectEncoding, isValidUtf8 } from "../../src/engine/csv/encoding.ts";
 import { EngineError } from "../../src/engine/errors.ts";
+import type { SheetModel } from "../../src/engine/types.ts";
 
 const enc = new TextEncoder();
 const blob = (s: string | Uint8Array) => new Blob([s as BlobPart]);
+const rowsOf = (sheet: SheetModel) => Array.from({ length: sheet.grid.rowCount }, (_, i) => sheet.grid.row(i));
 
 test("basic CSV with header, keeps values as text", async () => {
   const { sheet, meta } = await parseCsv(blob("id,name,amount\n001,Ann,10.50\n002,Bob,7\n"), "t");
-  assert.deepEqual(sheet.rows, [["id", "name", "amount"], ["001", "Ann", "10.50"], ["002", "Bob", "7"]]);
+  assert.deepEqual(rowsOf(sheet), [["id", "name", "amount"], ["001", "Ann", "10.50"], ["002", "Bob", "7"]]);
   assert.equal(sheet.columnCount, 3);
   assert.equal(meta.delimiter, ",");
   assert.equal(meta.lineEnding, "\n");
@@ -17,19 +19,19 @@ test("basic CSV with header, keeps values as text", async () => {
 });
 
 test("no trailing newline keeps last row; trailing newline adds no empty row", async () => {
-  assert.equal((await parseCsv(blob("a,b\n1,2"), "t")).sheet.rows.length, 2);
-  assert.equal((await parseCsv(blob("a,b\n1,2\n"), "t")).sheet.rows.length, 2);
-  assert.equal((await parseCsv(blob("a,b\r\n1,2\r\n"), "t")).sheet.rows.length, 2);
+  assert.equal(rowsOf((await parseCsv(blob("a,b\n1,2"), "t")).sheet).length, 2);
+  assert.equal(rowsOf((await parseCsv(blob("a,b\n1,2\n"), "t")).sheet).length, 2);
+  assert.equal(rowsOf((await parseCsv(blob("a,b\r\n1,2\r\n"), "t")).sheet).length, 2);
 });
 
 test("empty rows inside the data are preserved", async () => {
   const { sheet } = await parseCsv(blob("a,b\n\n1,2\n,\n"), "t");
-  assert.deepEqual(sheet.rows, [["a", "b"], [""], ["1", "2"], ["", ""]]);
+  assert.deepEqual(rowsOf(sheet), [["a", "b"], [""], ["1", "2"], ["", ""]]);
 });
 
 test("quoted fields with commas, quotes and newlines", async () => {
   const { sheet } = await parseCsv(blob('name,note\n"Smith, J","He said ""hi""\nsecond line"\n'), "t");
-  assert.deepEqual(sheet.rows[1], ["Smith, J", 'He said "hi"\nsecond line']);
+  assert.deepEqual(rowsOf(sheet)[1], ["Smith, J", 'He said "hi"\nsecond line']);
   assert.equal(sheet.issueCount, 0);
 });
 
@@ -41,7 +43,7 @@ test("detects semicolon, tab and pipe delimiters", async () => {
 
 test("forced delimiter overrides detection", async () => {
   const { sheet } = await parseCsv(blob("a;b,c\n1;2,3\n"), "t", { delimiter: ";" });
-  assert.deepEqual(sheet.rows[0], ["a", "b,c"]);
+  assert.deepEqual(rowsOf(sheet)[0], ["a", "b,c"]);
 });
 
 test("multi-byte characters split across chunk boundaries are not corrupted", async () => {
@@ -50,33 +52,33 @@ test("multi-byte characters split across chunk boundaries are not corrupted", as
   // 7-byte chunks guarantee many characters straddle a boundary.
   const { sheet, meta } = await parseCsv(blob(text), "t", { chunkBytes: 7 });
   assert.equal(meta.replacementChars, 0);
-  assert.equal(sheet.rows.length, 3001);
-  for (let i = 1; i < sheet.rows.length; i++) {
-    assert.equal(sheet.rows[i]![0], `Café ${i - 1}`);
-    assert.equal(sheet.rows[i]![1], "Zürich 東京 😀");
+  assert.equal(rowsOf(sheet).length, 3001);
+  for (let i = 1; i < rowsOf(sheet).length; i++) {
+    assert.equal(rowsOf(sheet)[i]![0], `Café ${i - 1}`);
+    assert.equal(rowsOf(sheet)[i]![1], "Zürich 東京 😀");
   }
 });
 
 test("quoted field spanning chunk boundaries", async () => {
   const text = 'a,b\n"x' + "y".repeat(50) + '\n' + "z".repeat(50) + '",2\n3,4\n';
   const { sheet } = await parseCsv(blob(text), "t", { chunkBytes: 16 });
-  assert.equal(sheet.rows.length, 3);
-  assert.equal(sheet.rows[1]![0], "x" + "y".repeat(50) + "\n" + "z".repeat(50));
-  assert.deepEqual(sheet.rows[2], ["3", "4"]);
+  assert.equal(rowsOf(sheet).length, 3);
+  assert.equal(rowsOf(sheet)[1]![0], "x" + "y".repeat(50) + "\n" + "z".repeat(50));
+  assert.deepEqual(rowsOf(sheet)[2], ["3", "4"]);
 });
 
 test("same result regardless of chunk size", async () => {
   let text = "id,text\n";
   for (let i = 0; i < 500; i++) text += `${i},"v ""${i}"",\nx"\n`;
-  const ref = (await parseCsv(blob(text), "t")).sheet.rows;
+  const ref = rowsOf((await parseCsv(blob(text), "t")).sheet);
   for (const size of [1, 3, 64, 1000]) {
-    assert.deepEqual((await parseCsv(blob(text), "t", { chunkBytes: size })).sheet.rows, ref, `chunk ${size}`);
+    assert.deepEqual(rowsOf((await parseCsv(blob(text), "t", { chunkBytes: size })).sheet), ref, `chunk ${size}`);
   }
 });
 
 test("UTF-8 BOM is removed and reported", async () => {
   const { sheet, meta } = await parseCsv(blob(new Uint8Array([0xef, 0xbb, 0xbf, ...enc.encode("name\nAnn\n")])), "t");
-  assert.equal(sheet.rows[0]![0], "name");
+  assert.equal(rowsOf(sheet)[0]![0], "name");
   assert.equal(meta.hadBom, true);
 });
 
@@ -87,7 +89,7 @@ test("UTF-16LE with BOM", async () => {
   for (let i = 0; i < s.length; i++) { bytes[2 + i * 2] = s.charCodeAt(i) & 0xff; bytes[3 + i * 2] = s.charCodeAt(i) >> 8; }
   const { sheet, meta } = await parseCsv(blob(bytes), "t", { chunkBytes: 5 });
   assert.equal(meta.encoding, "utf-16le");
-  assert.deepEqual(sheet.rows[1], ["Ann", "Zürich"]);
+  assert.deepEqual(rowsOf(sheet)[1], ["Ann", "Zürich"]);
 });
 
 test("Windows-1252 fallback for non-UTF-8 bytes", async () => {
@@ -95,7 +97,7 @@ test("Windows-1252 fallback for non-UTF-8 bytes", async () => {
   const bytes = new Uint8Array([...enc.encode("name\nCaf"), 0xe9, 0x0a]);
   const { sheet, meta } = await parseCsv(blob(bytes), "t");
   assert.equal(meta.encoding, "windows-1252");
-  assert.equal(sheet.rows[1]![0], "Café");
+  assert.equal(rowsOf(sheet)[1]![0], "Café");
   assert.equal(meta.replacementChars, 0);
 });
 
@@ -119,7 +121,7 @@ test("line ending detection", async () => {
 test("ragged rows: column count is the widest row", async () => {
   const { sheet } = await parseCsv(blob("a,b\n1,2,3,4\n5\n"), "t");
   assert.equal(sheet.columnCount, 4);
-  assert.deepEqual(sheet.rows[2], ["5"]);
+  assert.deepEqual(rowsOf(sheet)[2], ["5"]);
 });
 
 test("unclosed quote is reported as an issue", async () => {
@@ -158,7 +160,7 @@ test("formula-like cells are counted (CSV injection awareness)", async () => {
 
 test("prototype-polluting header names are harmless", async () => {
   const { sheet } = await parseCsv(blob("__proto__,constructor\n1,2\n"), "t");
-  assert.deepEqual(sheet.rows[0], ["__proto__", "constructor"]);
+  assert.deepEqual(rowsOf(sheet)[0], ["__proto__", "constructor"]);
   assert.equal(({} as Record<string, unknown>).polluted, undefined);
 });
 
@@ -171,7 +173,7 @@ test("encoding helpers", () => {
 test("small semicolon file is detected (Papa's own guess fails here)", async () => {
   const { sheet, meta } = await parseCsv(blob("a;b\n1;2\n"), "t");
   assert.equal(meta.delimiter, ";");
-  assert.deepEqual(sheet.rows, [["a", "b"], ["1", "2"]]);
+  assert.deepEqual(rowsOf(sheet), [["a", "b"], ["1", "2"]]);
   assert.equal(sheet.issueCount, 0);
 });
 
@@ -190,4 +192,21 @@ test("single-column file is not flagged", async () => {
 test("delimiter detection with tiny chunks still sees a full sample", async () => {
   const { meta } = await parseCsv(blob("a;b;c\n1;2;3\n4;5;6\n"), "t", { chunkBytes: 2 });
   assert.equal(meta.delimiter, ";");
+});
+
+test("memory budget stops parsing before the limit, with a clear message", async () => {
+  const text = "id,name,email\n" + Array.from({ length: 200000 }, (_, i) => `${i},Name ${i},u${i}@example.com`).join("\n");
+  const b = blob(text); // ~6 MB
+  await assert.rejects(
+    parseCsv(b, "t", { memoryBudgetBytes: 6 * 1024 * 1024, chunkBytes: 256 * 1024 }),
+    (e: unknown) => e instanceof EngineError && e.code === "too-large-for-engine" && /too large to open safely/.test(e.message),
+  );
+  // A generous budget parses fully.
+  const ok = await parseCsv(b, "t", { memoryBudgetBytes: 200 * 1024 * 1024 });
+  assert.equal(ok.sheet.grid.rowCount, 200001);
+});
+
+test("clearly impossible files are refused before parsing", async () => {
+  const b = blob("a,b\n" + "1,2\n".repeat(100000)); // ~400 KB
+  await assert.rejects(parseCsv(b, "t", { memoryBudgetBytes: 100 * 1024 }), (e: unknown) => e instanceof EngineError && e.code === "too-large-for-engine");
 });

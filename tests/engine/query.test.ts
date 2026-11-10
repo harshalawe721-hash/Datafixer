@@ -2,22 +2,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SheetQuery, guessHeaderRow, columnLetter, cellText } from "../../src/engine/query/query.ts";
 import { createSheet, cellKey, type CellValue } from "../../src/engine/types.ts";
+import { ArrayGrid } from "../../src/engine/grid.ts";
 
 function sheetOf(rows: CellValue[][]) {
   const s = createSheet("S");
-  s.rows = rows;
+  s.grid = new ArrayGrid(rows);
   s.columnCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
   return s;
 }
 
-const data = sheetOf([
+const dataRows: CellValue[][] = [
   ["name", "amount", "city"],
   ["Bob", "10", "Paris"],
   ["alice", "9", "berlin"],
   ["Carol", "", "Zürich"],
   ["dave", "100", "Ålesund"],
   ["Eve", "abc", "Paris"],
-]);
+];
+const data = sheetOf(dataRows);
 
 test("paging with and without header row, original row indexes kept", () => {
   const q = new SheetQuery(data);
@@ -60,7 +62,7 @@ test("search is case-insensitive across columns and combines with sort", () => {
   assert.equal(p.total, 2);
   assert.equal(p.totalUnfiltered, 5);
   const s = q.getPage({ offset: 0, limit: 10, headerRow: true, search: "e", sort: { column: 0, direction: "desc" } });
-  assert.deepEqual(s.rows.map((r) => r.cells[0]), ["Eve", "dave", "Carol", "Bob", "alice"].filter((n) => /e/i.test(n + (data.rows.find((r) => r[0] === n)?.join("") ?? ""))));
+  assert.deepEqual(s.rows.map((r) => r.cells[0]), ["Eve", "dave", "Carol", "Bob", "alice"].filter((n) => /e/i.test(n + (dataRows.find((r) => r[0] === n)?.join("") ?? ""))));
   assert.equal(q.getPage({ offset: 0, limit: 10, headerRow: true, search: "name" }).total, 0, "header row is not searched");
 });
 

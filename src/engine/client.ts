@@ -12,6 +12,7 @@ import { EngineError, type EngineErrorCode, type SerializedEngineError } from ".
 import type { EngineRequest, EngineResponse, EngineResults, OpenOptions } from "./protocol";
 import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
+import { computeMemoryBudget } from "./memory-budget";
 
 type Pending = {
   resolve: (v: unknown) => void;
@@ -74,7 +75,8 @@ export class EngineClient {
   }
 
   open(file: File, format: SpreadsheetFormat, options?: OpenOptions, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {
-    return this.request<"open">({ type: "open", file, format, options }, onProgress);
+    const memoryBudgetBytes = options?.memoryBudgetBytes ?? computeMemoryBudget().bytes;
+    return this.request<"open">({ type: "open", file, format, options: { ...options, memoryBudgetBytes } }, onProgress);
   }
 
   loadSheet(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {

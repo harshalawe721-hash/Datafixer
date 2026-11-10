@@ -12,7 +12,8 @@
  * straight into the sheet model.
  */
 import Papa from "papaparse";
-import { addIssue, createSheet, type CellValue, type CsvMeta, type SheetModel } from "../types.ts";
+import { addIssue, createSheet, type CsvMeta, type SheetModel } from "../types.ts";
+import { CompactTextGrid } from "../grid.ts";
 import { EngineError } from "../errors.ts";
 import { throwIfCancelled, yieldToEventLoop, type CancelToken } from "../cancel.ts";
 import { decodeBlobText, detectEncoding } from "./encoding.ts";
@@ -27,6 +28,23 @@ export interface CsvParseOptions {
   chunkBytes?: number;
   cancel?: CancelToken;
   onProgress?: (loadedBytes: number, totalBytes: number) => void;
+  /** Stop with a clear error before parsed data would exceed this many bytes. */
+  memoryBudgetBytes?: number;
+}
+
+/**
+ * Measured in V8: real memory is ~1.5× the grid's own estimate (object headers,
+ * GC slack), and parsed CSV data retains ~1.7–2.2× the file size.
+ */
+const GRID_OVERHEAD_FACTOR = 1.6;
+
+export function tooLargeForDevice(neededBytes: number): EngineError {
+  const mb = Math.ceil(neededBytes / (1024 * 1024) / 10) * 10;
+  return new EngineError(
+    "too-large-for-engine",
+    `This file is too large to open safely in this browser on this device (it needs roughly ${mb.toLocaleString("en-US")} MB of memory or more). It was stopped before the browser could run out of memory. Nothing was changed. Try a desktop computer, close other tabs, or split the file into smaller parts.`,
+    `estimated ${neededBytes} bytes`,
+  );
 }
 
 export interface CsvParseResult {
@@ -70,6 +88,10 @@ export function isFormulaLike(value: string): boolean {
 
 export async function parseCsv(blob: Blob, name: string, options: CsvParseOptions = {}): Promise<CsvParseResult> {
   if (blob.size === 0) throw new EngineError("empty-file", "This file is empty (0 bytes).");
+  // Clearly impossible files are refused up front (fast feedback, no wasted work).
+  if (options.memoryBudgetBytes && blob.size * 1.2 > options.memoryBudgetBytes) {
+    throw tooLargeForDevice(blob.size * 1.7);
+  }
 
   const head = new Uint8Array(await blob.slice(0, ENCODING_SAMPLE_BYTES).arrayBuffer());
   const detected = detectEncoding(head, blob.size <= ENCODING_SAMPLE_BYTES);
@@ -77,7 +99,9 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   const bomLength = options.encoding && options.encoding !== detected.encoding ? 0 : detected.bomLength;
 
   const sheet = createSheet(name);
-  const rows = sheet.rows;
+  const grid = new CompactTextGrid();
+  sheet.grid = grid;
+  let lastRow: string[] | null = null;
   let columnCount = 0;
   let replacementChars = 0;
   let formulaLikeCells = 0;
@@ -128,12 +152,14 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     dynamicTyping: false,
     skipEmptyLines: false,
     chunk: (results: Papa.ParseResult<string[]>) => {
-      const base = rows.length;
+      const base = grid.rowCount;
       for (const row of results.data) {
         if (row.length > columnCount) columnCount = row.length;
         for (const cell of row) if (isFormulaLike(cell)) formulaLikeCells++;
-        rows.push(row as CellValue[]);
       }
+      if (results.data.length) lastRow = results.data[results.data.length - 1]!;
+      // Pack this chunk compactly; Papa's per-cell strings are released.
+      grid.appendRows(results.data);
       for (const e of results.errors) {
         // Papa reports row indexes relative to the current chunk.
         const row = typeof e.row === "number" ? base + e.row : null;
@@ -188,6 +214,13 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
 
     stream.emit("data", text);
     if (streamError) break;
+    if (options.memoryBudgetBytes) {
+      const used = grid.approxBytes * GRID_OVERHEAD_FACTOR;
+      if (used > options.memoryBudgetBytes) {
+        // Extrapolate the full need from the share of the file read so far.
+        throw tooLargeForDevice(used * (blob.size / Math.max(1, loaded)));
+      }
+    }
     options.onProgress?.(loaded, blob.size);
     await yieldToEventLoop();
   }
@@ -198,8 +231,9 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   }
 
   // A final line break produces one empty trailing row; it is not data.
-  const last = rows[rows.length - 1];
-  if ((lastChar === "\n" || lastChar === "\r") && last && last.length === 1 && last[0] === "") rows.pop();
+  // Assigned inside Papa's callback, which TypeScript's flow analysis can't see.
+  const last = lastRow as string[] | null;
+  if ((lastChar === "\n" || lastChar === "\r") && last && last.length === 1 && last[0] === "") grid.dropLastRow();
 
   if (!guess.confident) {
     addIssue(sheet, {
