@@ -129,3 +129,20 @@ test("helpers", () => {
   const s = parseWorkbookSheets('<sheets><sheet name="Chart1" sheetId="1" r:id="rId1"/></sheets>', '<Relationships><Relationship Id="rId1" Target="chartsheets/sheet1.xml"/></Relationships>');
   assert.equal(s[0]!.kind, "chartsheet");
 });
+
+test("sheet layout (hidden rows/columns, heights, widths) is read even when tags span chunks", async () => {
+  const rows = Array.from({ length: 60 }, (_, i) =>
+    i === 4 ? `<row r="5" hidden="1"><c r="A5" t="inlineStr"><is><t>x</t></is></c></row>`
+    : i === 9 ? `<row r="10" ht="42.5" customHeight="1"><c r="A10"><v>1</v></c></row>`
+    : i === 11 ? `<row r="12" ht="15"><c r="A12"><v>1</v></c></row>` // not custom: ignored
+    : `<row r="${i + 1}"><c r="A${i + 1}"><v>${i}</v></c></row>`).join("");
+  const xml = `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="30.5" customWidth="1"/><col min="3" max="4" width="9" hidden="1"/><col min="5" max="16384" width="8.43"/></cols><sheetData>${rows}</sheetData></worksheet>`;
+  const zip = buildXlsx([{ name: "S", xml }], {}, { level: 0 });
+  for (const chunkBytes of [7, 64, 4 * 1024 * 1024]) {
+    const l = (await inspectXlsx(b(zip), { chunkBytes })).sheets[0]!.layout;
+    assert.deepEqual(l.hiddenRows, [4], `hidden rows @${chunkBytes}`);
+    assert.deepEqual(l.rowHeights, [[9, 42.5]], `heights @${chunkBytes}`);
+    assert.deepEqual(l.hiddenColumns, [2, 3], `hidden cols @${chunkBytes}`);
+    assert.deepEqual(l.columnWidths, [[0, 30.5]], `widths @${chunkBytes}`);
+  }
+});

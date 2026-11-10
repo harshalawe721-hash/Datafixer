@@ -54,7 +54,8 @@ for (const [name, format] of [["lo-features.xlsx", "xlsx"], ["lo-features.xls", 
     assert.deepEqual(sheet.merges, [{ startRow: 0, startCol: 7, endRow: 0, endCol: 8 }]);
     assert.ok(sheet.hiddenRows.has(3), "row 4 hidden");
     assert.ok(sheet.hiddenColumns.has(6), "column G hidden");
-    assert.ok(Math.abs((sheet.columnWidths.get(0) ?? 0) - 24.17) < 0.5, "column A width");
+    const w = sheet.columnWidths.get(0) ?? 0;
+    assert.ok(w > 24 && w < 25.5, `column A width as stored in the file (${w})`);
     assert.equal(sheet.rowHeights.get(1), 30);
   });
 

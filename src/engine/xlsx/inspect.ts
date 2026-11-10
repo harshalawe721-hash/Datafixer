@@ -41,7 +41,20 @@ export interface InspectedSheet extends SheetInfo {
   dimension: string | null;
   /** Decompressed size of the sheet part in bytes. */
   uncompressedBytes: number;
+  /** Row/column layout read from the sheet XML (zero-based indexes). */
+  layout: SheetLayout;
 }
+
+export interface SheetLayout {
+  hiddenRows: number[];
+  /** [row, height in points] for rows with a custom height. */
+  rowHeights: [number, number][];
+  hiddenColumns: number[];
+  /** [column, width in character units as stored in the file] for custom widths. */
+  columnWidths: [number, number][];
+}
+
+const emptyLayout = (): SheetLayout => ({ hiddenRows: [], rowHeights: [], hiddenColumns: [], columnWidths: [] });
 
 export interface InspectionResult {
   entries: number;
@@ -54,6 +67,9 @@ export interface InspectionResult {
   conformance: "transitional" | "strict";
   /** Decompressed size of xl/sharedStrings.xml (0 if none). */
   sharedStringsBytes: number;
+  /** Decompressed size of all XML parts / of all other (binary) parts. */
+  xmlBytes: number;
+  binaryBytes: number;
   /**
    * Characters outside the Basic Multilingual Plane (emoji, rare CJK) written as
    * numeric references such as "&#128512;". SheetJS 0.20.3 decodes these with
@@ -76,6 +92,8 @@ const KEEP_PARTS = new Set(["[Content_Types].xml", "xl/workbook.xml", "xl/_rels/
 const KEEP_MAX_BYTES = 8 * 1024 * 1024;
 /** Longest marker we search for; carried across chunks so split markers are found. */
 const CARRY = 32;
+/** Context kept between chunks of sheet XML (longer than any <row …> tag). */
+const SHEET_CARRY = 2048;
 /** Bytes at the start of a sheet part scanned for <dimension>. */
 const SHEET_HEAD_BYTES = 4096;
 
@@ -165,6 +183,7 @@ export function parseWorkbookSheets(workbookXml: string, relsXml: string | undef
       part,
       dimension: null,
       uncompressedBytes: 0,
+      layout: emptyLayout(),
     });
   }
   return sheets;
@@ -179,6 +198,10 @@ interface PartState {
   decoder: TextDecoder | null;
   carry: string;
   head: string;
+  layout: SheetLayout | null;
+  /** Accumulates a <cols> block that spans chunks. */
+  colsBuf: string | null;
+  colsDone: boolean;
 }
 
 const OLE2_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
@@ -207,7 +230,9 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
   const chunkBytes = options.chunkBytes ?? 4 * 1024 * 1024;
   const features = emptyFeatures();
   const kept = new Map<string, Uint8Array>();
-  const sheetParts = new Map<string, { bytes: number; dimension: string | null }>();
+  const sheetParts = new Map<string, { bytes: number; dimension: string | null; layout: SheetLayout }>();
+  let xmlBytes = 0;
+  let binaryBytes = 0;
   let entries = 0;
   let total = 0;
   let largest = { name: "", bytes: 0 };
@@ -247,7 +272,11 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
       decoder: isXml ? new TextDecoder("utf-8") : null,
       carry: "",
       head: "",
+      layout: null,
+      colsBuf: null,
+      colsDone: false,
     };
+    if (/^xl\/worksheets\/[^/]+\.xml$/i.test(name)) st.layout = emptyLayout();
     open.add(st);
     file.ondata = (err, data, final) => {
       if (failure) return;
@@ -291,6 +320,7 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
         }
         if (st.isSheet) {
           if (st.head.length < SHEET_HEAD_BYTES) st.head += text.slice(0, SHEET_HEAD_BYTES - st.head.length);
+          if (st.layout) scanLayout(st, text);
           // Element names only ("<dataValidations" or "<x14:dataValidations"), not cell text.
           if (!features.dataValidation && /<(?:\w+:)?dataValidations\b/.test(text)) features.dataValidation = true;
           if (!features.conditionalFormatting && /<(?:\w+:)?conditionalFormatting\b/.test(text)) features.conditionalFormatting = true;
@@ -309,16 +339,19 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
             } else bmpRefs.add(cp);
           }
         }
-        st.carry = text.slice(-CARRY);
+        // Sheets carry more context so row tags split across chunks are still seen whole.
+        st.carry = text.slice(st.isSheet ? -SHEET_CARRY : -CARRY);
       }
       if (final) {
         open.delete(st);
         if (st.bytes > largest.bytes) largest = { name, bytes: st.bytes };
         if (name === "xl/sharedStrings.xml") sharedStringsBytes = st.bytes;
         if (st.keep) kept.set(name, concat(st.keep));
+        if (st.isXml) xmlBytes += st.bytes;
+        else binaryBytes += st.bytes;
         if (st.isSheet) {
           const dim = /<(?:\w+:)?dimension\b[^>]*\bref\s*=\s*"([^"]+)"/.exec(st.head)?.[1] ?? null;
-          sheetParts.set(name, { bytes: st.bytes, dimension: dim });
+          sheetParts.set(name, { bytes: st.bytes, dimension: dim, layout: finishLayout(st.layout!) });
         }
       }
     };
@@ -370,6 +403,7 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
     if (info) {
       s.uncompressedBytes = info.bytes;
       s.dimension = info.dimension;
+      s.layout = info.layout;
     }
   }
   if (sheets.length === 0) {
@@ -397,6 +431,8 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
   }
 
   return {
+    xmlBytes,
+    binaryBytes,
     sharedStringsBytes,
     astralRefs: { repair, ambiguous },
     entries,
@@ -434,6 +470,70 @@ async function findRawChars(blob: Blob, chars: Set<string>, chunkBytes: number, 
     await yieldToEventLoop();
   }
   return found;
+}
+
+const ROW_TAG = /<(?:\w+:)?row\b([^>]*)>/g;
+const COL_TAG = /<(?:\w+:)?col\b([^>]*)\/?>/g;
+const truthy = (v: string | null) => v === "1" || v === "true";
+
+/**
+ * Collect hidden rows, custom row heights (<row hidden="1" ht="30"
+ * customHeight="1">) and column widths/hidden columns (<cols><col …/></cols>).
+ * The carried context means a tag can be seen twice; Sets/Maps de-duplicate.
+ */
+function scanLayout(st: PartState, text: string): void {
+  const layout = st.layout!;
+  // <cols> appears once, before <sheetData>; it may span chunks.
+  if (!st.colsDone) {
+    if (st.colsBuf === null) {
+      const i = text.search(/<(?:\w+:)?cols\b/);
+      if (i >= 0) st.colsBuf = text.slice(i);
+      // No <cols> before the cell data starts: the sheet has none.
+      else if (/<(?:\w+:)?sheetData\b/.test(text)) st.colsDone = true;
+    } else st.colsBuf += text;
+    if (st.colsBuf !== null && /<\/(?:\w+:)?cols>/.test(st.colsBuf)) {
+      for (const m of st.colsBuf.matchAll(COL_TAG)) {
+        const a = m[1]!;
+        const min = Number(attr(a, "min"));
+        const max = Math.min(Number(attr(a, "max")), MAX_LAYOUT_COLUMNS);
+        if (!(min >= 1) || !(max >= min)) continue;
+        const hidden = truthy(attr(a, "hidden"));
+        const custom = truthy(attr(a, "customWidth"));
+        const width = Number(attr(a, "width"));
+        for (let c = min - 1; c < max; c++) {
+          if (hidden) layout.hiddenColumns.push(c);
+          if (custom && width > 0) layout.columnWidths.push([c, width]);
+        }
+      }
+      st.colsBuf = null;
+      st.colsDone = true;
+    } else if (st.colsBuf !== null && st.colsBuf.length > 4 * 1024 * 1024) {
+      // Malformed (no closing tag within 4 MB): stop collecting.
+      st.colsBuf = null;
+      st.colsDone = true;
+    }
+  }
+  // Fast path: most rows have neither attribute.
+  if (!text.includes("hidden=") && !text.includes("customHeight")) return;
+  for (const m of text.matchAll(ROW_TAG)) {
+    const a = m[1]!;
+    if (!a.includes("hidden") && !a.includes("customHeight")) continue;
+    const r = Number(attr(a, "r")) - 1;
+    if (!(r >= 0)) continue;
+    if (truthy(attr(a, "hidden"))) layout.hiddenRows.push(r);
+    if (truthy(attr(a, "customHeight"))) {
+      const ht = Number(attr(a, "ht"));
+      if (ht > 0) layout.rowHeights.push([r, ht]);
+    }
+  }
+}
+
+const MAX_LAYOUT_COLUMNS = 16384;
+
+function finishLayout(l: SheetLayout): SheetLayout {
+  const uniq = (xs: number[]) => [...new Set(xs)].sort((a, b) => a - b);
+  const uniqPairs = (xs: [number, number][]) => [...new Map(xs).entries()].sort((a, b) => a[0] - b[0]);
+  return { hiddenRows: uniq(l.hiddenRows), rowHeights: uniqPairs(l.rowHeights), hiddenColumns: uniq(l.hiddenColumns), columnWidths: uniqPairs(l.columnWidths) };
 }
 
 function concat(parts: Uint8Array[]): Uint8Array {

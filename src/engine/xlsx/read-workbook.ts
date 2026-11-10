@@ -72,26 +72,28 @@ export interface ExcelReadResult {
 }
 
 /**
- * Memory needed to parse, estimated before reading anything. Calibrated from
- * measurements (see docs/stage-2-test-report.md): SheetJS keeps the file
- * buffer, each XML part as a string, and one object per cell.
+ * Peak memory needed to parse, estimated before reading anything.
+ * Calibrated with measurements (docs/stage-2-test-report.md): SheetJS
+ * decompresses EVERY part of the workbook (even when asked for one sheet),
+ * holds XML parts as strings (~2 bytes per byte), binary parts as-is, and
+ * about 100 bytes per parsed cell. Typical Excel XML uses ~30 bytes per cell.
  */
-export const XLSX_BYTES_PER_CELL = 180;
+export const XLSX_BYTES_PER_CELL = 100;
+export const XLSX_XML_BYTES_PER_CELL = 30;
 export const XLS_FILE_MULTIPLIER = 16;
 
 export function estimateExcelMemory(fileBytes: number, format: "xlsx" | "xls", inspection: InspectionResult | null, sheetIndex: number): number {
   if (format === "xls" || !inspection) return fileBytes * XLS_FILE_MULTIPLIER;
   const s = inspection.sheets[sheetIndex];
   const sheetXml = s?.uncompressedBytes ?? 0;
-  // Each cell needs at least ~18 bytes of XML (<c r="A1"><v>1</v></c>), which bounds a padded <dimension>.
-  let cells = Math.ceil(sheetXml / 18);
+  let cells = Math.ceil(sheetXml / XLSX_XML_BYTES_PER_CELL);
   const dim = s?.dimension?.match(/^\$?([A-Z]{1,3})\$?(\d+)(?::\$?([A-Z]{1,3})\$?(\d+))?$/i);
   if (dim && dim[3] && dim[4]) {
     const col = (x: string) => [...x.toUpperCase()].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
     const declared = (Number(dim[4]) - Number(dim[2]) + 1) * (col(dim[3]) - col(dim[1]!) + 1);
     if (declared > 0) cells = Math.min(cells, declared);
   }
-  return fileBytes + sheetXml * 2 + inspection.sharedStringsBytes * 3 + cells * XLSX_BYTES_PER_CELL;
+  return fileBytes + inspection.xmlBytes * 2 + inspection.binaryBytes + cells * XLSX_BYTES_PER_CELL;
 }
 
 function mapReadError(err: unknown): EngineError {
@@ -157,7 +159,12 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
       sheets: format === "xlsx" ? [sheetIndex] : undefined,
       cellFormula: true,
       cellNF: true,
-      cellStyles: true, // needed for column widths, hidden columns and row heights
+      // Styles slow SheetJS ~9× (measured). XLSX layout (widths, hidden rows/columns,
+      // heights) comes from the safety inspection instead; XLS needs SheetJS for it.
+      cellStyles: format === "xls",
+      // Keep cells without a stored value: otherwise SheetJS drops formulas
+      // that have no saved result (verified with openpyxl files).
+      sheetStubs: true,
       cellText: false, // formatted text is produced on demand, not stored per cell
       cellHTML: false,
       cellDates: false,
@@ -272,16 +279,25 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
   for (const m of (ws?.["!merges"] ?? []) as { s: { r: number; c: number }; e: { r: number; c: number } }[]) {
     sheet.merges.push({ startRow: m.s.r, startCol: m.s.c, endRow: m.e.r, endCol: m.e.c });
   }
-  ((ws?.["!rows"] ?? []) as ({ hidden?: boolean; hpt?: number } | undefined)[]).forEach((info, i) => {
-    if (!info) return;
-    if (info.hidden) sheet.hiddenRows.add(i);
-    if (typeof info.hpt === "number") sheet.rowHeights.set(i, info.hpt);
-  });
-  ((ws?.["!cols"] ?? []) as ({ hidden?: boolean; wch?: number } | undefined)[]).forEach((info, i) => {
-    if (!info) return;
-    if (info.hidden) sheet.hiddenColumns.add(i);
-    if (typeof info.wch === "number") sheet.columnWidths.set(i, info.wch);
-  });
+  const layout = inspection?.sheets[sheetIndex]?.layout;
+  if (layout) {
+    for (const r of layout.hiddenRows) sheet.hiddenRows.add(r);
+    for (const [r, h] of layout.rowHeights) sheet.rowHeights.set(r, h);
+    for (const c of layout.hiddenColumns) sheet.hiddenColumns.add(c);
+    for (const [c, w] of layout.columnWidths) sheet.columnWidths.set(c, w);
+  } else {
+    ((ws?.["!rows"] ?? []) as ({ hidden?: boolean; hpt?: number } | undefined)[]).forEach((info, i) => {
+      if (!info) return;
+      if (info.hidden) sheet.hiddenRows.add(i);
+      if (typeof info.hpt === "number") sheet.rowHeights.set(i, info.hpt);
+    });
+    ((ws?.["!cols"] ?? []) as ({ hidden?: boolean; wch?: number; width?: number } | undefined)[]).forEach((info, i) => {
+      if (!info) return;
+      if (info.hidden) sheet.hiddenColumns.add(i);
+      const w = info.width ?? info.wch;
+      if (typeof w === "number") sheet.columnWidths.set(i, w);
+    });
+  }
 
   const SSF = XLSX.SSF;
   sheet.grid = new WorkbookGrid(
@@ -291,7 +307,9 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
     (fmt, value) => SSF.format(fmt, value, { date1904 }),
     rows.length * 64 + cells * 16 + stringChars * 2,
   );
-  sheet.columnCount = columnCount;
+  // Use the sheet's declared used range too (e.g. a merged range ending in empty cells).
+  const ref = typeof ws?.["!ref"] === "string" ? XLSX.utils.decode_range(ws["!ref"] as string) : null;
+  sheet.columnCount = Math.max(columnCount, ref ? ref.e.c + 1 : 0);
 
   const warnings: string[] = [];
   if (formulasWithoutResult > 0) {
