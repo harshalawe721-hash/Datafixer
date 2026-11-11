@@ -2,7 +2,7 @@
 
 **Date:** 10 November 2026 (real Android CSV and Excel results added 11 November 2026)
 
-**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). Still open: the on-device Cancel check, which was not reported, and the independent SheetJS checksum comparison (see the end of this report).
+**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). The on-device Cancel check has also passed. Still open: the independent SheetJS checksum comparison (see the end of this report).
 
 ## Scope of Stage 2
 
@@ -209,7 +209,8 @@ What these results show about this tablet:
 - **Largest files that opened:** XLSX up to 10 MB (144,000 rows) and XLS up to 5 MB.
 - **Refused safely:** XLSX from 25 MB and XLS from 20 MB, so DataFixer's memory budget on this tablet is somewhere between about 310 MB and 750 MB. The exact budget (shown on `/diagnostics`) was not recorded.
 - **The memory estimate is deliberately conservative.** Some refused files might actually have opened, but refusing is the safe choice: running out of memory would crash the tab. Relaxing it would need measurements on more devices.
-- **Not reported:** the on-device Cancel test (Cancel was verified in desktop Chromium: 44–57 ms), and switching to the Summary sheet (verified by the automated tests).
+- **Cancel on the tablet: ✅ PASS.** The project owner confirmed that Cancel works on the tablet (reported 11 November 2026; no timing recorded). In desktop Chromium, Cancel stopped processing in 44–57 ms.
+- **Not reported:** switching to the Summary sheet on the tablet (verified by the automated tests).
 
 ### Context
 
@@ -230,7 +231,7 @@ For context only: on the desktop Chromium benchmark machine, a 100 MB CSV with a
 | Compare the SheetJS package's SHA-256 with an independent official download | SheetJS publishes no checksums, and its servers are blocked from this environment | Download `xlsx-0.20.3.tgz` again from `cdn.sheetjs.com` on any normal connection and check that its SHA-256 is `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8` |
 | ~~Real-device CSV testing on Android~~ | — | ✅ **PASSED** on an Android tablet: 25, 50 and 100 MB (see "Real Android Device Testing") |
 | ~~Real-device XLSX and XLS testing on Android~~ | — | ✅ **PASSED**: all 8 Excel test files behaved correctly (see "Real Android Device Testing") |
-| On-device Cancel check | Not reported in the Excel test | Optional quick check: open 6-large-50mb.xlsx, tap Cancel while the bar moves, confirm "Processing cancelled", then open 1-features.xlsx |
+| ~~On-device Cancel check~~ | — | ✅ **PASSED** (confirmed by the project owner on the Android tablet) |
 | Other devices and browsers (iPhone/iPad, Safari, Firefox, desktop browsers) | Not available here | Optional: repeat the CSV and Excel tests on any other device you can reach |
 | 150 MB CSV on a real device | Not tested | Optional: if you try one, report whether it opened or showed the "too large" message |
 | Files saved by Microsoft Excel itself | Not available here | Optionally, open a few real Excel files on the Error Detector page and check they look right |
