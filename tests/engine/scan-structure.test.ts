@@ -133,7 +133,7 @@ test("Excel fixture: real workbook gives sensible results", async () => {
   assert.equal(mc.count, 6);
 });
 
-test("performance: all A–D checks over 1M rows (10% duplicates)", async () => {
+test("performance: all checks over 1M rows (10% duplicates)", async () => {
   const rows = ["id,name,email,city,amount"];
   for (let i = 0; i < 1_000_000; i++) {
     const k = i % 10 === 9 ? i - 9 : i; // every 10th row repeats the row 9 earlier
@@ -143,7 +143,7 @@ test("performance: all A–D checks over 1M rows (10% duplicates)", async () => 
   const t = Date.now();
   const { findings, result } = await runScan(sheet, { headerRow: true, checks: ALL_CHECKS });
   const ms = Date.now() - t;
-  console.log(`    1M rows × 5 cols, pass 1 + A–D: ${ms} ms (profile ${result.timings.profileMs} ms, checks ${result.timings.checksMs} ms)`);
+  console.log(`    1M rows × 5 cols, pass 1 + all checks: ${ms} ms (profile ${result.timings.profileMs} ms, checks ${result.timings.checksMs} ms)`);
   assert.equal(find(findings, "duplicate-rows")!.issue.count, 100_000);
   assert.equal(findings.length, 1);
   assert.ok(ms < 20000, `took ${ms} ms`);

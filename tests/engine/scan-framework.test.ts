@@ -15,7 +15,7 @@ test("classify: empty, blank and whitespace (incl. non-breaking space)", () => {
   assert.equal(classify(null, false, false), Cat.Empty);
   assert.equal(classify("", false, false), Cat.Empty);
   assert.equal(classify("   ", false, false), Cat.Blank);
-  assert.equal(classify(" \t", false, false), Cat.Blank);
+  assert.equal(classify("\u00a0\t", false, false), Cat.Blank);
 });
 
 test("classify: numbers, numeric text, leading zeros", () => {

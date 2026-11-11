@@ -59,7 +59,7 @@ export const PLAIN_NUMBER = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;
 const FORMATTED_NUMBER =
   /^(\(?[+-]?[$€£¥₹¢]?\s?(\d{1,3}([,.\s\u00a0]\d{3})+|\d+)([.,]\d+)?\s?[$€£¥₹¢%]?\)?|[+-]?\d+([.,]\d+)?-)$/;
 /** All Unicode whitespace JavaScript knows, incl. U+00A0 and U+FEFF. */
-const ONLY_WHITESPACE = /^[\s﻿]+$/;
+const ONLY_WHITESPACE = /^[\s\uFEFF]+$/;
 
 export function isDateTextCat(cat: number): boolean {
   return cat >= Cat.DateTextBase;

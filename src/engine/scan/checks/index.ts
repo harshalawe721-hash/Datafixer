@@ -4,6 +4,7 @@
  */
 import type { CheckFactory } from "../scan.ts";
 import { duplicateRows, emptyColumns, emptyRows, missingCells } from "./structure.ts";
+import { extraSpaces, inconsistentCase, numbersAsText } from "./text.ts";
 
 export const ALL_CHECKS: CheckFactory[] = [
   // Step 2: structure (A–D)
@@ -11,4 +12,8 @@ export const ALL_CHECKS: CheckFactory[] = [
   emptyRows,
   emptyColumns,
   missingCells,
+  // Step 3: text (E–G)
+  extraSpaces,
+  inconsistentCase,
+  numbersAsText,
 ];
