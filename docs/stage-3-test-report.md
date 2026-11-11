@@ -94,7 +94,7 @@ These results come from the project owner's Android tablet, using the Vercel dep
 | 4-large-problems-25mb.csv (395,000 rows) | Duplicates 3,950; invalid emails 1,580; missing 988; capitalization 565; extra spaces 439; unusual values 39 | **Exact match.** Opened in 3.6 s, checked in **5.4 s** | ✅ PASSED |
 | 5-large-problems-50mb.csv (785,000 rows) | 7,850; 3,140; 1,963; 1,122; 873; 78 | **Exact match.** Opened in 6.3 s, checked in **10.5 s** | ✅ PASSED |
 | 1-problems.csv | 14 cards: 12 problems, 2 notes | **Exact match**, all 14 counts. Opened in 0.4 s. The new wording was confirmed on the device ("Most numbers here are written like +1 555 0101 0000", "It may be correct") | ✅ PASSED |
-| 2-problems.xlsx | 8 cards | Not tested yet | — |
+| 2-problems.xlsx | 14 cards: 12 problems, 2 notes (inconsistent dates 2) | **Exact match**, all 14 counts. Opened in 0.8 s. Real Excel dates are recognised, and the formula error shows the fx marker | ✅ PASSED |
 | "View affected data" and Cancel | — | Not tested yet | — |
 
 Two wording problems seen in the screenshots were fixed afterwards, with tests:
@@ -116,5 +116,5 @@ A column that looked empty in one screenshot was not a bug: the table had been s
 
 | Item | Who |
 |---|---|
-| Android tablet: 2-problems.xlsx, "View affected data" and Cancel (files 1, 3, 4 and 5 passed) | Project owner |
+| Android tablet: "View affected data" and Cancel (all 5 test files passed) | Project owner |
 | Owner review and approval | Project owner |
