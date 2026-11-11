@@ -1,0 +1,35 @@
+{
+  "1-problems.csv": {
+    "duplicate-rows": 2,
+    "empty-rows": 1,
+    "empty-columns": 1,
+    "missing-cells": 1,
+    "extra-spaces": 2,
+    "inconsistent-case": 1,
+    "numbers-as-text": 1,
+    "inconsistent-dates": 1,
+    "impossible-dates": 1,
+    "invalid-emails": 2,
+    "invalid-phones": 1,
+    "phone-formats": 1,
+    "unusual-values": 1,
+    "formula-errors": 1
+  },
+  "2-problems.xlsx": {
+    "duplicate-rows": 2,
+    "empty-rows": 1,
+    "empty-columns": 1,
+    "missing-cells": 1,
+    "extra-spaces": 2,
+    "inconsistent-case": 1,
+    "numbers-as-text": 1,
+    "inconsistent-dates": 2,
+    "impossible-dates": 1,
+    "invalid-emails": 2,
+    "invalid-phones": 1,
+    "phone-formats": 1,
+    "unusual-values": 1,
+    "formula-errors": 1
+  },
+  "3-clean.csv": {}
+}

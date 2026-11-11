@@ -42,7 +42,7 @@ Tool logic that needs every cell runs **inside the worker** and reads cells thro
 
 The preview already takes `highlights` (cell key to tone) for marking affected cells.
 
-## Error Detector scan (Stage 3, in progress)
+## Error Detector scan (Stage 3)
 
 `src/engine/scan/` runs **two passes** over a loaded sheet, however many checks exist, so scanning stays fast on low-end devices:
 

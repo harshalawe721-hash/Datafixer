@@ -3,7 +3,7 @@
  */
 import { cellKey, MAX_COLUMNS } from "../../types.ts";
 import { Cat } from "../classify.ts";
-import type { CheckFactory, ColumnProfile, Finding, ScanContext, ScanIssue } from "../scan.ts";
+import { cellCat, type CheckFactory, type ColumnProfile, type Finding, type ScanContext, type ScanIssue } from "../scan.ts";
 import { CellList, RowList } from "../hits.ts";
 import { isIdentifierColumn } from "./text.ts";
 
@@ -31,92 +31,118 @@ export function quantile(sorted: Float64Array, q: number): number {
   return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (pos - lo);
 }
 
-class Growable {
+/** Values kept per column for the statistics (deterministic every-k-th sample). */
+export const OUTLIER_SAMPLE = 50_000;
+
+class Sample {
   values = new Float64Array(256);
-  rows = new Uint32Array(256);
   n = 0;
-  push(v: number, r: number) {
+  push(v: number) {
     if (this.n === this.values.length) {
-      const nv = new Float64Array(this.n * 2);
+      const nv = new Float64Array(Math.min(this.n * 2, OUTLIER_SAMPLE + 1));
       nv.set(this.values);
       this.values = nv;
-      const nr = new Uint32Array(this.n * 2);
-      nr.set(this.rows);
-      this.rows = nr;
     }
-    this.values[this.n] = v;
-    this.rows[this.n++] = r;
+    this.values[this.n++] = v;
   }
 }
 
+/** Facts about a numeric column, over ALL its values (the sample is only for quantiles). */
+export interface NumericStats {
+  count: number;
+  min: number;
+  max: number;
+  allInt: boolean;
+  /** Sorted sample (all values when count ≤ OUTLIER_SAMPLE). */
+  sorted: Float64Array;
+}
+
 /** Why a numeric column is skipped, or null if it can be checked. */
-export function outlierSkipReason(p: ColumnProfile, sorted: Float64Array): string | null {
-  const n = sorted.length;
-  if (n < OUTLIER_MIN_VALUES) return "too few values";
+export function outlierSkipReason(p: ColumnProfile, st: NumericStats): string | null {
+  if (st.count < OUTLIER_MIN_VALUES) return "too few values";
   if (isIdentifierColumn(p)) return "identifier column";
-  let allInt = true;
-  for (let i = 0; i < n; i++) if (!Number.isInteger(sorted[i]!)) { allInt = false; break; }
-  if (allInt) {
-    if (sorted[0]! >= 1900 && sorted[n - 1]! <= 2100) return "year column";
+  if (st.allInt) {
+    if (st.min >= 1900 && st.max <= 2100) return "year column";
+    const s = st.sorted;
     let unique = true;
-    for (let i = 1; i < n; i++) if (sorted[i] === sorted[i - 1]) { unique = false; break; }
-    if (unique && sorted[n - 1]! - sorted[0]! + 1 <= n * 1.5) return "sequential IDs";
+    for (let i = 1; i < s.length; i++) if (s[i] === s[i - 1]) { unique = false; break; }
+    if (unique && st.max - st.min + 1 <= st.count * 1.5) return "sequential IDs";
   }
   return null;
 }
 
+/** Parse a numeric cell for the statistics; null for identifiers (leading zeros) and non-numbers. */
+function numericValue(cat: number, v: unknown): number | null {
+  if (cat === Cat.Number) return v as number;
+  if (cat !== Cat.NumericText) return null; // formatted numbers ("1,234") are ambiguous between countries
+  const s = v as string;
+  // Leading zeros ("007", "-01") mean an identifier, not a quantity (checked by char codes: hot path).
+  let i = 0;
+  while (s.charCodeAt(i) <= 0x20 || s.charCodeAt(i) === 0xa0) i++;
+  let ch = s.charCodeAt(i);
+  if (ch === 0x2b || ch === 0x2d) ch = s.charCodeAt(++i);
+  if (ch === 0x30) {
+    const next = s.charCodeAt(i + 1);
+    if (next >= 0x30 && next <= 0x39) return null;
+  }
+  return +s; // unary + ignores surrounding whitespace, like Number()
+}
+
+/**
+ * Memory: only a deterministic sample of at most OUTLIER_SAMPLE values per
+ * column is kept for the quartiles (exact for smaller columns); min/max and the
+ * whole-number test cover every value. Flagging re-reads the column, so every
+ * value outside the fences is found.
+ */
 export const unusualValues: CheckFactory = (ctx) => {
-  // Identifier columns are known from the profile already: don't collect their values at all.
-  const cols: (Growable | null)[] = ctx.profiles.map((p) => (p.kind === "number" && !isIdentifierColumn(p) ? new Growable() : null));
+  const eligible = ctx.profiles.map((p) => p.kind === "number" && !isIdentifierColumn(p));
+  const stride = ctx.profiles.map((p) => Math.max(1, Math.ceil((p.counts.number + p.counts.numericText) / OUTLIER_SAMPLE)));
+  const samples: (Sample | null)[] = eligible.map((e) => (e ? new Sample() : null));
+  const seen = new Float64Array(ctx.columnCount);
+  const min = new Float64Array(ctx.columnCount).fill(Infinity);
+  const max = new Float64Array(ctx.columnCount).fill(-Infinity);
+  const allInt = new Uint8Array(ctx.columnCount).fill(1);
   return {
-    cell(r, c, cat, v) {
-      const g = cols[c];
-      if (!g) return;
-      if (cat === Cat.Number) g.push(v as number, r);
-      else if (cat === Cat.NumericText) {
-        const s = v as string;
-        // Leading zeros ("007", "-01") mean an identifier, not a quantity. Checked by
-        // character codes rather than trim + regex: this runs for every number in the column.
-        let i = 0;
-        while (s.charCodeAt(i) <= 0x20 || s.charCodeAt(i) === 0xa0) i++;
-        let ch = s.charCodeAt(i);
-        if (ch === 0x2b || ch === 0x2d) ch = s.charCodeAt(++i);
-        if (ch === 0x30) {
-          const next = s.charCodeAt(i + 1);
-          if (next >= 0x30 && next <= 0x39) return;
-        }
-        g.push(+s, r); // unary + ignores surrounding whitespace, like Number()
-      }
-      // Formatted numbers ("1,234") are not parsed: separators are ambiguous between countries.
+    cell(_r, c, cat, v) {
+      const sample = samples[c];
+      if (!sample) return;
+      const x = numericValue(cat, v);
+      if (x === null || !Number.isFinite(x)) return;
+      if (seen[c]! % stride[c]! === 0) sample.push(x);
+      seen[c]!++;
+      if (x < min[c]!) min[c] = x;
+      if (x > max[c]!) max[c] = x;
+      if (allInt[c] && !Number.isInteger(x)) allInt[c] = 0;
     },
     finish(): Finding[] {
       const cells = new CellList();
       const columns: ScanIssue["columns"] = [];
       const examples: ScanIssue["examples"] = [];
-      cols.forEach((g, c) => {
-        if (!g || g.n === 0) return;
+      const g = ctx.sheet.grid;
+      samples.forEach((sample, c) => {
+        if (!sample || sample.n === 0) return;
         const p = ctx.profiles[c]!;
-        const sorted = g.values.slice(0, g.n).sort();
-        if (outlierSkipReason(p, sorted)) return;
+        const sorted = sample.values.slice(0, sample.n).sort();
+        samples[c] = null; // release
+        if (outlierSkipReason(p, { count: seen[c]!, min: min[c]!, max: max[c]!, allInt: allInt[c] === 1, sorted })) return;
         const q1 = quantile(sorted, 0.25);
         const q3 = quantile(sorted, 0.75);
         const iqr = q3 - q1;
         if (!(iqr > 0)) return; // most values identical: no meaningful spread (cautious)
         const low = q1 - OUTLIER_FENCE * iqr;
         const high = q3 + OUTLIER_FENCE * iqr;
+        if (min[c]! >= low && max[c]! <= high) return; // nothing outside: skip the re-read
         let count = 0;
-        for (let i = 0; i < g.n; i++) {
-          const v = g.values[i]!;
-          if (v >= low && v <= high) continue;
+        for (let r = ctx.startRow; r < ctx.rowCount; r++) {
+          const x = numericValue(cellCat(ctx, r, c), g.get(r, c));
+          if (x === null || !Number.isFinite(x) || (x >= low && x <= high)) continue;
           count++;
-          const r = g.rows[i]!;
           cells.add(cellKey(r, c));
           if (examples.length < 5) {
-            const shown = ctx.sheet.grid.display ? ctx.sheet.grid.display(r, c) : String(v);
-            examples.push({ row: r, col: c, value: shown, note: `${v > high ? "Far above" : "Far below"} the usual range in ${colName(p)}: the middle half of the values is ${fmt(q1)} to ${fmt(q3)}` });
+            const shown = g.display ? g.display(r, c) : String(x);
+            examples.push({ row: r, col: c, value: shown, note: `${x > high ? "Far above" : "Far below"} the usual range in ${colName(p)}: the middle half of the values is ${fmt(q1)} to ${fmt(q3)}` });
           }
         }
-        cols[c] = null; // release
         if (count) columns.push({ index: c, name: colName(p), count });
       });
       if (!cells.total) return [];

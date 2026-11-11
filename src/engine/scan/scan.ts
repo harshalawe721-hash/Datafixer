@@ -194,7 +194,9 @@ export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promi
     totalCells += grid.rowLength(i + startRow);
   }
   rowStart[dataRows] = totalCells;
-  const cacheBytes = totalCells + rowStart.byteLength;
+  // Category cache + per-row arrays used by the checks (duplicate fingerprints,
+  // row flags and sort order: ~13 bytes per row) + up to 400 KB per column of samples.
+  const cacheBytes = totalCells + rowStart.byteLength + dataRows * 13 + columnCount * 400_000;
   if (options.memoryBudgetBytes && cacheBytes + grid.approxBytes * 1.6 > options.memoryBudgetBytes) {
     throw new EngineError(
       "too-large-for-engine",

@@ -146,6 +146,9 @@ interface Result {
   baselineMB: number;
   maxFrameGapMs: number;
   longestTaskMs: number;
+  /** Error Detector scan (runs automatically after opening). */
+  scanSeconds?: number;
+  scanOutcome?: string;
   sortMs?: number;
   searchMs?: number;
   cancelMs?: number;
@@ -221,6 +224,17 @@ async function run(name: string, file: string, opts: { cancelAt?: number } = {})
     ]).catch(() => (crashed ? "TAB CRASHED" : "timeout"));
   }
   const seconds = (Date.now() - t0) / 1000;
+  // The Error Detector scans automatically once the file is open: time it too.
+  let scanSeconds: number | undefined;
+  let scanOutcome: string | undefined;
+  if (outcome === "opened") {
+    const ts0 = Date.now();
+    scanOutcome = await Promise.race([
+      page.getByRole("heading", { name: /^(Spreadsheet analysis complete|No problems found)$/ }).waitFor({ timeout: 600000 }).then(async () => `${await page.locator("section[aria-labelledby=scan-results-heading] article").count()} issue types`),
+      page.getByRole("heading", { name: "This sheet couldn't be checked" }).waitFor({ timeout: 600000 }).then(async () => `refused: ${(await page.getByRole("alert").first().textContent())?.slice(0, 70)}…`),
+    ]).catch(() => (crashed ? "TAB CRASHED" : "timeout"));
+    scanSeconds = Math.round(((Date.now() - ts0) / 1000) * 10) / 10;
+  }
   clearInterval(poll);
   const frame = crashed ? { gap: NaN, long: NaN } : await page.evaluate(() => {
     const w = window as unknown as { __gap: number; __long: number };
@@ -256,6 +270,8 @@ async function run(name: string, file: string, opts: { cancelAt?: number } = {})
     baselineMB: Math.round(baseline),
     maxFrameGapMs: Math.round(frame.gap),
     longestTaskMs: Math.round(frame.long),
+    scanSeconds,
+    scanOutcome,
     sortMs,
     searchMs,
     cancelMs,
@@ -309,11 +325,11 @@ try {
   rmSync(DIR, { recursive: true, force: true });
 }
 
-console.log("\n| Case | Size | Outcome | Time | Peak renderer RSS (baseline) | Max frame gap | Longest task | Sort | Search | Cancel | SHA-256 same |");
-console.log("|---|---|---|---|---|---|---|---|---|---|---|");
+console.log("\n| Case | Size | Outcome | Open | Scan | Scan result | Peak renderer RSS (baseline) | Max frame gap | Longest task | Sort | Search | Cancel | SHA-256 same |");
+console.log("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const r of results) {
   console.log(
-    `| ${r.name} | ${r.sizeMB} MB | ${r.outcome} | ${r.seconds}s | ${r.peakRendererMB} MB (${r.baselineMB}) | ${r.maxFrameGapMs} ms | ${r.longestTaskMs} ms | ${r.sortMs !== undefined ? `${r.sortMs} ms` : "—"} | ${r.searchMs !== undefined ? `${r.searchMs} ms` : "—"} | ${r.cancelMs !== undefined ? `${r.cancelMs} ms (then ${r.memAfterCancelMB} MB above baseline)` : "—"} | ${r.shaUnchanged ? "yes" : "NO"} |`,
+    `| ${r.name} | ${r.sizeMB} MB | ${r.outcome} | ${r.seconds}s | ${r.scanSeconds !== undefined ? `${r.scanSeconds}s` : "—"} | ${r.scanOutcome ?? "—"} | ${r.peakRendererMB} MB (${r.baselineMB}) | ${r.maxFrameGapMs} ms | ${r.longestTaskMs} ms | ${r.sortMs !== undefined ? `${r.sortMs} ms` : "—"} | ${r.searchMs !== undefined ? `${r.searchMs} ms` : "—"} | ${r.cancelMs !== undefined ? `${r.cancelMs} ms (then ${r.memAfterCancelMB} MB above baseline)` : "—"} | ${r.shaUnchanged ? "yes" : "NO"} |`,
   );
 }
 process.exit(results.every((r) => r.shaUnchanged && !/CRASH|timeout/.test(r.outcome)) ? 0 : 1);

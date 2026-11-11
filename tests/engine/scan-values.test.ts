@@ -53,7 +53,10 @@ test("leading-zero values (even with spaces around them) are not treated as quan
 
 test("skip reasons", () => {
   const p = (name: string | null) => ({ name, counts: { numericText: 0 }, leadingZero: 0 }) as unknown as ColumnProfile;
-  const arr = (xs: number[]) => Float64Array.from(xs).sort();
+  const arr = (xs: number[]) => {
+    const sorted = Float64Array.from(xs).sort();
+    return { count: xs.length, min: sorted[0]!, max: sorted[sorted.length - 1]!, allInt: xs.every(Number.isInteger), sorted };
+  };
   assert.equal(outlierSkipReason(p("v"), arr([1, 2, 3])), "too few values");
   assert.equal(outlierSkipReason(p("Customer ID"), arr(Array.from({ length: 30 }, (_, i) => i * 3.5))), "identifier column");
   assert.equal(outlierSkipReason(p("built"), arr(Array.from({ length: 30 }, (_, i) => 1950 + i * 2))), "year column");
@@ -92,4 +95,18 @@ test("formula errors in Excel: the formula behind each error is shown", async ()
 
 test("all 12 check families are registered", () => {
   assert.equal(ALL_CHECKS.length, 12);
+});
+
+test("large columns: sampled statistics, but every outlier is found (even unsampled ones)", async () => {
+  const lines = ["v,seq"];
+  const n = 120_000; // stride 3 → only every 3rd value is sampled
+  for (let i = 0; i < n; i++) {
+    const v = i === 1 || i === 50_002 || i === 119_998 ? 9_999_999 : 100 + ((i * 37) % 900); // positions not ≡ 0 mod 3
+    lines.push(`${v},${i + 1}`);
+  }
+  const { findings } = await runScan(await csv(lines.join("\n")), { headerRow: true, checks: [unusualValues] });
+  const uv = find(findings, "unusual-values")!;
+  assert.equal(uv.issue.count, 3);
+  assert.deepEqual(Array.from(uv.cells!), [cellKey(2, 0), cellKey(50_003, 0), cellKey(119_999, 0)]);
+  assert.deepEqual(uv.issue.columns!.map((c) => c.name), ["v"], "the 1…120000 sequence is still recognised as IDs");
 });

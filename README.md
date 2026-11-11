@@ -34,6 +34,7 @@ npm run dev                  # http://localhost:3000
 | `npm run lint` | ESLint (Next.js core-web-vitals + TypeScript rules) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Unit tests (Node's built-in test runner): file validation, CSV reader, XLSX inspection, compact grid, query layer, engine core |
+| `npm run test:detector` | Browser test of the Error Detector dashboard (cards, View affected data, re-check, cancel, Excel, mobile) |
 | `npm run test:engine` | Browser end-to-end test of the engine through the UI (CSV, XLSX inspection, unsafe/damaged files, cancel, handoff, privacy checks) |
 | `npm run test:perf` | Performance harness: generates 50/100/150 MB CSV and XLSX files and measures time, memory, responsiveness and cancellation (Linux; `HEAP_MB=512` imitates a low-memory device) |
 | `npm run test:large` | Real-browser test of the 150 MB limit at 50/100/149/150/150 MB+1 byte/151 MB, using both the file picker and drag-and-drop (writes ~900 MB of temp files, then deletes them) |
@@ -79,7 +80,7 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | --- | --- | --- |
 | 1 | Project setup, design system, header/footer, homepage, navigation, responsive layout | Done |
 | 2 | Spreadsheet engine, upload + preview system | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-2-test-report.md` |
-| 3 | Spreadsheet Error Detector (incl. formula errors) | In progress |
+| 3 | Spreadsheet Error Detector (incl. formula errors) | Implemented; all automated tests pass. Awaiting Android tablet tests and owner approval. See `docs/stage-3-test-report.md` |
 | 4 | Spreadsheet Cleaner (incl. duplicates, formatting cleanup, repair) | Planned |
 | 5 | CSV Validator | Planned |
 | 6 | Excel ↔ CSV converters | Planned |
