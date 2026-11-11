@@ -110,3 +110,10 @@ test("large columns: sampled statistics, but every outlier is found (even unsamp
   assert.deepEqual(Array.from(uv.cells!), [cellKey(2, 0), cellKey(50_003, 0), cellKey(119_999, 0)]);
   assert.deepEqual(uv.issue.columns!.map((c) => c.name), ["v"], "the 1…120000 sequence is still recognised as IDs");
 });
+
+test("unusual values wording: plural values in one column say “their column”", async () => {
+  const { findings } = await runScan(await csv(plantedOutliers()), { headerRow: true, checks: [unusualValues] });
+  const uv = find(findings, "unusual-values")!;
+  assert.equal(uv.issue.count, 2);
+  assert.match(uv.issue.explanation, /2 numbers are far outside the usual range of their column\. They may be correct/);
+});

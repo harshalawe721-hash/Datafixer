@@ -173,6 +173,7 @@ export const invalidPhones: CheckFactory = (ctx) => {
       const shapeNotes: string[] = [];
       for (const p of cols) {
         const counts = new Map<string, number>();
+        const sample = new Map<string, string>(); // first real number of each layout
         let n = 0;
         for (let r = ctx.startRow; r < ctx.rowCount; r++) {
           const cat = cellCat(ctx, r, p.index);
@@ -186,6 +187,7 @@ export const invalidPhones: CheckFactory = (ctx) => {
           } else if (typeof ctx.sheet.grid.get(r, p.index) === "string") {
             const shape = phoneShape(s);
             counts.set(shape, (counts.get(shape) ?? 0) + 1);
+            if (!sample.has(shape)) sample.set(shape, s.trim());
           }
         }
         if (n) invCols.push({ index: p.index, name: colName(p), count: n });
@@ -201,7 +203,7 @@ export const invalidPhones: CheckFactory = (ctx) => {
             if (phoneShape(v) === main) continue;
             other++;
             shapes.add(cellKey(r, p.index));
-            if (shapeEx.length < 5) shapeEx.push({ row: r, col: p.index, value: v.trim(), note: `Most numbers here look like ${main.replace(/#/g, "…")}` });
+            if (shapeEx.length < 5) shapeEx.push({ row: r, col: p.index, value: v.trim(), note: `Most numbers here are written like ${sample.get(main) ?? main}` });
           }
           shapeCols.push({ index: p.index, name: colName(p), count: other });
           shapeNotes.push(`${colName(p)}: ${counts.size} layouts`);

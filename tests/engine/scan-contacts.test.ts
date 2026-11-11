@@ -110,3 +110,12 @@ test("Excel fixture: no contact columns, no contact issues", async () => {
   const r = await core.scan("Data", { headerRow: true }, () => {});
   assert.ok(!r.issues.some((i) => /email|phone/.test(i.id)));
 });
+
+test("phone layout note shows a real example of the usual layout", async () => {
+  const text = ["name,phone", "A,+44 20 7946 0958", "B,+44 20 7946 0959", "C,+44 20 7946 0960", "D,020-7946-0961"].join("\n");
+  const { findings } = await runScan(await csv(text), { headerRow: true, checks: [invalidPhones] });
+  const fm = find(findings, "phone-formats")!;
+  assert.equal(fm.issue.count, 1);
+  assert.equal(fm.issue.examples![0]!.note, "Most numbers here are written like +44 20 7946 0958");
+  assert.ok(!fm.issue.examples![0]!.note!.includes("…"));
+});

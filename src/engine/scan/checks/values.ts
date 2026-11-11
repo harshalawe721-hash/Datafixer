@@ -155,7 +155,7 @@ export const unusualValues: CheckFactory = (ctx) => {
             title: "Unusual values (please check)",
             count: cells.total,
             unit: "cells",
-            explanation: `${plural(cells.total, "number")} ${cells.total === 1 ? "is" : "are"} far outside the usual range of ${columns.length === 1 ? "its column" : "their columns"}. They may be correct (a genuinely large order, for example), but values like these are often typing mistakes such as an extra zero, a wrong sign or a value in the wrong unit. Only clear cases are shown: columns with fewer than ${OUTLIER_MIN_VALUES} numbers, IDs, years and columns where most values are the same are not checked.`,
+            explanation: `${plural(cells.total, "number")} ${cells.total === 1 ? "is" : "are"} far outside the usual range of ${columns.length === 1 ? (cells.total === 1 ? "its column" : "their column") : "their columns"}. ${cells.total === 1 ? "It" : "They"} may be correct (a genuinely large order, for example), but values like these are often typing mistakes such as an extra zero, a wrong sign or a value in the wrong unit. Only clear cases are shown: columns with fewer than ${OUTLIER_MIN_VALUES} numbers, IDs, years and columns where most values are the same are not checked.`,
             howToFix: "Compare each value with its source. If it's a mistake, correct it; if it's genuine, no change is needed.",
             columns,
             examples: examples.sort((a, b) => a.row - b.row),

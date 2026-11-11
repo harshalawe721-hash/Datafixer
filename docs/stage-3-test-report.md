@@ -35,7 +35,7 @@ Automated and browser results come from **headless Chromium and Node 22 on a Lin
 
 | Suite | Result |
 |---|---|
-| Unit tests (`npm test`), including 69 for Stage 3: classification, profiles, every check with exact planted counts, false-alarm guards, view/filter, cancel, test pack | **193 / 193 pass** |
+| Unit tests (`npm test`), including 71 for Stage 3: classification, profiles, every check with exact planted counts, false-alarm guards, view/filter, cancel, test pack | **195 / 195 pass** |
 | Error Detector in the browser (`npm run test:detector`) | **32 / 32 pass** |
 | Site smoke test (`npm run test:smoke`) | **114 / 114 pass** |
 | Engine in the browser (`npm run test:engine`) | **62 / 62 pass** |
@@ -84,6 +84,25 @@ In Node (desktop), all 12 checks on 1M rows × 5 columns take about 3.5 s; the c
 
 No crashes. Original files were unchanged (SHA-256) in every run.
 
+## Real Android device testing (owner, 11 Nov 2026)
+
+These results come from the project owner's Android tablet, using the Vercel deployment of this branch (Chrome). They are separate from the headless Chromium figures above. Times are the ones the page itself showed.
+
+| Test file | Expected (expected.json) | Result on the tablet | Verdict |
+|---|---|---|---|
+| 3-clean.csv | No problems | "No problems found", 30 rows × 6 columns, checklist shown | ✅ PASSED |
+| 4-large-problems-25mb.csv (395,000 rows) | Duplicates 3,950; invalid emails 1,580; missing 988; capitalization 565; extra spaces 439; unusual values 39 | **Exact match.** Opened in 3.6 s, checked in **5.4 s** | ✅ PASSED |
+| 5-large-problems-50mb.csv (785,000 rows) | 7,850; 3,140; 1,963; 1,122; 873; 78 | **Exact match.** Opened in 6.3 s, checked in **10.5 s** | ✅ PASSED |
+| 1-problems.csv | 14 cards | The two cards shown were correct (phone layouts 1, unusual values 1). The other 12 cards weren't in the screenshots. | Partly verified |
+| 2-problems.xlsx | 8 cards | Not tested yet | — |
+| "View affected data" and Cancel | — | Not tested yet | — |
+
+Two wording problems seen in the screenshots were fixed afterwards, with tests:
+- The phone-layout note now shows a real number in the usual layout (for example "Most numbers here are written like +1 555 0101 0000") instead of "+… … … …".
+- The unusual-values explanation now says "their column" when several numbers are in one column, and "It may be correct" for a single number.
+
+A column that looked empty in one screenshot was not a bug: the table had been scrolled sideways, so column A was under the pinned row-number column.
+
 ## Known limitations
 
 - Phone numbers are checked with generic international rules, not each country's numbering plan.
@@ -91,11 +110,11 @@ No crashes. Original files were unchanged (SHA-256) in every run.
 - For columns with more than 50,000 numbers, unusual-value limits come from a deterministic sample (every value is still checked against them).
 - Dates written as text are recognised in 9 common patterns; other layouts are treated as text.
 - After scanning a very wide file there can be one screen pause of about 100 ms while the results are drawn.
-- Real-device performance (tablet and phone) still needs to be measured with the test pack.
+- Real-device testing so far covers one Android tablet (see below). Phones, iOS, Safari and Firefox have not been tested.
 
 ## Open items before Stage 3 can be marked complete
 
 | Item | Who |
 |---|---|
-| Android tablet testing with the 5-file test pack (expected results provided) | Project owner |
+| Android tablet: 1-problems.csv (all 14 cards), 2-problems.xlsx, "View affected data" and Cancel (files 3–5 passed) | Project owner |
 | Owner review and approval | Project owner |
