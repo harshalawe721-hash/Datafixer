@@ -116,4 +116,4 @@ A column that looked empty in one screenshot was not a bug: the table had been s
 
 All required tests passed, and the project owner approved Stage 3 on 11 November 2026.
 
-Next (Stage 4, plan awaiting approval): automatic fixing of the problems found here, manual cell editing, and downloading a new, clean file. The original file will still never be changed.
+Next (Stage 4, plan approved, see `stage-4-plan.md`): automatic fixing of the problems found here, manual cell editing, and downloading a new, clean file. The original file will still never be changed.
