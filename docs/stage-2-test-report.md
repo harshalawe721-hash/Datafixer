@@ -4,6 +4,21 @@
 
 **Status:** implemented, **not yet complete**. All automated tests that can run in the development environment pass. Real-device CSV testing on Android has **passed** (see "Real Android Device Testing"). Still open: real-device testing of XLSX and XLS files, and an independent checksum comparison for SheetJS (see the end of this report).
 
+## Scope of Stage 2
+
+Stage 2 covers **reading** spreadsheets: upload, file safety checks, the CSV/XLSX/XLS reading engine, preview (search, sort, pages), progress, cancellation and memory protection.
+
+**Future development, not implemented and not tested in this report:**
+
+| Feature | Planned stage |
+|---|---|
+| Automatic error detection (duplicates, missing cells, extra spaces, inconsistent dates, invalid emails and phone numbers, numbers stored as text, outliers, formula errors) | Stage 3: Spreadsheet Error Detector |
+| Fixing and cleaning (remove duplicates, trim spaces, standardize text and dates, find and replace, split and merge columns, undo, download a cleaned file) | Stage 4: Spreadsheet Cleaner |
+| CSV structure validation and repair | Stage 5: CSV Validator |
+| Excel ↔ CSV conversion and downloads | Stage 6: converters |
+
+The engine only flags things it notices while reading (for example error cells, formula-like CSV cells, decoding problems), so the user is informed. It does not scan for data problems, and it never changes data.
+
 ## Test environment (important)
 
 This report has two kinds of results, which should not be compared as if they were equivalent:
