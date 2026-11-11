@@ -2,7 +2,7 @@
 
 **Date:** 10 November 2026 (real Android CSV and Excel results added 11 November 2026)
 
-**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). The on-device Cancel check and the independent SheetJS checksum comparison have also passed. **All Stage 2 verification items are done; Stage 2 is awaiting the owner's completion review.**
+**Status: COMPLETE.** Approved by the project owner on 11 November 2026 after all verification items passed: automated tests, desktop large-file and low-memory tests, real Android tablet tests (CSV, Excel and Cancel), and the independent SheetJS checksum comparison.
 
 ## Scope of Stage 2
 

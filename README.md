@@ -78,8 +78,8 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | Stage | Scope | Status |
 | --- | --- | --- |
 | 1 | Project setup, design system, header/footer, homepage, navigation, responsive layout | Done |
-| 2 | Spreadsheet engine, upload + preview system | Implemented; all automated tests pass; Android tablet tests passed (CSV 25–100 MB; XLSX/XLS accuracy and safe refusal). Cancel verified on the tablet; SheetJS checksum independently verified. All verification items done; awaiting completion review |
-| 3 | Spreadsheet Error Detector (incl. formula errors) | Planned |
+| 2 | Spreadsheet engine, upload + preview system | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-2-test-report.md` |
+| 3 | Spreadsheet Error Detector (incl. formula errors) | In progress |
 | 4 | Spreadsheet Cleaner (incl. duplicates, formatting cleanup, repair) | Planned |
 | 5 | CSV Validator | Planned |
 | 6 | Excel ↔ CSV converters | Planned |
