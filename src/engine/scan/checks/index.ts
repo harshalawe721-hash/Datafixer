@@ -7,6 +7,7 @@ import { duplicateRows, emptyColumns, emptyRows, missingCells } from "./structur
 import { extraSpaces, inconsistentCase, numbersAsText } from "./text.ts";
 import { inconsistentDates } from "./dates.ts";
 import { invalidEmails, invalidPhones } from "./contacts.ts";
+import { formulaErrors, unusualValues } from "./values.ts";
 
 export const ALL_CHECKS: CheckFactory[] = [
   // Step 2: structure (A–D)
@@ -23,4 +24,7 @@ export const ALL_CHECKS: CheckFactory[] = [
   // Step 5: contacts (I–J)
   invalidEmails,
   invalidPhones,
+  // Step 6: values (K–L)
+  unusualValues,
+  formulaErrors,
 ];
