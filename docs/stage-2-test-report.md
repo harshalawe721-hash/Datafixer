@@ -2,7 +2,7 @@
 
 **Date:** 10 November 2026 (real Android CSV and Excel results added 11 November 2026)
 
-**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). The on-device Cancel check has also passed. Still open: the independent SheetJS checksum comparison (see the end of this report).
+**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). The on-device Cancel check and the independent SheetJS checksum comparison have also passed. **All Stage 2 verification items are done; Stage 2 is awaiting the owner's completion review.**
 
 ## Scope of Stage 2
 
@@ -228,7 +228,7 @@ For context only: on the desktop Chromium benchmark machine, a 100 MB CSV with a
 
 | Item | Why it can't be done here | How to close it |
 |---|---|---|
-| Compare the SheetJS package's SHA-256 with an independent official download | SheetJS publishes no checksums, and its servers are blocked from this environment | Download `xlsx-0.20.3.tgz` again from `cdn.sheetjs.com` on any normal connection and check that its SHA-256 is `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8` |
+| ~~Compare the SheetJS package's SHA-256 with an independent official download~~ | — | ✅ **PASSED** (11 November 2026): a fresh download from `cdn.sheetjs.com` by the project owner has SHA-256 `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8`, identical to `vendor/xlsx-0.20.3.tgz` |
 | ~~Real-device CSV testing on Android~~ | — | ✅ **PASSED** on an Android tablet: 25, 50 and 100 MB (see "Real Android Device Testing") |
 | ~~Real-device XLSX and XLS testing on Android~~ | — | ✅ **PASSED**: all 8 Excel test files behaved correctly (see "Real Android Device Testing") |
 | ~~On-device Cancel check~~ | — | ✅ **PASSED** (confirmed by the project owner on the Android tablet) |

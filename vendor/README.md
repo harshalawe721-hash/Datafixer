@@ -18,7 +18,7 @@
 | Check | Result |
 |---|---|
 | SHA-256 recorded and pinned (CHECKSUMS.txt plus the package-lock integrity hash) | ✅ |
-| Compared byte-for-byte with an independent official copy | ❌ **Not possible**: SheetJS publishes no checksums or signatures, and `cdn.sheetjs.com`, `git.sheetjs.com` and mirrors are blocked from the development environment. Provenance rests on the owner's download from the official CDN. |
+| Compared with an independent official copy | ✅ **Match.** On 11 November 2026 the project owner made a fresh download of `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz` on their Android device and computed its SHA-256: `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8`, identical to the vendored file. (It can't be done from the development environment, where SheetJS's servers are blocked.) |
 | `package.json` name `xlsx`, version 0.20.3, license Apache-2.0, no runtime dependencies | ✅ |
 | CHANGELOG lists the CVE-2023-30533 fix (0.19.3) and the CVE-2024-22363 fix (0.20.2) | ✅ |
 | No install hooks (`preinstall`/`install`/`postinstall`) | ✅ |
@@ -26,7 +26,7 @@
 | `npm audit --omit=dev` | 0 vulnerabilities |
 | Behavioural tests: prototype-pollution names and pathological XML (regression guards for both CVE classes) | ✅ (`tests/engine/excel.test.ts`) |
 
-To strengthen verification later, compare the SHA-256 above with a fresh download from `https://cdn.sheetjs.com/` made from any normal internet connection.
+To re-verify at any time, download the same URL again and compare its SHA-256 with the value above.
 
 ### Known issue in this version
 
