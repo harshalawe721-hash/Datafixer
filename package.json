@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DataFixer – find spreadsheet problems, fix them, get better data.",
+  "description": "DataFixer \u2013 find spreadsheet problems, fix them, get better data.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -35,5 +35,8 @@
     "eslint-config-next": "^16.4.6",
     "tailwindcss": "^4.3.5",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   }
 }
