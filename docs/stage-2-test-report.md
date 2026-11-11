@@ -1,12 +1,17 @@
 # Stage 2 test report: spreadsheet engine
 
-**Date:** 10 November 2026
+**Date:** 10 November 2026 (real Android CSV results added 11 November 2026)
 
-**Status:** implemented. All automated tests that can run in the development environment pass. Two items need the project owner and are **not** done: an independent checksum comparison for SheetJS, and real-device testing (see the end of this report).
+**Status:** implemented, **not yet complete**. All automated tests that can run in the development environment pass. Real-device CSV testing on Android has **passed** (see "Real Android Device Testing"). Still open: real-device testing of XLSX and XLS files, and an independent checksum comparison for SheetJS (see the end of this report).
 
 ## Test environment (important)
 
-All browser numbers come from **headless Chromium on a Linux cloud machine** (4 CPU threads, JavaScript heap limit about 4 GB). The only browser installed here is Chromium. **No** real Android phone, iPhone, Mac, Windows PC, tablet, Safari or Firefox has been tested, and no device or browser compatibility is claimed. Use `/diagnostics` on each target device to collect real numbers.
+This report has two kinds of results, which should not be compared as if they were equivalent:
+
+- **Desktop Chromium benchmarks** (all sections except "Real Android Device Testing") come from automated tests on a cloud machine.
+- **Real-device results** ("Real Android Device Testing") were collected by the project owner on a physical Android tablet.
+
+The desktop Chromium benchmarks come from **headless Chromium on a Linux cloud machine** (4 CPU threads, JavaScript heap limit about 4 GB). The only browser installed there is Chromium. Apart from the Android tablet below, **no** real phone, iPhone, Mac, Windows PC, Safari or Firefox has been tested, and no compatibility is claimed for them.
 
 Test workbooks were produced by **openpyxl and LibreOffice**, which are independent of SheetJS, and the encrypted workbook by msoffcrypto-tool. No workbook saved by Microsoft Excel itself was available in this environment.
 
@@ -124,12 +129,47 @@ This approximates a device with little memory. Real phones also have slower CPUs
 
 **No tab crashed in any test.** With a 256 MB cap, a 100 MB CSV was stopped after 1.8 s and a small file opened afterwards in the same tab. Before the memory budget existed, that test crashed the tab.
 
+## Real Android Device Testing
+
+> **Real device, not a benchmark machine.** These results were collected by the project owner on a physical **Android tablet** on 11 November 2026. They are separate from, and not directly comparable with, the desktop Chromium benchmarks elsewhere in this report.
+
+| | |
+|---|---|
+| Device | Android tablet. The model, Android version and browser were not recorded. |
+| What was tested | Opening CSV files in DataFixer |
+| Processing | Entirely local, in the browser. Nothing was uploaded to the server. |
+| Not measured | Peak memory and main-thread timings (the page can't read the worker's memory on Android) |
+
+| File size | Opening time | Rows | Columns | Result |
+|---|---|---|---|---|
+| 25 MB | 3.1 s | 198,653 | 6 | ✅ PASS |
+| 50 MB | 5.4 s | 394,813 | 6 | ✅ PASS |
+| 100 MB | 10.5 s | 787,133 | 6 | ✅ PASS |
+
+Observations reported by the tester:
+
+- No noticeable lag.
+- No noticeable heating.
+- No crashes or freezes.
+- All files opened successfully.
+- UTF-8 encoding was detected correctly.
+
+**Android CSV opening and performance testing: PASSED** (25, 50 and 100 MB).
+
+What this does **not** cover:
+
+- **150 MB CSV files have not been tested on a real device.** The 150 MB upload limit stays in place. Whether a 150 MB file opens depends on the device's memory: DataFixer's memory budget either opens it or stops it with a clear message before the browser runs out of memory. Files over 50 MB still show the large-file notice that processing happens on the device and may be slow or need a lot of memory.
+- **XLSX and XLS files have not been tested on a real device yet.** This is required before Stage 2 can be marked complete.
+- Other devices and browsers (phones, iPhone/iPad, Safari, Firefox, Samsung Internet, desktop browsers) have not been tested on real hardware.
+
+For context only: on the desktop Chromium benchmark machine, a 100 MB CSV with a different (synthetic) column layout opened in 2.3 s. The tablet took 10.5 s for its 100 MB file, roughly 4–5 times longer, which is expected for a tablet processor. The files differ (about 133 bytes per row on the tablet, about 70 on the benchmark machine), so this is not a like-for-like comparison.
+
 ## Conclusions
 
-1. **CSV up to 150 MB works in desktop Chromium**: 2–5 s with no frozen screen. Smaller devices get a clear refusal, never a crash.
+1. **CSV up to 150 MB works in desktop Chromium**: 2–5 s with no frozen screen. **On a real Android tablet, CSV files of 25, 50 and 100 MB opened in 3.1–10.5 s** with no lag, crashes or freezes. 150 MB has not been tried on a real device. Devices with less memory get a clear refusal, never a crash.
 2. **XLSX works up to about 50 MB of compressed single-sheet data** in desktop Chromium: about 18 s for 5M cells, with a responsive screen. Larger single-sheet files hit the browser's maximum string length (about 500 MB of sheet XML) and are refused with an explanation. Large multi-sheet files depend on available memory, because SheetJS decompresses the whole workbook.
 3. **XLS works for smaller files.** About 20 MB opens on desktop. Above about 40 MB the file is refused, because SheetJS parses every sheet (about 40 × the file size in memory), and the message advises saving as XLSX.
-4. **On low-memory devices** the conservative budget refuses medium Excel files (10 MB XLSX and up at a 512 MB heap). That is safe but strict. Real-device measurements from `/diagnostics` will show whether it can be relaxed.
+4. **On low-memory devices** the conservative budget refuses medium Excel files (10 MB XLSX and up at a 512 MB heap). That is safe but strict. Real-device Excel tests will show whether it can be relaxed.
 5. Supporting single-sheet XLSX files larger than about 90 MB, or opening big XLSX files on phones, would require a **streaming XLSX reader**. That would be a separate decision with accuracy trade-offs; it was not built (as agreed: measure first).
 
 ## Open items that need the project owner
@@ -137,5 +177,8 @@ This approximates a device with little memory. Real phones also have slower CPUs
 | Item | Why it can't be done here | How to close it |
 |---|---|---|
 | Compare the SheetJS package's SHA-256 with an independent official download | SheetJS publishes no checksums, and its servers are blocked from this environment | Download `xlsx-0.20.3.tgz` again from `cdn.sheetjs.com` on any normal connection and check that its SHA-256 is `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8` |
-| Real-device and browser testing (Android, iPhone, tablets, Mac, Windows; Chrome, Firefox, Safari, Edge) | Only headless Chromium is available | Open `/diagnostics` on each device, run 25 / 50 / 100 MB tests, and send the copied results |
+| ~~Real-device CSV testing on Android~~ | — | ✅ **PASSED** on an Android tablet: 25, 50 and 100 MB (see "Real Android Device Testing") |
+| **Real-device XLSX and XLS testing on Android** (required for Stage 2) | Only headless Chromium is available here | Open the Excel test files on the Android device and report each result (instructions provided separately) |
+| Other devices and browsers (iPhone/iPad, Safari, Firefox, desktop browsers) | Not available here | Optional: repeat the CSV and Excel tests on any other device you can reach |
+| 150 MB CSV on a real device | Not tested | Optional: if you try one, report whether it opened or showed the "too large" message |
 | Files saved by Microsoft Excel itself | Not available here | Optionally, open a few real Excel files on the Error Detector page and check they look right |

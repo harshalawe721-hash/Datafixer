@@ -98,7 +98,7 @@ The CSV reader stops with a clear message when its data would exceed the budget.
 - **A SheetJS 0.20.3 bug** corrupts characters above U+FFFF when a file stores them as numeric references (files from openpyxl and pandas). DataFixer restores them when that is unambiguous and warns otherwise (see `vendor/README.md`).
 - Searching about 2M rows takes 1–2 s, and sorting a text column takes about 1–3 s. The page stays responsive throughout, because both run in the worker.
 - UTF-16 CSV files without a BOM, and CSV encodings other than UTF-8, UTF-16 and Windows-1252, are not detected automatically.
-- Real-device testing (Android, iOS, Safari, Firefox) has **not** been done. Use `/diagnostics` on each device.
+- Real-device testing: **CSV files of 25–100 MB passed on an Android tablet** (see the test report). Excel files on real devices, 150 MB files on real devices, and iOS, Safari and Firefox have **not** been tested yet.
 
 ## Workbook features and preservation
 
