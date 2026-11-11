@@ -93,7 +93,7 @@ These results come from the project owner's Android tablet, using the Vercel dep
 | 3-clean.csv | No problems | "No problems found", 30 rows × 6 columns, checklist shown | ✅ PASSED |
 | 4-large-problems-25mb.csv (395,000 rows) | Duplicates 3,950; invalid emails 1,580; missing 988; capitalization 565; extra spaces 439; unusual values 39 | **Exact match.** Opened in 3.6 s, checked in **5.4 s** | ✅ PASSED |
 | 5-large-problems-50mb.csv (785,000 rows) | 7,850; 3,140; 1,963; 1,122; 873; 78 | **Exact match.** Opened in 6.3 s, checked in **10.5 s** | ✅ PASSED |
-| 1-problems.csv | 14 cards | The two cards shown were correct (phone layouts 1, unusual values 1). The other 12 cards weren't in the screenshots. | Partly verified |
+| 1-problems.csv | 14 cards: 12 problems, 2 notes | **Exact match**, all 14 counts. Opened in 0.4 s. The new wording was confirmed on the device ("Most numbers here are written like +1 555 0101 0000", "It may be correct") | ✅ PASSED |
 | 2-problems.xlsx | 8 cards | Not tested yet | — |
 | "View affected data" and Cancel | — | Not tested yet | — |
 
@@ -116,5 +116,5 @@ A column that looked empty in one screenshot was not a bug: the table had been s
 
 | Item | Who |
 |---|---|
-| Android tablet: 1-problems.csv (all 14 cards), 2-problems.xlsx, "View affected data" and Cancel (files 3–5 passed) | Project owner |
+| Android tablet: 2-problems.xlsx, "View affected data" and Cancel (files 1, 3, 4 and 5 passed) | Project owner |
 | Owner review and approval | Project owner |
