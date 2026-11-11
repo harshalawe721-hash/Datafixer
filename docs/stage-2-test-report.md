@@ -1,8 +1,8 @@
 # Stage 2 test report: spreadsheet engine
 
-**Date:** 10 November 2026 (real Android CSV results added 11 November 2026)
+**Date:** 10 November 2026 (real Android CSV and Excel results added 11 November 2026)
 
-**Status:** implemented, **not yet complete**. All automated tests that can run in the development environment pass. Real-device CSV testing on Android has **passed** (see "Real Android Device Testing"). Still open: real-device testing of XLSX and XLS files, and an independent checksum comparison for SheetJS (see the end of this report).
+**Status:** implemented and **ready for review**; not yet marked complete. All automated tests that can run in the development environment pass. On a real Android tablet, CSV testing and Excel (XLSX/XLS) testing have **passed** (see "Real Android Device Testing"). Still open: the on-device Cancel check, which was not reported, and the independent SheetJS checksum comparison (see the end of this report).
 
 ## Scope of Stage 2
 
@@ -151,9 +151,11 @@ This approximates a device with little memory. Real phones also have slower CPUs
 | | |
 |---|---|
 | Device | Android tablet. The model, Android version and browser were not recorded. |
-| What was tested | Opening CSV files in DataFixer |
+| What was tested | Opening CSV files, then Excel files (below) |
 | Processing | Entirely local, in the browser. Nothing was uploaded to the server. |
 | Not measured | Peak memory and main-thread timings (the page can't read the worker's memory on Android) |
+
+### CSV files
 
 | File size | Opening time | Rows | Columns | Result |
 |---|---|---|---|---|
@@ -174,16 +176,50 @@ Observations reported by the tester:
 What this does **not** cover:
 
 - **150 MB CSV files have not been tested on a real device.** The 150 MB upload limit stays in place. Whether a 150 MB file opens depends on the device's memory: DataFixer's memory budget either opens it or stops it with a clear message before the browser runs out of memory. Files over 50 MB still show the large-file notice that processing happens on the device and may be slow or need a lot of memory.
-- **XLSX and XLS files have not been tested on a real device yet.** This is required before Stage 2 can be marked complete.
 - Other devices and browsers (phones, iPhone/iPad, Safari, Firefox, Samsung Internet, desktop browsers) have not been tested on real hardware.
+
+### Excel files (XLSX and XLS) on the same Android tablet
+
+> **Real device.** Collected by the project owner on 11 November 2026 on the deployed site (a Vercel preview deployment) in the tablet's browser, using the 8-file Excel test pack. The evidence is screenshots of each result. The times are the "Opened on your device in …" figures DataFixer shows; for refused files, that is the time until the refusal appeared.
+
+**Data accuracy and safety**
+
+| File | Expected | Result on the tablet | Verdict |
+|---|---|---|---|
+| 1-features.xlsx (18 KB; made with openpyxl and LibreOffice) | 5 sheets, 5 rows, 9 columns; exact values, date and number formats, formula markers, error cells, hidden sheets, feature notice | Opened in 0.3 s. All values exactly as expected: `Ann · 10.50 · 2024-01-31 · fx TRUE · fx 21 · Example`, `Zoë 東京 😀`, `fx #DIV/0!` and `fx #N/A` in red. Archive and Secret marked hidden. Notice listed 2 charts, 1 image, data validation, conditional formatting and comments | ✅ PASS |
+| 2-features.xls (12 KB; LibreOffice, Excel 97–2003) | Same values, format XLS | Opened in 2.2 s with identical values and hidden-sheet badges | ✅ PASS |
+| 3-password-protected.xlsx | Clear "password-protected" message, nothing opened | The message appeared under the upload box | ✅ PASS |
+
+**Large files** (PASS means the file opens with the correct counts, or is refused with a clear message, with no crash or freeze)
+
+| File | Result on the tablet | Rows × columns | Verdict |
+|---|---|---|---|
+| 7-large-5mb.xls | **Opened** in 1.6 s, header row detected | 38,462 × 8 (correct) | ✅ PASS |
+| 4-large-10mb.xlsx | **Opened** in 7.5 s, paging through 1,440 pages | 144,000 × 8 (correct; first row matches) | ✅ PASS |
+| 8-large-20mb.xls | **Refused safely**: "needs roughly 860 MB … save it as .xlsx", with Try again and Choose a different file | — | ✅ PASS |
+| 5-large-25mb.xlsx | **Refused safely** after 4.3 s: "too large to open safely … roughly 750 MB". File details still shown | — | ✅ PASS |
+| 6-large-50mb.xlsx | Large-file notice, then **refused safely** after 8.0 s: "roughly 1,500 MB" | — | ✅ PASS |
+
+No crashes, freezes or page reloads were seen.
+
+**Android Excel (XLSX/XLS) opening, accuracy and safe-refusal testing: PASSED.**
+
+What these results show about this tablet:
+
+- **Largest files that opened:** XLSX up to 10 MB (144,000 rows) and XLS up to 5 MB.
+- **Refused safely:** XLSX from 25 MB and XLS from 20 MB, so DataFixer's memory budget on this tablet is somewhere between about 310 MB and 750 MB. The exact budget (shown on `/diagnostics`) was not recorded.
+- **The memory estimate is deliberately conservative.** Some refused files might actually have opened, but refusing is the safe choice: running out of memory would crash the tab. Relaxing it would need measurements on more devices.
+- **Not reported:** the on-device Cancel test (Cancel was verified in desktop Chromium: 44–57 ms), and switching to the Summary sheet (verified by the automated tests).
+
+### Context
 
 For context only: on the desktop Chromium benchmark machine, a 100 MB CSV with a different (synthetic) column layout opened in 2.3 s. The tablet took 10.5 s for its 100 MB file, roughly 4–5 times longer, which is expected for a tablet processor. The files differ (about 133 bytes per row on the tablet, about 70 on the benchmark machine), so this is not a like-for-like comparison.
 
 ## Conclusions
 
 1. **CSV up to 150 MB works in desktop Chromium**: 2–5 s with no frozen screen. **On a real Android tablet, CSV files of 25, 50 and 100 MB opened in 3.1–10.5 s** with no lag, crashes or freezes. 150 MB has not been tried on a real device. Devices with less memory get a clear refusal, never a crash.
-2. **XLSX works up to about 50 MB of compressed single-sheet data** in desktop Chromium: about 18 s for 5M cells, with a responsive screen. Larger single-sheet files hit the browser's maximum string length (about 500 MB of sheet XML) and are refused with an explanation. Large multi-sheet files depend on available memory, because SheetJS decompresses the whole workbook.
-3. **XLS works for smaller files.** About 20 MB opens on desktop. Above about 40 MB the file is refused, because SheetJS parses every sheet (about 40 × the file size in memory), and the message advises saving as XLSX.
+2. **XLSX works up to about 50 MB of compressed single-sheet data** in desktop Chromium: about 18 s for 5M cells, with a responsive screen. **On the Android tablet, a 10 MB XLSX (144,000 rows) opened in 7.5 s; 25 and 50 MB files were refused safely.** Larger single-sheet files hit the browser's maximum string length (about 500 MB of sheet XML) and are refused with an explanation. Large multi-sheet files depend on available memory, because SheetJS decompresses the whole workbook.
+3. **XLS works for smaller files.** About 20 MB opens on desktop; on the Android tablet a 5 MB XLS opened in 1.6 s and a 20 MB XLS was refused safely. Above about 40 MB the file is refused, because SheetJS parses every sheet (about 40 × the file size in memory), and the message advises saving as XLSX.
 4. **On low-memory devices** the conservative budget refuses medium Excel files (10 MB XLSX and up at a 512 MB heap). That is safe but strict. Real-device Excel tests will show whether it can be relaxed.
 5. Supporting single-sheet XLSX files larger than about 90 MB, or opening big XLSX files on phones, would require a **streaming XLSX reader**. That would be a separate decision with accuracy trade-offs; it was not built (as agreed: measure first).
 
@@ -193,7 +229,8 @@ For context only: on the desktop Chromium benchmark machine, a 100 MB CSV with a
 |---|---|---|
 | Compare the SheetJS package's SHA-256 with an independent official download | SheetJS publishes no checksums, and its servers are blocked from this environment | Download `xlsx-0.20.3.tgz` again from `cdn.sheetjs.com` on any normal connection and check that its SHA-256 is `8dc73fc3b00203e72d176e85b50938627c7b086e607c682e8d3c22c02bb99fe8` |
 | ~~Real-device CSV testing on Android~~ | — | ✅ **PASSED** on an Android tablet: 25, 50 and 100 MB (see "Real Android Device Testing") |
-| **Real-device XLSX and XLS testing on Android** (required for Stage 2) | Only headless Chromium is available here | Open the Excel test files on the Android device and report each result (instructions provided separately) |
+| ~~Real-device XLSX and XLS testing on Android~~ | — | ✅ **PASSED**: all 8 Excel test files behaved correctly (see "Real Android Device Testing") |
+| On-device Cancel check | Not reported in the Excel test | Optional quick check: open 6-large-50mb.xlsx, tap Cancel while the bar moves, confirm "Processing cancelled", then open 1-features.xlsx |
 | Other devices and browsers (iPhone/iPad, Safari, Firefox, desktop browsers) | Not available here | Optional: repeat the CSV and Excel tests on any other device you can reach |
 | 150 MB CSV on a real device | Not tested | Optional: if you try one, report whether it opened or showed the "too large" message |
 | Files saved by Microsoft Excel itself | Not available here | Optionally, open a few real Excel files on the Error Detector page and check they look right |
