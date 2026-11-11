@@ -2,7 +2,7 @@
 
 **Date:** 11 November 2026
 
-**Status:** implemented; **not yet complete.** All automated tests pass. Waiting for real-device (Android tablet) testing with the Stage 3 test pack, and for the project owner's approval.
+**Status:** ✅ **COMPLETE.** Approved by the project owner on 11 November 2026. All automated tests pass, and all 5 test-pack files, "View affected data" and Cancel passed on the owner's Android tablet.
 
 ## Scope
 
@@ -95,7 +95,7 @@ These results come from the project owner's Android tablet, using the Vercel dep
 | 5-large-problems-50mb.csv (785,000 rows) | 7,850; 3,140; 1,963; 1,122; 873; 78 | **Exact match.** Opened in 6.3 s, checked in **10.5 s** | ✅ PASSED |
 | 1-problems.csv | 14 cards: 12 problems, 2 notes | **Exact match**, all 14 counts. Opened in 0.4 s. The new wording was confirmed on the device ("Most numbers here are written like +1 555 0101 0000", "It may be correct") | ✅ PASSED |
 | 2-problems.xlsx | 14 cards: 12 problems, 2 notes (inconsistent dates 2) | **Exact match**, all 14 counts. Opened in 0.8 s. Real Excel dates are recognised, and the formula error shows the fx marker | ✅ PASSED |
-| "View affected data" and Cancel | — | Not tested yet | — |
+| "View affected data" and Cancel | Filter to affected rows, then show all rows; stop a running check | Reported by the owner as working correctly (no screenshots) | ✅ PASSED |
 
 Two wording problems seen in the screenshots were fixed afterwards, with tests:
 - The phone-layout note now shows a real number in the usual layout (for example "Most numbers here are written like +1 555 0101 0000") instead of "+… … … …".
@@ -112,9 +112,8 @@ A column that looked empty in one screenshot was not a bug: the table had been s
 - After scanning a very wide file there can be one screen pause of about 100 ms while the results are drawn.
 - Real-device testing so far covers one Android tablet (see below). Phones, iOS, Safari and Firefox have not been tested.
 
-## Open items before Stage 3 can be marked complete
+## Approval
 
-| Item | Who |
-|---|---|
-| Android tablet: "View affected data" and Cancel (all 5 test files passed) | Project owner |
-| Owner review and approval | Project owner |
+All required tests passed, and the project owner approved Stage 3 on 11 November 2026.
+
+Next (Stage 4, plan awaiting approval): automatic fixing of the problems found here, manual cell editing, and downloading a new, clean file. The original file will still never be changed.
