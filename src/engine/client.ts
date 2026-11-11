@@ -89,6 +89,11 @@ export class EngineClient {
     return this.request<"scan">({ type: "scan", sheet, options }, onProgress);
   }
 
+  /** Stop running scans; the opened file stays loaded (unlike cancel()). */
+  abortScans(): Promise<null> {
+    return this.request<"abortScans">({ type: "abortScans" });
+  }
+
   getRows(sheet: string, query: RowQuery): Promise<RowPage> {
     return this.request<"getRows">({ type: "getRows", sheet, query });
   }

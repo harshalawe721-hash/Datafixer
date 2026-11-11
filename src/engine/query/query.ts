@@ -23,6 +23,18 @@ export interface RowQuery {
   sort?: SortSpec | null;
   /** Case-insensitive "contains" across all cells. */
   search?: string;
+  /** Error Detector: show only rows affected by this issue, with its cells flagged. */
+  issue?: string;
+}
+
+/** Row filter and cell flags supplied by the caller (e.g. an Error Detector issue). */
+export interface PageView {
+  /** mask[r] = 1 for rows to show. */
+  mask?: Uint8Array;
+  /** Cache key identifying the mask. */
+  maskKey?: string;
+  /** Is cell (r, c) flagged? */
+  flagged?: (r: number, c: number) => boolean;
 }
 
 export interface PageRow {
@@ -32,6 +44,8 @@ export interface PageRow {
   /** Columns (absolute indexes) of cells holding formulas / error values. */
   formulaColumns?: number[];
   errorColumns?: number[];
+  /** Columns (absolute indexes) of cells flagged by the active issue. */
+  flaggedColumns?: number[];
 }
 
 export interface RowPage {
@@ -158,14 +172,29 @@ export class SheetQuery {
     return result;
   }
 
-  getPage(q: RowQuery): RowPage {
+  /** Rows of `base` whose mask entry is set (cached per mask and sort). */
+  private masked(base: Uint32Array, mask: Uint8Array, cacheKey: string): Uint32Array {
+    if (this.maskCache?.key === cacheKey) return this.maskCache.rows;
+    const out = new Uint32Array(base.length);
+    let n = 0;
+    for (let i = 0; i < base.length; i++) if (mask[base[i]!]) out[n++] = base[i]!;
+    const rows = out.slice(0, n);
+    this.maskCache = { key: cacheKey, rows };
+    return rows;
+  }
+
+  private maskCache: { key: string; rows: Uint32Array } | null = null;
+
+  getPage(q: RowQuery, view: PageView = {}): RowPage {
     const sheet = this.sheet;
     const start = q.headerRow ? 1 : 0;
     const totalUnfiltered = Math.max(0, sheet.grid.rowCount - start);
     const sort = q.sort && q.sort.column >= 0 && q.sort.column < sheet.columnCount ? q.sort : null;
     let order = this.sorted(q.headerRow, sort);
+    const sortKey = `${start}:${sort?.column}:${sort?.direction}`;
+    if (view.mask) order = this.masked(order, view.mask, `${sortKey}:${view.maskKey}`);
     const search = (q.search ?? "").trim();
-    if (search) order = this.filtered(order, search, `${start}:${sort?.column}:${sort?.direction}:${search}`);
+    if (search) order = this.filtered(order, search, `${sortKey}:${view.mask ? view.maskKey : ""}:${search}`);
 
     const limit = Math.max(0, Math.min(q.limit, MAX_PAGE_ROWS));
     const offset = Math.max(0, Math.min(q.offset, order.length));
@@ -180,12 +209,14 @@ export class SheetQuery {
       const cells = new Array<string>(colEnd - colOffset);
       let formulaColumns: number[] | undefined;
       let errorColumns: number[] | undefined;
+      let flaggedColumns: number[] | undefined;
       for (let c = colOffset; c < colEnd; c++) {
+        if (view.flagged && view.flagged(r, c)) (flaggedColumns ??= []).push(c);
         cells[c - colOffset] = sheet.grid.display ? sheet.grid.display(r, c) : cellText(sheet.grid.get(r, c));
         if (hasFormulas && sheet.formulas.has(cellKey(r, c))) (formulaColumns ??= []).push(c);
         if (hasErrors && sheet.errors.has(cellKey(r, c))) (errorColumns ??= []).push(c);
       }
-      rows.push({ index: r, cells, formulaColumns, errorColumns });
+      rows.push({ index: r, cells, formulaColumns, errorColumns, flaggedColumns });
     }
 
     let header: string[] | null = null;

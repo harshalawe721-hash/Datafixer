@@ -10,20 +10,24 @@ import { useSpreadsheetEngine } from "./useSpreadsheetEngine";
 import { ProcessingProgress } from "./ProcessingProgress";
 import { FileSummary } from "./FileSummary";
 import { SpreadsheetPreview } from "./SpreadsheetPreview";
+import type { ToolApi } from "./tool-api";
+import type { ScanIssue } from "@/engine/scan/scan";
 
 /**
  * Upload → progress (with Cancel) → file summary + preview. Shared by the tools;
- * tool-specific panels (scan results, cleaning controls) plug in via children.
+ * tool-specific panels (scan results, cleaning controls) plug in via renderTool,
+ * shown between the file summary and the preview.
  */
 export function SpreadsheetWorkspace({
   accept,
-  children,
+  renderTool,
 }: {
   accept?: readonly string[];
-  /** Rendered below the preview once a file is open. */
-  children?: React.ReactNode;
+  renderTool?: (api: ToolApi) => React.ReactNode;
 }) {
-  const { state, open, selectSheet, cancel, reset, getRows } = useSpreadsheetEngine();
+  const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = useSpreadsheetEngine();
+  /** Column-names setting and the issue being viewed, reset for each file/sheet/separator. */
+  const [view, setView] = useState<{ key: string; headerRow: boolean; issue: ScanIssue | null }>({ key: "", headerRow: false, issue: null });
   const { peekPending, clearPending } = useFileHandoff();
   /** Large-file advisory from validation, shown while the file is open. */
   const [advisory, setAdvisory] = useState<string | null>(() => peekPending()?.warning ?? null);
@@ -102,6 +106,25 @@ export function SpreadsheetWorkspace({
 
   const { summary, file, format } = state;
   const stats = summary.sheetStats[summary.activeSheet];
+  const viewKey = `${file.name}:${file.size}:${file.lastModified}:${summary.activeSheet}:${summary.csv?.delimiter ?? ""}`;
+  // A different file, sheet or separator: start from the guessed header setting, no filter.
+  const current = view.key === viewKey ? view : { key: viewKey, headerRow: summary.headerGuess, issue: null };
+  if (current !== view) setView(current);
+
+  const api: ToolApi = {
+    summary,
+    viewKey,
+    sheetReady: Boolean(stats) && !summary.sheetError,
+    headerRow: current.headerRow,
+    scan: (options, onProgress) => scan(summary.activeSheet, options, onProgress),
+    abortScans,
+    viewIssue: (issue) => {
+      setView((v) => ({ ...v, issue }));
+      if (issue) requestAnimationFrame(() => document.getElementById("data-preview")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    },
+    activeIssueId: current.issue?.id ?? null,
+  };
+
   return (
     <div className="space-y-6">
       {advisoryNote}
@@ -117,15 +140,21 @@ export function SpreadsheetWorkspace({
             {summary.sheetError.message}
           </p>
         </Card>
-      ) : stats ? (
-        <SpreadsheetPreview
-          key={`${summary.activeSheet}:${summary.csv?.delimiter ?? ""}`}
-          sheet={summary.activeSheet}
-          getRows={getRows}
-          defaultHeaderRow={summary.headerGuess}
-        />
       ) : null}
-      {children}
+      {renderTool?.(api)}
+      {!summary.sheetError && stats ? (
+        <div id="data-preview" className="scroll-mt-20">
+          <SpreadsheetPreview
+            key={viewKey}
+            sheet={summary.activeSheet}
+            getRows={getRows}
+            headerRow={current.headerRow}
+            onHeaderRowChange={(headerRow) => setView((v) => ({ ...v, headerRow, issue: null }))}
+            issue={current.issue}
+            onClearIssue={() => setView((v) => ({ ...v, issue: null }))}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

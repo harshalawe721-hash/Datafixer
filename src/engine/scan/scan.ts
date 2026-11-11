@@ -307,7 +307,11 @@ export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promi
     }
     for (const v of visitors) {
       throwIfCancelled(options.cancel);
-      for (const f of await v.finish()) if (f.issue.count > 0) findings.push(f);
+      for (const f of await v.finish()) {
+        if (f.issue.count === 0) continue;
+        f.cells?.sort(); // row-major order, so "view affected data" can binary-search it
+        findings.push(f);
+      }
     }
     // Most serious first, then the most affected.
     findings.sort((a, b) => SEVERITY_ORDER[a.issue.severity] - SEVERITY_ORDER[b.issue.severity] || b.issue.count - a.issue.count);

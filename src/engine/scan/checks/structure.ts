@@ -237,7 +237,7 @@ export const missingCells: CheckFactory = (ctx) => {
       const cellArr = cells.toArray();
       const examples = Array.from(cellArr.slice(0, 5), (key) => {
         const { row, col } = splitCellKey(key);
-        return { row, col, value: "", note: ctx.profiles[col]?.name ?? `Column ${ctx.profiles[col]?.letter}` };
+        return { row, col, value: "" }; // the card already shows the column
       });
       return [
         {

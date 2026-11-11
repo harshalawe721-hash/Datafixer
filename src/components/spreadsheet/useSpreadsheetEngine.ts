@@ -6,6 +6,7 @@ import { EngineError } from "@/engine/errors";
 import type { OpenOptions } from "@/engine/protocol";
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
+import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 
 export type EngineState =
@@ -87,5 +88,14 @@ export function useSpreadsheetEngine() {
 
   const getRows = useCallback((sheet: string, query: RowQuery): Promise<RowPage> => client().getRows(sheet, query), [client]);
 
-  return { state, open, selectSheet, cancel, reset, getRows };
+  /** Run the Error Detector checks on a loaded sheet (read-only). */
+  const scan = useCallback(
+    (sheet: string, options: ScanOptions, onProgress?: (p: ProgressEvent) => void): Promise<ScanResult> => client().scan(sheet, options, onProgress),
+    [client],
+  );
+
+  /** Stop running scans without unloading the file. */
+  const abortScans = useCallback(() => void clientRef.current?.abortScans().catch(() => {}), []);
+
+  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans };
 }

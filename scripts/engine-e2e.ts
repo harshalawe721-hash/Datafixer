@@ -45,7 +45,8 @@ async function openFile(file: { name: string; mimeType: string; buffer: Buffer }
   await input().setInputFiles(file);
 }
 const opened = () => visible(page.getByText("Opened on your device"));
-const stat = async (label: string) => (await page.locator("dt", { hasText: new RegExp(`^${label}$`) }).locator("xpath=following-sibling::dd").textContent())?.trim();
+// The file summary is the first <dl> on the page (the scan results have their own).
+const stat = async (label: string) => (await page.locator("dl").first().locator("dt", { hasText: new RegExp(`^${label}$`) }).locator("xpath=following-sibling::dd").textContent())?.trim();
 const firstCell = (col = 0) => page.locator("tbody tr").first().locator("td").nth(col).textContent();
 
 // ---------------------------------------------------------------------------

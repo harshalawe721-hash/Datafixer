@@ -8,11 +8,12 @@
  */
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { EngineError } from "./errors.ts";
+import { cellKey } from "./types.ts";
 import type { CancelToken } from "./cancel.ts";
 import { parseCsv } from "./csv/parse-csv.ts";
 import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspect.ts";
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
-import { SheetQuery, guessHeaderRow, type RowPage, type RowQuery } from "./query/query.ts";
+import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
 import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
 import { runScan, type Finding, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
@@ -33,7 +34,17 @@ interface OpenState {
   memoryBudgetBytes: number | undefined;
   startedAt: number;
   /** Latest Error Detector scan (kept for "view affected data"). */
-  lastScan: { sheet: string; headerRow: boolean; ctx: ScanContext; result: ScanResult; findings: Finding[] } | null;
+  lastScan: {
+    sheet: string;
+    headerRow: boolean;
+    ctx: ScanContext;
+    result: ScanResult;
+    findings: Finding[];
+    /** Unique per scan (cache keys). */
+    seq: number;
+    /** Cached row mask for the issue being viewed. */
+    view?: { id: string; mask: Uint8Array | undefined };
+  } | null;
 }
 
 type Progress = (p: ProgressEvent) => void;
@@ -84,6 +95,7 @@ function csvWarnings(meta: CsvMeta): string[] {
 
 export class EngineCore {
   private state: OpenState | null = null;
+  private scanSeq = 0;
 
   close(): void {
     this.state = null;
@@ -216,7 +228,49 @@ export class EngineCore {
     const st = this.requireState();
     const entry = st.loaded.get(sheetName);
     if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
-    return entry.query.getPage(query);
+    return entry.query.getPage(query, this.issueView(sheetName, query.issue));
+  }
+
+  /**
+   * Row mask and cell flags for "view affected data". The mask is built once
+   * per issue (1 byte per row); flagged cells are found by binary search in the
+   * issue's sorted cell list, so only visible cells are looked up.
+   */
+  private issueView(sheetName: string, issueId: string | undefined): PageView {
+    const scan = this.state?.lastScan;
+    if (!issueId || !scan || scan.sheet !== sheetName) return {};
+    const f = scan.findings.find((x) => x.issue.id === issueId);
+    if (!f) throw new EngineError("internal", "That problem is no longer in the results. Please check the file again.");
+    if (scan.view?.id !== issueId) {
+      let mask: Uint8Array | undefined;
+      if (f.rows) {
+        mask = new Uint8Array(scan.ctx.rowCount);
+        for (const r of f.rows) mask[r] = 1;
+      }
+      scan.view = { id: issueId, mask };
+    }
+    const cells = f.cells;
+    const columns = f.columns ? new Set(f.columns) : null;
+    const flagged = cells
+      ? (r: number, c: number) => {
+          const key = cellKey(r, c);
+          let lo = 0;
+          let hi = cells.length - 1;
+          while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            const v = cells[mid]!;
+            if (v === key) return true;
+            if (v < key) lo = mid + 1;
+            else hi = mid - 1;
+          }
+          return false;
+        }
+      : columns
+        ? (r: number, c: number) => r >= scan.ctx.startRow && columns.has(c)
+        : f.rows
+          ? () => true // row-level issue (e.g. duplicates): the whole row is affected
+          : undefined;
+    return { mask: scan.view.mask, maskKey: `issue:${issueId}:${scan.seq}`, flagged };
   }
 
   /**
@@ -235,7 +289,7 @@ export class EngineCore {
       checks: ALL_CHECKS,
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
     });
-    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result, findings };
+    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result, findings, seq: ++this.scanSeq };
     return result;
   }
 

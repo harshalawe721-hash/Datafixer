@@ -53,6 +53,10 @@ Scanning is read-only, reports progress (phase `scanning`), and supports cancell
 
 Measured (Node 22, desktop): pass 1 over 1M rows × 6 columns takes about 1.0 s.
 
+**Checks (Steps 2–6):** duplicate rows, empty rows, empty columns, missing cells, extra spaces, inconsistent capitalization, numbers stored as text, inconsistent/impossible/ambiguous dates, invalid emails, invalid phone numbers (plus a note on phone layouts), unusual values (cautious, 3 × IQR), and formula errors. Each check keeps its affected rows (`Uint32Array`) and cells (sorted `Float64Array` of cell keys, capped at 1M) in the worker.
+
+**View affected data (Step 7):** `RowQuery.issue` filters the preview to the issue's rows, using a 1-byte-per-row mask cached per scan. Flagged cells are marked by binary search in the sorted cell list, so only visible cells are looked up. Filtering combines with search and sort. Scans can be stopped with the `abortScans` request, which uses a cooperative per-scan token, so the open file stays loaded. The page side is `components/tools/detector/` (`ScanPanel`, `IssueCard`); tool panels get a `ToolApi` from `SpreadsheetWorkspace`.
+
 ## Supported formats
 
 | Format | Status | Notes |

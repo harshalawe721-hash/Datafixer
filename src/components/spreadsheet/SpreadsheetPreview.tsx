@@ -1,39 +1,41 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Loader2, Search, X } from "lucide-react";
 import type { RowPage, RowQuery, SortSpec } from "@/engine/query/query";
 import { columnLetter } from "@/engine/query/query";
-import { cellKey } from "@/engine/types";
+import type { ScanIssue, Severity } from "@/engine/scan/scan";
 import { cn } from "@/lib/cn";
-
-export type HighlightTone = "danger" | "warning" | "primary";
 
 export interface SpreadsheetPreviewProps {
   sheet: string;
   /** Fetch a page of rows (from the engine worker). */
   getRows: (sheet: string, query: RowQuery) => Promise<RowPage>;
-  defaultHeaderRow: boolean;
-  /** Optional cell highlights keyed by cellKey(row, col), for later stages. */
-  highlights?: Map<number, HighlightTone>;
+  /** "First row contains column names" (controlled by the workspace). */
+  headerRow: boolean;
+  onHeaderRowChange: (headerRow: boolean) => void;
+  /** Error Detector issue being viewed: rows are filtered and its cells highlighted. */
+  issue?: ScanIssue | null;
+  onClearIssue?: () => void;
 }
 
 const PAGE_SIZES = [50, 100, 250, 500] as const;
 const COLUMN_WINDOW = 50;
 
-const toneClass: Record<HighlightTone, string> = {
-  danger: "bg-danger-soft text-danger",
-  warning: "bg-warning-soft",
-  primary: "bg-secondary",
+/** Highlight for cells flagged by the issue being viewed, by severity. */
+const flagClass: Record<Severity, string> = {
+  error: "bg-danger-soft text-danger outline outline-1 -outline-offset-1 outline-danger/50",
+  warning: "bg-warning-soft outline outline-1 -outline-offset-1 outline-warning/50",
+  note: "bg-secondary outline outline-1 -outline-offset-1 outline-primary/40",
 };
 
 /**
  * Reusable spreadsheet table. Rows are paged and columns are windowed, so the
  * DOM stays small for any file size; sorting and searching run in the worker.
  */
-export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlights }: SpreadsheetPreviewProps) {
+export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChange, issue = null, onClearIssue }: SpreadsheetPreviewProps) {
   const id = useId();
-  const [headerRow, setHeaderRow] = useState(defaultHeaderRow);
+  const issueId = issue?.id;
   const [pageSize, setPageSize] = useState<number>(100);
   const [page, setPage] = useState(0);
   const [colStart, setColStart] = useState(0);
@@ -55,9 +57,16 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  // Back to the first page whenever the filter changes.
+  const [lastIssue, setLastIssue] = useState(issueId);
+  if (issueId !== lastIssue) {
+    setLastIssue(issueId);
+    setPage(0);
+  }
+
   const query = useMemo<RowQuery>(
-    () => ({ offset: page * pageSize, limit: pageSize, columnOffset: colStart, columnLimit: COLUMN_WINDOW, headerRow, sort, search }),
-    [page, pageSize, colStart, headerRow, sort, search],
+    () => ({ offset: page * pageSize, limit: pageSize, columnOffset: colStart, columnLimit: COLUMN_WINDOW, headerRow, sort, search, issue: issueId }),
+    [page, pageSize, colStart, headerRow, sort, search, issueId],
   );
 
   useEffect(() => {
@@ -87,7 +96,7 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [page, pageSize, sort, search, headerRow]);
+  }, [page, pageSize, sort, search, headerRow, issueId]);
 
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -126,7 +135,7 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
               type="checkbox"
               checked={headerRow}
               onChange={(e) => {
-                setHeaderRow(e.target.checked);
+                onHeaderRowChange(e.target.checked);
                 setPage(0);
                 setSort(null);
               }}
@@ -153,6 +162,23 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
           </label>
         </div>
       </div>
+
+      {issue && (
+        <div className="flex flex-col gap-2 border-b border-line bg-surface-muted px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
+          <p className="flex items-start gap-2">
+            <Filter className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+            <span>
+              Showing {data ? `${data.total.toLocaleString("en-US")} ` : ""}
+              {data?.total === 1 ? "row" : "rows"} affected by <strong>{issue.title}</strong>. Highlighted cells show where.
+            </span>
+          </p>
+          {onClearIssue && (
+            <button type="button" onClick={onClearIssue} className="inline-flex h-9 shrink-0 items-center gap-1 self-start rounded-lg border border-line-strong bg-surface px-3 font-medium hover:bg-surface-muted sm:self-auto">
+              <X className="size-4" aria-hidden="true" /> Show all rows
+            </button>
+          )}
+        </div>
+      )}
 
       {error ? (
         <p role="alert" className="m-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
@@ -218,7 +244,7 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
                     </th>
                     {row.cells.map((value, i) => {
                       const col = colStart + i;
-                      const tone = highlights?.get(cellKey(row.index, col));
+                      const flagged = issue && row.flaggedColumns?.includes(col);
                       const isError = row.errorColumns?.includes(col);
                       const isFormula = row.formulaColumns?.includes(col);
                       return (
@@ -227,7 +253,7 @@ export function SpreadsheetPreview({ sheet, getRows, defaultHeaderRow, highlight
                           title={value.length > 40 ? value : undefined}
                           className={cn(
                             "max-w-64 truncate border-r border-b border-line px-3 py-1.5 whitespace-pre group-hover:bg-surface-muted/60",
-                            tone && toneClass[tone],
+                            flagged && flagClass[issue.severity],
                             isError && "font-medium text-danger",
                           )}
                         >

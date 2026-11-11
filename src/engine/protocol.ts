@@ -17,6 +17,8 @@ export type EngineRequest =
   | { id: number; type: "loadSheet"; sheet: string }
   | { id: number; type: "getRows"; sheet: string; query: RowQuery }
   | { id: number; type: "scan"; sheet: string; options: ScanOptions }
+  /** Stop running scans (cooperatively, between batches); the open file is kept. */
+  | { id: number; type: "abortScans" }
   | { id: number; type: "close" };
 
 export interface EngineResults {
@@ -24,6 +26,7 @@ export interface EngineResults {
   loadSheet: WorkbookSummary;
   getRows: RowPage;
   scan: ScanResult;
+  abortScans: null;
   close: null;
 }
 

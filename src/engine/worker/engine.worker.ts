@@ -15,6 +15,8 @@ declare const self: DedicatedWorkerGlobalScope;
 
 const core = new EngineCore();
 const token = { cancelled: false };
+/** One cancel token per running scan, so a scan can be stopped without losing the open file. */
+const scanTokens = new Set<{ cancelled: boolean }>();
 
 function post(msg: EngineResponse) {
   self.postMessage(msg);
@@ -40,8 +42,19 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
       case "loadSheet":
         result = await core.loadSheet(req.sheet, onProgress, token);
         break;
-      case "scan":
-        result = await core.scan(req.sheet, req.options, onProgress, token);
+      case "scan": {
+        const scanToken = { cancelled: false };
+        scanTokens.add(scanToken);
+        try {
+          result = await core.scan(req.sheet, req.options, onProgress, scanToken);
+        } finally {
+          scanTokens.delete(scanToken);
+        }
+        break;
+      }
+      case "abortScans":
+        for (const t of scanTokens) t.cancelled = true;
+        result = null;
         break;
       case "getRows":
         result = core.getRows(req.sheet, req.query);

@@ -24,10 +24,13 @@ export function ProcessingProgress({
 }: {
   fileName: string;
   progress: ProgressEvent | null;
-  startedAt: number;
+  /** When the work started; defaults to when this progress bar appeared. */
+  startedAt?: number;
   onCancel: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const [mountedAt] = useState(() => Date.now());
+  const start = startedAt ?? mountedAt;
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
@@ -36,7 +39,7 @@ export function ProcessingProgress({
   const fraction =
     progress && progress.loaded !== null && progress.total ? Math.min(1, progress.loaded / progress.total) : null;
   const pct = fraction === null ? null : Math.round(fraction * 100);
-  const seconds = Math.max(0, Math.round((now - startedAt) / 1000));
+  const seconds = Math.max(0, Math.round((now - start) / 1000));
 
   return (
     <Card>
