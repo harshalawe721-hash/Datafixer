@@ -15,7 +15,7 @@ import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type RowPage, type RowQuery } from "./query/query.ts";
 import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
-import { runScan, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
+import { runScan, type Finding, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
 import { ALL_CHECKS } from "./scan/checks/index.ts";
 
 interface OpenState {
@@ -33,7 +33,7 @@ interface OpenState {
   memoryBudgetBytes: number | undefined;
   startedAt: number;
   /** Latest Error Detector scan (kept for "view affected data"). */
-  lastScan: { sheet: string; headerRow: boolean; ctx: ScanContext; result: ScanResult } | null;
+  lastScan: { sheet: string; headerRow: boolean; ctx: ScanContext; result: ScanResult; findings: Finding[] } | null;
 }
 
 type Progress = (p: ProgressEvent) => void;
@@ -228,14 +228,14 @@ export class EngineCore {
     const entry = st.loaded.get(sheetName);
     if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
     st.lastScan = null; // release the previous scan's caches first
-    const { result, ctx } = await runScan(entry.sheet, {
+    const { result, ctx, findings } = await runScan(entry.sheet, {
       headerRow: options.headerRow,
       cancel,
       memoryBudgetBytes: st.memoryBudgetBytes,
       checks: ALL_CHECKS,
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
     });
-    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result };
+    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result, findings };
     return result;
   }
 

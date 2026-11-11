@@ -80,6 +80,20 @@ export interface ScanResult {
   timings: { profileMs: number; checksMs: number; totalMs: number };
 }
 
+/**
+ * A check's result: the issue summary sent to the page, plus the affected
+ * rows/cells kept in the worker for "view affected data".
+ */
+export interface Finding {
+  issue: ScanIssue;
+  /** Affected sheet rows, ascending. */
+  rows?: Uint32Array;
+  /** Affected cells as cellKey(row, col), capped (see hits.ts). */
+  cells?: Float64Array;
+  /** Affected columns (column-level issues). */
+  columns?: number[];
+}
+
 /** Shared, read-only data for all checks. */
 export interface ScanContext {
   sheet: SheetModel;
@@ -109,7 +123,8 @@ export interface CellVisitor {
   cell(r: number, c: number, cat: number, value: CellValue): void;
   /** Called after the last cell of each data row. */
   endRow?(r: number, length: number): void;
-  finish(): ScanIssue[];
+  /** Called once after all rows; may read the grid again (e.g. to verify duplicates). */
+  finish(): Finding[] | Promise<Finding[]>;
 }
 
 export type CheckFactory = (ctx: ScanContext) => CellVisitor;
@@ -122,6 +137,8 @@ export interface ScanRunOptions extends ScanOptions {
   /** Checks to run in pass 2 (Steps 2–6 add them). */
   checks?: CheckFactory[];
 }
+
+const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, note: 2 };
 
 /** Rows per batch between progress reports / cancellation checks. */
 const BATCH_ROWS = 8192;
@@ -161,7 +178,7 @@ function cellDisplay(sheet: SheetModel, r: number, c: number, v: CellValue): str
   return v === null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
 }
 
-export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promise<{ result: ScanResult; ctx: ScanContext }> {
+export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promise<{ result: ScanResult; ctx: ScanContext; findings: Finding[] }> {
   const t0 = Date.now();
   const grid = sheet.grid;
   const startRow = options.headerRow && grid.rowCount > 0 ? 1 : 0;
@@ -269,7 +286,7 @@ export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promi
   const ctx: ScanContext = { sheet, headerRow: startRow === 1, startRow, rowCount, columnCount, cats, rowStart, profiles };
 
   // ---- pass 2: checks ---------------------------------------------------
-  const issues: ScanIssue[] = [];
+  const findings: Finding[] = [];
   if (checks.length > 0) {
     const visitors = checks.map((make) => make(ctx));
     for (let i = 0; i < dataRows; i++) {
@@ -288,8 +305,14 @@ export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promi
         await yieldToEventLoop();
       }
     }
-    for (const v of visitors) issues.push(...v.finish());
+    for (const v of visitors) {
+      throwIfCancelled(options.cancel);
+      for (const f of await v.finish()) if (f.issue.count > 0) findings.push(f);
+    }
+    // Most serious first, then the most affected.
+    findings.sort((a, b) => SEVERITY_ORDER[a.issue.severity] - SEVERITY_ORDER[b.issue.severity] || b.issue.count - a.issue.count);
   }
+  const issues = findings.map((f) => f.issue);
   throwIfCancelled(options.cancel);
   options.onProgress?.(totalWork, totalWork);
   const tEnd = Date.now();
@@ -304,7 +327,7 @@ export async function runScan(sheet: SheetModel, options: ScanRunOptions): Promi
     issues,
     timings: { profileMs: tProfile - t0, checksMs: tEnd - tProfile, totalMs: tEnd - t0 },
   };
-  return { result, ctx };
+  return { result, ctx, findings };
 }
 
 export { isNumberLike, isDateLike };

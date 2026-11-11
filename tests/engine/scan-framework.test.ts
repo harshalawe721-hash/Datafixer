@@ -142,7 +142,7 @@ test("pass 2: every check sees every stored cell once, rows in order", async () 
   const check: CheckFactory = () => ({
     cell: (r, c, cat, v) => seen.push(`${r}:${c}:${cat}:${v}`),
     endRow: (r) => rowsEnded.push(r),
-    finish: () => [{ id: "t", severity: "note", title: "t", count: seen.length, unit: "cells", explanation: "", howToFix: "" }],
+    finish: () => [{ issue: { id: "t", severity: "note", title: "t", count: seen.length, unit: "cells", explanation: "", howToFix: "" } }],
   });
   const { result } = await runScan(sheet, { headerRow: true, checks: [check, check] });
   assert.deepEqual(rowsEnded, [1, 1, 2, 2, 3, 3]);

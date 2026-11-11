@@ -3,5 +3,12 @@
  * Each Stage 3 step adds its checks here.
  */
 import type { CheckFactory } from "../scan.ts";
+import { duplicateRows, emptyColumns, emptyRows, missingCells } from "./structure.ts";
 
-export const ALL_CHECKS: CheckFactory[] = [];
+export const ALL_CHECKS: CheckFactory[] = [
+  // Step 2: structure (A–D)
+  duplicateRows,
+  emptyRows,
+  emptyColumns,
+  missingCells,
+];
