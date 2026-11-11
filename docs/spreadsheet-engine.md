@@ -42,6 +42,17 @@ Tool logic that needs every cell runs **inside the worker** and reads cells thro
 
 The preview already takes `highlights` (cell key to tone) for marking affected cells.
 
+## Error Detector scan (Stage 3, in progress)
+
+`src/engine/scan/` runs **two passes** over a loaded sheet, however many checks exist, so scanning stays fast on low-end devices:
+
+1. **Pass 1** (`scan.ts` + `classify.ts`): every cell is classified once into a 1-byte category: empty, blank, number, numeric text, formatted number, Excel date, text date (with its pattern), boolean, error or text. Each column gets a profile: counts, kind (a family must cover at least 80% of the typed values), leading-zero count, text-date patterns and examples. The category cache costs 1 byte per cell plus 4 bytes per row, and is checked against the memory budget before it is allocated.
+2. **Pass 2:** every registered check (`scan/checks/index.ts`) sees each cell once, with its cached category, then reports `ScanIssue`s. Steps 2–6 add the checks.
+
+Scanning is read-only, reports progress (phase `scanning`), and supports cancellation. The worker request is `scan`; the client method is `EngineClient.scan(sheet, { headerRow })`. The latest scan is kept in the worker for "view affected data", and is released when another sheet or file is loaded.
+
+Measured (Node 22, desktop): pass 1 over 1M rows × 6 columns takes about 1.0 s.
+
 ## Supported formats
 
 | Format | Status | Notes |

@@ -13,6 +13,7 @@ import type { EngineRequest, EngineResponse, EngineResults, OpenOptions } from "
 import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
+import type { ScanOptions, ScanResult } from "./scan/scan";
 
 type Pending = {
   resolve: (v: unknown) => void;
@@ -81,6 +82,11 @@ export class EngineClient {
 
   loadSheet(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {
     return this.request<"loadSheet">({ type: "loadSheet", sheet }, onProgress);
+  }
+
+  /** Run the Error Detector checks on a loaded sheet (read-only). */
+  scan(sheet: string, options: ScanOptions, onProgress?: (p: ProgressEvent) => void): Promise<ScanResult> {
+    return this.request<"scan">({ type: "scan", sheet, options }, onProgress);
   }
 
   getRows(sheet: string, query: RowQuery): Promise<RowPage> {

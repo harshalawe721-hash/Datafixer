@@ -27,6 +27,8 @@ export interface CellGrid {
    * back to the raw value.
    */
   display?(r: number, c: number): string;
+  /** True when a numeric cell is formatted as a date/time (Excel). */
+  isDate?(r: number, c: number): boolean;
   /** Approximate bytes used, for memory budgeting. */
   readonly approxBytes: number;
 }
@@ -190,6 +192,9 @@ export class WorkbookGrid implements CellGrid {
   private readonly formatIds: (Uint16Array | undefined)[];
   private readonly formats: string[];
   private readonly formatter: NumberFormatter | null;
+  private readonly dateTester: ((format: string) => boolean) | null;
+  /** Per format id: 0 = not computed, 1 = date format, 2 = not a date format. */
+  private readonly dateCache: Uint8Array;
   readonly approxBytes: number;
 
   constructor(
@@ -198,12 +203,31 @@ export class WorkbookGrid implements CellGrid {
     formats: string[],
     formatter: NumberFormatter | null,
     approxBytes: number,
+    dateTester: ((format: string) => boolean) | null = null,
   ) {
     this.rows = rows;
     this.formatIds = formatIds;
     this.formats = formats;
     this.formatter = formatter;
     this.approxBytes = approxBytes;
+    this.dateTester = dateTester;
+    this.dateCache = new Uint8Array(formats.length);
+  }
+
+  isDate(r: number, c: number): boolean {
+    const id = this.formatIds[r]?.[c] ?? 0;
+    if (id === 0 || !this.dateTester || typeof this.get(r, c) !== "number") return false;
+    let cached = this.dateCache[id];
+    if (!cached) {
+      let isDate = false;
+      try {
+        isDate = this.dateTester(this.formats[id] ?? "");
+      } catch {
+        isDate = false;
+      }
+      cached = this.dateCache[id] = isDate ? 1 : 2;
+    }
+    return cached === 1;
   }
   get rowCount() {
     return this.rows.length;

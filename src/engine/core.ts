@@ -15,6 +15,8 @@ import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type RowPage, type RowQuery } from "./query/query.ts";
 import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
+import { runScan, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
+import { ALL_CHECKS } from "./scan/checks/index.ts";
 
 interface OpenState {
   file: Blob;
@@ -30,6 +32,8 @@ interface OpenState {
   sheetWarnings: string[];
   memoryBudgetBytes: number | undefined;
   startedAt: number;
+  /** Latest Error Detector scan (kept for "view affected data"). */
+  lastScan: { sheet: string; headerRow: boolean; ctx: ScanContext; result: ScanResult } | null;
 }
 
 type Progress = (p: ProgressEvent) => void;
@@ -112,6 +116,7 @@ export class EngineCore {
         sheetWarnings: [],
         memoryBudgetBytes: options.memoryBudgetBytes,
         startedAt,
+        lastScan: null,
       };
       return this.summary();
     }
@@ -148,6 +153,7 @@ export class EngineCore {
       sheetWarnings: [],
       memoryBudgetBytes: options.memoryBudgetBytes,
       startedAt,
+      lastScan: null,
     };
     if (first) await this.loadSheet(first.name, onProgress, cancel);
     else if (format === "xls") {
@@ -183,6 +189,7 @@ export class EngineCore {
     const st = this.requireState();
     if (st.format === "csv") return;
     st.loaded.clear(); // release the previously loaded sheet before parsing the next one
+    st.lastScan = null;
     st.sheetWarnings = [];
     st.sheetError = null;
     try {
@@ -210,6 +217,26 @@ export class EngineCore {
     const entry = st.loaded.get(sheetName);
     if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
     return entry.query.getPage(query);
+  }
+
+  /**
+   * Error Detector scan of a loaded sheet. Read-only: data is never changed.
+   * The scan context is kept (replacing any previous one) for later views.
+   */
+  async scan(sheetName: string, options: ScanOptions, onProgress: Progress, cancel?: CancelToken): Promise<ScanResult> {
+    const st = this.requireState();
+    const entry = st.loaded.get(sheetName);
+    if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
+    st.lastScan = null; // release the previous scan's caches first
+    const { result, ctx } = await runScan(entry.sheet, {
+      headerRow: options.headerRow,
+      cancel,
+      memoryBudgetBytes: st.memoryBudgetBytes,
+      checks: ALL_CHECKS,
+      onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
+    });
+    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result };
+    return result;
   }
 
   /** Access for future tools (scanners, cleaners) running inside the worker. */

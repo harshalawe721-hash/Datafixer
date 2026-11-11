@@ -321,6 +321,7 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
     formatTable,
     (fmt, value) => SSF.format(fmt, value, { date1904 }),
     rows.length * 64 + cells * 16 + stringChars * 2,
+    (fmt) => SSF.is_date(fmt),
   );
   // Use the sheet's declared used range too (e.g. a merged range ending in empty cells).
   const ref = typeof ws?.["!ref"] === "string" ? XLSX.utils.decode_range(ws["!ref"] as string) : null;

@@ -3,6 +3,7 @@ import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
+import type { ScanOptions, ScanResult } from "./scan/scan.ts";
 
 export interface OpenOptions {
   delimiter?: string;
@@ -15,12 +16,14 @@ export type EngineRequest =
   | { id: number; type: "open"; file: File; format: SpreadsheetFormat; options?: OpenOptions }
   | { id: number; type: "loadSheet"; sheet: string }
   | { id: number; type: "getRows"; sheet: string; query: RowQuery }
+  | { id: number; type: "scan"; sheet: string; options: ScanOptions }
   | { id: number; type: "close" };
 
 export interface EngineResults {
   open: WorkbookSummary;
   loadSheet: WorkbookSummary;
   getRows: RowPage;
+  scan: ScanResult;
   close: null;
 }
 

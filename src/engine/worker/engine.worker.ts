@@ -40,6 +40,9 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
       case "loadSheet":
         result = await core.loadSheet(req.sheet, onProgress, token);
         break;
+      case "scan":
+        result = await core.scan(req.sheet, req.options, onProgress, token);
+        break;
       case "getRows":
         result = core.getRows(req.sheet, req.query);
         break;

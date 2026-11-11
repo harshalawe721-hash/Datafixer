@@ -146,7 +146,7 @@ export interface WorkbookSummary {
 }
 
 export interface ProgressEvent {
-  phase: "reading" | "inspecting" | "parsing" | "indexing";
+  phase: "reading" | "inspecting" | "parsing" | "indexing" | "scanning";
   /** Bytes or rows processed; null when the step cannot report a fraction. */
   loaded: number | null;
   total: number | null;
