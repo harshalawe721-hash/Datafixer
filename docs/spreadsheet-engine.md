@@ -69,6 +69,8 @@ Measured (Node 22, desktop): pass 1 over 1M rows × 6 columns takes about 1.0 s.
 
 Measured (Node 22, desktop, 1M rows × 6 columns): a full scan takes 3.5 s on the original data, 3.8 s on an edited view with a few changes or 10,000 deleted rows, and 4.9 s with 200,000 edited cells. Applying 200,000 cell edits takes 0.3 s.
 
+**Safe fixes (Step 2, `src/engine/fix/fixes.ts`):** extra spaces, duplicate rows, empty rows, empty columns and numbers stored as text. `planFix` works out the changes on the current view and returns a preview plus a change request. `EngineCore.previewFix` keeps the request with a token, and `applyFix(token)` applies exactly that preview. It is refused (`stale-preview`) if anything changed in between. The fixes reuse the checks' classification and shared helpers (`rowFingerprints`, `duplicateGroups`, `emptyColumnProfiles`, the `numbersAsText` check), so they change exactly what the Error Detector reports. Formula cells are never changed, and rows or columns containing formulas are never removed; both are listed in the preview as skipped. Number conversion only handles values with one clear meaning, and anything else is skipped with the reason. CSV values stay text (`"1250"`), while Excel values become real numbers. Large changes are passed compactly (`cellKeys` + `cellValues`).
+
 Limitation: only one Excel sheet is held in memory at a time (Stage 2). Switching sheets therefore discards that sheet's edits. The UI must warn before switching (`hasEdits()`).
 
 ## Supported formats

@@ -22,6 +22,9 @@ export interface ChangeRequest {
   /** Label shown in the history, e.g. "Remove extra spaces". */
   label: string;
   cells?: { row: number; col: number; value: CellValue }[];
+  /** Compact form for large changes: view cell keys (cellKey(row, col)) and their new values. */
+  cellKeys?: Float64Array;
+  cellValues?: CellValue[];
   deleteRows?: { row: number; reason: string }[];
   deleteColumns?: { col: number; reason: string }[];
 }
@@ -289,12 +292,20 @@ export class EditSession {
 
     // Cells (last value wins if a cell is listed twice).
     const byKey = new Map<number, CellValue>();
-    for (const cell of req.cells ?? []) {
-      if (!Number.isInteger(cell.row) || !Number.isInteger(cell.col) || cell.col < 0 || cell.col >= view.columnCount) {
-        throw new EngineError("invalid-edit", `Cell ${columnLetter(Math.max(0, cell.col))}${cell.row + 1} doesn't exist.`);
+    const add = (vr: number, vc: number, value: CellValue) => {
+      if (!Number.isInteger(vr) || !Number.isInteger(vc) || vc < 0 || vc >= view.columnCount) {
+        throw new EngineError("invalid-edit", `Cell ${columnLetter(Math.max(0, vc))}${vr + 1} doesn't exist.`);
       }
-      const { row, col } = this.toBase(cell.row, cell.col);
-      byKey.set(cellKey(row, col), cell.value);
+      const { row, col } = this.toBase(vr, vc);
+      byKey.set(cellKey(row, col), value);
+    };
+    for (const cell of req.cells ?? []) add(cell.row, cell.col, cell.value);
+    if (req.cellKeys) {
+      if (!req.cellValues || req.cellValues.length !== req.cellKeys.length) throw new EngineError("internal", "Change has mismatched cells and values.");
+      for (let i = 0; i < req.cellKeys.length; i++) {
+        const { row, col } = splitCellKey(req.cellKeys[i]!);
+        add(row, col, req.cellValues[i]!);
+      }
     }
     const keys: number[] = [];
     const values: CellValue[] = [];

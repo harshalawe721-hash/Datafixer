@@ -50,6 +50,67 @@ export function rowsEqual(ctx: ScanContext, r1: number, r2: number): boolean {
   return true;
 }
 
+/** Mix one non-blank cell into a row fingerprint: column index + type tag + value, so ["a","","b"] ≠ ["a","b"] and 1 ≠ "1". */
+function mixCell(h: number, c: number, v: CellValue): number {
+  h = Math.imul(h ^ (c + 1), FNV_PRIME);
+  h = Math.imul(h ^ (typeof v === "number" ? 0x6e : typeof v === "boolean" ? 0x62 : 0x73), FNV_PRIME);
+  h = fnvString(h, String(v));
+  return Math.imul(h ^ 0x1f, FNV_PRIME);
+}
+
+/** Fingerprints of every data row (used by the duplicate fix; the check computes them while streaming). */
+export function rowFingerprints(ctx: ScanContext): { hashes: Uint32Array; hasValue: Uint8Array } {
+  const dataRows = ctx.rowStart.length - 1;
+  const hashes = new Uint32Array(dataRows);
+  const hasValue = new Uint8Array(dataRows);
+  const g = ctx.sheet.grid;
+  for (let i = 0; i < dataRows; i++) {
+    const r = i + ctx.startRow;
+    let h = FNV_OFFSET;
+    let any = false;
+    const len = ctx.rowStart[i + 1]! - ctx.rowStart[i]!;
+    for (let c = 0; c < len; c++) {
+      if (isBlankCat(cellCat(ctx, r, c))) continue;
+      any = true;
+      h = mixCell(h, c, g.get(r, c));
+    }
+    hashes[i] = h >>> 0;
+    hasValue[i] = any ? 1 : 0;
+  }
+  return { hashes, hasValue };
+}
+
+/**
+ * Groups of identical rows (each with 2+ members, sorted by first row): rows are
+ * grouped by fingerprint, then every match is confirmed cell by cell.
+ */
+export function duplicateGroups(ctx: ScanContext, hashes: Uint32Array, hasValue: Uint8Array): { first: number; members: number[] }[] {
+  const dataRows = hashes.length;
+  let m = 0;
+  for (let i = 0; i < dataRows; i++) if (hasValue[i]) m++;
+  const order = new Uint32Array(m);
+  for (let i = 0, k = 0; i < dataRows; i++) if (hasValue[i]) order[k++] = i;
+  order.sort((a, b) => hashes[a]! - hashes[b]! || a - b);
+  const out: { first: number; members: number[] }[] = [];
+  for (let s = 0; s < m; ) {
+    let e = s + 1;
+    while (e < m && hashes[order[e]!] === hashes[order[s]!]) e++;
+    if (e - s > 1) {
+      // Partition this fingerprint bucket into truly identical groups (handles collisions).
+      const reps: { first: number; members: number[] }[] = [];
+      for (let k = s; k < e; k++) {
+        const row = order[k]! + ctx.startRow;
+        const g = reps.find((x) => rowsEqual(ctx, x.first, row));
+        if (g) g.members.push(row);
+        else reps.push({ first: row, members: [row] });
+      }
+      for (const g of reps) if (g.members.length > 1) out.push(g);
+    }
+    s = e;
+  }
+  return out.sort((a, b) => a.first - b.first);
+}
+
 export const duplicateRows: CheckFactory = (ctx) => {
   const dataRows = ctx.rowStart.length - 1;
   const hashes = new Uint32Array(dataRows);
@@ -60,11 +121,7 @@ export const duplicateRows: CheckFactory = (ctx) => {
     cell(r, c, cat, v) {
       if (isBlankCat(cat)) return;
       any = true;
-      // Column index + type tag + value, so ["a","","b"] ≠ ["a","b"] and 1 ≠ "1".
-      h = Math.imul(h ^ (c + 1), FNV_PRIME);
-      h = Math.imul(h ^ (typeof v === "number" ? 0x6e : typeof v === "boolean" ? 0x62 : 0x73), FNV_PRIME);
-      h = fnvString(h, String(v));
-      h = Math.imul(h ^ 0x1f, FNV_PRIME);
+      h = mixCell(h, c, v);
     },
     endRow(r) {
       const i = r - ctx.startRow;
@@ -74,40 +131,17 @@ export const duplicateRows: CheckFactory = (ctx) => {
       any = false;
     },
     finish(): Finding[] {
-      // Group rows by fingerprint, then confirm every match cell by cell.
-      let m = 0;
-      for (let i = 0; i < dataRows; i++) if (hasValue[i]) m++;
-      const order = new Uint32Array(m);
-      for (let i = 0, k = 0; i < dataRows; i++) if (hasValue[i]) order[k++] = i;
-      order.sort((a, b) => hashes[a]! - hashes[b]! || a - b);
-
       const affected: number[] = [];
       const examples: Finding["issue"]["examples"] = [];
       let extraCopies = 0;
       let groups = 0;
-      for (let s = 0; s < m; ) {
-        let e = s + 1;
-        while (e < m && hashes[order[e]!] === hashes[order[s]!]) e++;
-        if (e - s > 1) {
-          // Partition this fingerprint bucket into truly identical groups (handles collisions).
-          const reps: { first: number; members: number[] }[] = [];
-          for (let k = s; k < e; k++) {
-            const row = order[k]! + ctx.startRow;
-            const g = reps.find((x) => rowsEqual(ctx, x.first, row));
-            if (g) g.members.push(row);
-            else reps.push({ first: row, members: [row] });
-          }
-          for (const g of reps) {
-            if (g.members.length < 2) continue;
-            groups++;
-            extraCopies += g.members.length - 1;
-            for (const row of g.members) affected.push(row);
-            for (const row of g.members.slice(1)) {
-              if (examples.length < 5) examples.push({ row, col: 0, value: displayOf(ctx, row, 0), note: `Same as row ${g.first + 1}` });
-            }
-          }
+      for (const g of duplicateGroups(ctx, hashes, hasValue)) {
+        groups++;
+        extraCopies += g.members.length - 1;
+        for (const row of g.members) affected.push(row);
+        for (const row of g.members.slice(1)) {
+          if (examples.length < 5) examples.push({ row, col: 0, value: displayOf(ctx, row, 0), note: `Same as row ${g.first + 1}` });
         }
-        s = e;
       }
       affected.sort((a, b) => a - b);
       examples.sort((a, b) => a.row - b.row);
@@ -168,15 +202,20 @@ export const emptyRows: CheckFactory = () => {
 
 // ---------------------------------------------------------------- C: empty columns
 
+/** Columns with no data in any data row (shared by the check and the fix). */
+export function emptyColumnProfiles(ctx: ScanContext): ColumnProfile[] {
+  if (ctx.rowStart.length - 1 === 0) return []; // no data rows: nothing to judge
+  // Cautious: a column covered by a header cell merged across columns (e.g. one
+  // wide title over H:I) reads as part of that heading, so it isn't reported.
+  const underMergedHeader = (c: number) =>
+    ctx.headerRow && ctx.sheet.merges.some((m) => m.startRow <= 0 && m.endRow >= 0 && c > m.startCol && c <= m.endCol);
+  return ctx.profiles.filter((p) => p.nonEmpty === 0 && !underMergedHeader(p.index));
+}
+
 export const emptyColumns: CheckFactory = (ctx) => ({
   cell() {},
   finish(): Finding[] {
-    if (ctx.rowStart.length - 1 === 0) return []; // no data rows: nothing to judge
-    // Cautious: a column covered by a header cell merged across columns (e.g. one
-    // wide title over H:I) reads as part of that heading, so it isn't reported.
-    const underMergedHeader = (c: number) =>
-      ctx.headerRow && ctx.sheet.merges.some((m) => m.startRow <= 0 && m.endRow >= 0 && c > m.startCol && c <= m.endCol);
-    const empty = ctx.profiles.filter((p) => p.nonEmpty === 0 && !underMergedHeader(p.index));
+    const empty = emptyColumnProfiles(ctx);
     if (empty.length === 0) return [];
     const named = empty.filter((p) => p.name);
     return [

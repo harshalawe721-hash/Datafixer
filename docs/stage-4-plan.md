@@ -207,7 +207,15 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | Step | Status | Commit summary |
 |---|---|---|
 | 1 | ✅ Done: change layer, edited view, Undo/Redo, history data. 21 new unit tests. Stages 1–3 tests still pass | `src/engine/edit/`, `EngineCore` editing methods |
-| 2–8 | Not started | — |
+| 2 | ✅ Done: five safe fixes with preview (spaces, duplicates, empty rows, empty columns, numbers stored as text). Formula cells skipped. 24 new unit tests. On the 25 MB and 50 MB test-pack files every preview count matched the detector exactly (439/3,950 and 873/7,850) | `src/engine/fix/fixes.ts`, `EngineCore.previewFix` / `applyFix` |
+| 3–8 | Not started | — |
+
+### Decisions made while building (for owner review)
+
+- **Number conversion** converts only values with one clear meaning: plain numbers, `'45`, `1,234.56` (unless the column also uses decimal commas), and a leading currency sign (`$12` → 12). Percentages, accounting brackets, trailing minus signs, space separators, decimal commas and numbers with more than 15 digits are skipped and listed in the preview with the reason.
+- **CSV files have no cell types,** so converted values are written as plain number text (`1250`). Excel files get real numbers and keep each cell's style.
+- **Converting a text number can reveal a new "unusual value".** For example, "1,250" in the test pack was hidden as text and is far above its column's usual range. This is correct, and the re-check shows it.
+- **Rows or columns in Excel files:** a preview that removes rows or columns from an Excel file is marked `deletesFromExcel`. The workbook reference check (S2) is built in Step 7. Until then, the website (Step 4) will not offer row or column removal for Excel files, so no Excel reference can be broken.
 
 ## Testing
 

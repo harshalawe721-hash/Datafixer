@@ -20,6 +20,7 @@ import { runScan, type Finding, type ScanContext, type ScanOptions, type ScanRes
 import { ALL_CHECKS } from "./scan/checks/index.ts";
 import { EditSession, type ChangeRequest, type EditStats, type HistoryItem, type HistorySummary } from "./edit/session.ts";
 import { columnLetter } from "./query/query.ts";
+import { planFix, type FixId, type FixOptions, type FixPreview } from "./fix/fixes.ts";
 
 interface OpenState {
   file: Blob;
@@ -65,6 +66,13 @@ export interface EditResult {
   /** The history entry changed by this call (null when nothing changed). */
   entry: HistorySummary | null;
   stats: EditStats;
+}
+
+/** A fix preview as sent to the page: the token must be passed back to apply exactly this preview. */
+export interface FixPreviewResult extends FixPreview {
+  token: string;
+  /** Rows or columns would be removed from an Excel file (workbook references must be checked before download). */
+  deletesFromExcel: boolean;
 }
 
 const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
@@ -116,9 +124,13 @@ function csvWarnings(meta: CsvMeta): string[] {
 export class EngineCore {
   private state: OpenState | null = null;
   private scanSeq = 0;
+  private fixSeq = 0;
+  /** The latest fix preview; applying it requires the data to be unchanged since. */
+  private pendingFix: { token: string; sheet: string; version: number; request: ChangeRequest | null } | null = null;
 
   close(): void {
     this.state = null;
+    this.pendingFix = null;
   }
 
   async open(file: File, format: SpreadsheetFormat, options: OpenOptions, onProgress: Progress, cancel?: CancelToken): Promise<WorkbookSummary> {
@@ -377,6 +389,37 @@ export class EngineCore {
       else if (/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(t) && !/^[+-]?0\d/.test(t) && Number.isFinite(Number(t))) value = Number(t);
     }
     return this.applyChange(sheetName, { operation: "edit-cell", label: "Edit cell", cells: [{ row, col, value }] });
+  }
+
+  /**
+   * Work out what a fix would change, without changing anything. The preview
+   * is kept until it is applied, replaced by another preview, or made stale by
+   * any other change.
+   */
+  async previewFix(sheetName: string, fixId: FixId, options: FixOptions, onProgress: Progress, cancel?: CancelToken): Promise<FixPreviewResult> {
+    const st = this.requireState();
+    const session = this.session(sheetName);
+    const plan = await planFix(session.view(), fixId, { ...options, textOnly: st.format === "csv" }, {
+      cancel,
+      memoryBudgetBytes: st.memoryBudgetBytes,
+      onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
+      originalRow: (r) => session.grid().baseRow(r),
+    });
+    const token = `fix-${++this.fixSeq}`;
+    this.pendingFix = { token, sheet: sheetName, version: session.version, request: plan.request };
+    return { ...plan.preview, token, deletesFromExcel: st.format !== "csv" && (plan.preview.rowsRemoved > 0 || plan.preview.columnsRemoved > 0) };
+  }
+
+  /** Apply exactly the previewed fix. Refused if anything changed since the preview. */
+  applyFix(sheetName: string, token: string): EditResult {
+    const p = this.pendingFix;
+    const session = this.session(sheetName);
+    if (!p || p.token !== token || p.sheet !== sheetName || p.version !== session.version) {
+      throw new EngineError("stale-preview", "The data changed after this preview, so it was not applied. Nothing was changed. Please preview the fix again.");
+    }
+    this.pendingFix = null;
+    if (!p.request) return { entry: null, stats: session.stats() };
+    return this.applyChange(sheetName, p.request);
   }
 
   undo(sheetName: string): EditResult {

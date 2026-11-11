@@ -20,6 +20,8 @@ export type EngineErrorCode =
   | "invalid-edit"
   /** Stage 4: a manual edit would replace a formula and was not confirmed. */
   | "formula-cell"
+  /** Stage 4: the data changed after a fix was previewed, so the preview no longer applies. */
+  | "stale-preview"
   | "internal";
 
 export class EngineError extends Error {
