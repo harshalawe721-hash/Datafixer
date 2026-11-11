@@ -46,6 +46,8 @@ export interface PageRow {
   errorColumns?: number[];
   /** Columns (absolute indexes) of cells flagged by the active issue. */
   flaggedColumns?: number[];
+  /** Columns (absolute indexes) of cells changed by the user (Stage 4). */
+  editedColumns?: number[];
 }
 
 export interface RowPage {
@@ -202,6 +204,8 @@ export class SheetQuery {
     const colEnd = Math.min(sheet.columnCount, colOffset + Math.min(q.columnLimit ?? MAX_PAGE_COLUMNS, MAX_PAGE_COLUMNS));
     const hasFormulas = sheet.formulas.size > 0;
     const hasErrors = sheet.errors.size > 0;
+    const grid = sheet.grid as { isEdited?: (r: number, c: number) => boolean };
+    const isEdited = typeof grid.isEdited === "function" ? grid.isEdited.bind(sheet.grid) : null;
 
     const rows: PageRow[] = [];
     for (let i = offset; i < Math.min(order.length, offset + limit); i++) {
@@ -210,13 +214,15 @@ export class SheetQuery {
       let formulaColumns: number[] | undefined;
       let errorColumns: number[] | undefined;
       let flaggedColumns: number[] | undefined;
+      let editedColumns: number[] | undefined;
       for (let c = colOffset; c < colEnd; c++) {
+        if (isEdited && isEdited(r, c)) (editedColumns ??= []).push(c);
         if (view.flagged && view.flagged(r, c)) (flaggedColumns ??= []).push(c);
         cells[c - colOffset] = sheet.grid.display ? sheet.grid.display(r, c) : cellText(sheet.grid.get(r, c));
         if (hasFormulas && sheet.formulas.has(cellKey(r, c))) (formulaColumns ??= []).push(c);
         if (hasErrors && sheet.errors.has(cellKey(r, c))) (errorColumns ??= []).push(c);
       }
-      rows.push({ index: r, cells, formulaColumns, errorColumns, flaggedColumns });
+      rows.push({ index: r, cells, formulaColumns, errorColumns, flaggedColumns, editedColumns });
     }
 
     let header: string[] | null = null;

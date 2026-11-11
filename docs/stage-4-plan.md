@@ -1,7 +1,7 @@
 # Stage 4 development plan: automatic fixing, editing and clean downloads
 
 **Status:** plan **approved** by the project owner on 11 November 2026, together with the four owner decisions and five additional safeguards.
-**Implementation: NOT AUTHORIZED YET.** No Stage 4 code is written until the owner explicitly says **"Start Stage 4"**.
+**Implementation: authorized** by the owner ("Start Stage 4", 11 November 2026). Progress is tracked in the table below. Each step is reported to the owner before the next one starts.
 
 Stages 1–3 are complete (see `README.md`, `docs/stage-2-test-report.md`, `docs/stage-3-test-report.md`).
 
@@ -202,6 +202,13 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 7 | **Workbook reference scanner** (S2), then **XLSX download** by patching the original package, plus clear-instead-of-delete and feature warnings | Reference tests for every feature in the S2 table. Website: exported bytes reopened by DataFixer's reader (V1, V2). Tests: verified with openpyxl (V4), unedited parts byte-identical (V5), protected features kept (V6) |
 | 8 | Cleaner page, 50/100/150 MB export performance and memory tests (including a low-memory heap), test pack with expected results, Stage 4 test report | All tests pass, then the owner tests on the Android tablet and approves |
 
+## Progress
+
+| Step | Status | Commit summary |
+|---|---|---|
+| 1 | ✅ Done: change layer, edited view, Undo/Redo, history data. 21 new unit tests. Stages 1–3 tests still pass | `src/engine/edit/`, `EngineCore` editing methods |
+| 2–8 | Not started | — |
+
 ## Testing
 
 - Unit tests for every fix: exact counts, the cases where no change must happen, formula cells skipped, ties and ambiguity, undo and redo, history contents.
@@ -227,7 +234,3 @@ R4 is resolved. The others must be resolved, or accepted by the owner, during im
 | R7 | **"Export successful" can only cover what DataFixer controls.** DataFixer can build and verify the file, but saving to disk is done by the browser (Android Chrome has no API to confirm the save). | The summary says the file was created and verified. If the browser's download is blocked, the user can tap download again without re-exporting. |
 | R8 | **XLS input** can't keep everything. | Exported as XLSX, with a feature-by-feature list of what won't carry over, shown before download (requirement 5, S3). |
 | R9 | **Large XLSX files** above about 90 MB (one sheet) can't be opened today (a Stage 2 limit), so they can't be exported either. | No change. This limit is already documented, and the export limit follows the open limit. |
-
-## Confirmation
-
-Only documentation has been changed for the Stage 4 plan (this file and the status line in `README.md`). No application code was changed, no dependencies were installed, and Stage 4 implementation has not started.

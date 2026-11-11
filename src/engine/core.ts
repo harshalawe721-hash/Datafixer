@@ -18,13 +18,15 @@ import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, W
 import type { OpenOptions } from "./protocol.ts";
 import { runScan, type Finding, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
 import { ALL_CHECKS } from "./scan/checks/index.ts";
+import { EditSession, type ChangeRequest, type EditStats, type HistoryItem, type HistorySummary } from "./edit/session.ts";
+import { columnLetter } from "./query/query.ts";
 
 interface OpenState {
   file: Blob;
   fileName: string;
   format: SpreadsheetFormat;
   sheets: SheetInfo[];
-  loaded: Map<string, { sheet: SheetModel; query: SheetQuery }>;
+  loaded: Map<string, LoadedSheet>;
   inspection: InspectionResult | null;
   csv: CsvMeta | null;
   activeSheet: string;
@@ -48,6 +50,24 @@ interface OpenState {
 }
 
 type Progress = (p: ProgressEvent) => void;
+
+/** A loaded sheet: the original data, plus the Stage 4 edit session once something is changed. */
+interface LoadedSheet {
+  sheet: SheetModel;
+  query: SheetQuery;
+  session?: EditSession;
+  /** Session version the query was built for. */
+  queryVersion?: number;
+}
+
+/** Result of every Stage 4 change, undo or redo. */
+export interface EditResult {
+  /** The history entry changed by this call (null when nothing changed). */
+  entry: HistorySummary | null;
+  stats: EditStats;
+}
+
+const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
 export function featureWarnings(f: FeatureInventory | null): string[] {
   if (!f) return [];
@@ -225,10 +245,8 @@ export class EngineCore {
   }
 
   getRows(sheetName: string, query: RowQuery): RowPage {
-    const st = this.requireState();
-    const entry = st.loaded.get(sheetName);
-    if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
-    return entry.query.getPage(query, this.issueView(sheetName, query.issue));
+    const { query: q } = this.current(sheetName);
+    return q.getPage(query, this.issueView(sheetName, query.issue));
   }
 
   /**
@@ -279,10 +297,9 @@ export class EngineCore {
    */
   async scan(sheetName: string, options: ScanOptions, onProgress: Progress, cancel?: CancelToken): Promise<ScanResult> {
     const st = this.requireState();
-    const entry = st.loaded.get(sheetName);
-    if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
+    const { sheet } = this.current(sheetName);
     st.lastScan = null; // release the previous scan's caches first
-    const { result, ctx, findings } = await runScan(entry.sheet, {
+    const { result, ctx, findings } = await runScan(sheet, {
       headerRow: options.headerRow,
       cancel,
       memoryBudgetBytes: st.memoryBudgetBytes,
@@ -293,9 +310,99 @@ export class EngineCore {
     return result;
   }
 
-  /** Access for future tools (scanners, cleaners) running inside the worker. */
+  /** The sheet as it currently looks (with any Stage 4 changes), for tools running inside the worker. */
   getSheet(name: string): SheetModel | null {
-    return this.state?.loaded.get(name)?.sheet ?? null;
+    const entry = this.state?.loaded.get(name);
+    if (!entry) return null;
+    return entry.session ? entry.session.view() : entry.sheet;
+  }
+
+  /** The current (edited) sheet and a query over it; the query is rebuilt after every change. */
+  private current(sheetName: string): { sheet: SheetModel; query: SheetQuery } {
+    const st = this.requireState();
+    const entry = st.loaded.get(sheetName);
+    if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
+    if (!entry.session) return entry;
+    if (entry.queryVersion !== entry.session.version) {
+      entry.query = new SheetQuery(entry.session.view());
+      entry.queryVersion = entry.session.version;
+    }
+    return { sheet: entry.session.view(), query: entry.query };
+  }
+
+  // ------------------------------------------------------------------ Stage 4: editing
+
+  private session(sheetName: string): EditSession {
+    const st = this.requireState();
+    const entry = st.loaded.get(sheetName);
+    if (!entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
+    entry.session ??= new EditSession(entry.sheet, { memoryBudgetBytes: st.memoryBudgetBytes });
+    return entry.session;
+  }
+
+  /** After any change the previous scan no longer matches the data. */
+  private changed(sheetName: string, entry: HistorySummary | null): EditResult {
+    const st = this.requireState();
+    if (entry && st.lastScan?.sheet === sheetName) st.lastScan = null;
+    return { entry, stats: this.session(sheetName).stats() };
+  }
+
+  /** Apply a change (from a fix or the editor). Positions are view positions. */
+  applyChange(sheetName: string, req: ChangeRequest): EditResult {
+    return this.changed(sheetName, this.session(sheetName).apply(req));
+  }
+
+  /**
+   * Manual edit of one cell. Excel cells: typed numbers become numbers (unless
+   * they start with a zero, like "007"); CSV cells always stay text. A formula
+   * cell is only replaced when `replaceFormula` confirms the user saw the warning.
+   */
+  editCell(sheetName: string, row: number, col: number, text: string, options: { replaceFormula?: boolean } = {}): EditResult {
+    const st = this.requireState();
+    const view = this.current(sheetName).sheet;
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= view.grid.rowCount || col >= view.columnCount) {
+      throw new EngineError("invalid-edit", "That cell doesn't exist.");
+    }
+    const formula = view.formulas.get(cellKey(row, col));
+    if (formula !== undefined && !options.replaceFormula) {
+      throw new EngineError(
+        "formula-cell",
+        `Cell ${columnLetter(col)}${row + 1} contains the formula =${formula}. Saving replaces the formula with the value you typed, and the cell will no longer update. Other cells that use this cell will be recalculated when the file is opened in Excel.`,
+      );
+    }
+    let value: string | number | null = text;
+    if (st.format !== "csv") {
+      const t = text.trim();
+      if (t === "") value = null;
+      else if (/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(t) && !/^[+-]?0\d/.test(t) && Number.isFinite(Number(t))) value = Number(t);
+    }
+    return this.applyChange(sheetName, { operation: "edit-cell", label: "Edit cell", cells: [{ row, col, value }] });
+  }
+
+  undo(sheetName: string): EditResult {
+    return this.changed(sheetName, this.session(sheetName).undo());
+  }
+
+  redo(sheetName: string): EditResult {
+    return this.changed(sheetName, this.session(sheetName).redo());
+  }
+
+  editStats(sheetName: string): EditStats {
+    return this.requireState().loaded.get(sheetName)?.session?.stats() ?? NO_EDITS;
+  }
+
+  /** True when any loaded sheet has applied changes (warn before switching sheets or files). */
+  hasEdits(): boolean {
+    for (const entry of this.state?.loaded.values() ?? []) if (entry.session?.hasChanges) return true;
+    return false;
+  }
+
+  history(sheetName: string): HistorySummary[] {
+    return this.requireState().loaded.get(sheetName)?.session?.history() ?? [];
+  }
+
+  historyDetails(sheetName: string, id: number, offset?: number, limit?: number): { total: number; items: HistoryItem[] } {
+    return this.session(sheetName).historyDetails(id, offset, limit);
   }
 
   private requireState(): OpenState {

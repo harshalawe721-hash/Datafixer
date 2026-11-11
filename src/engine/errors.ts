@@ -16,6 +16,10 @@ export type EngineErrorCode =
   | "sheet-not-found"
   | "not-implemented"
   | "read-failed"
+  /** Stage 4: an edit refers to a cell, row or column that doesn't exist. */
+  | "invalid-edit"
+  /** Stage 4: a manual edit would replace a formula and was not confirmed. */
+  | "formula-cell"
   | "internal";
 
 export class EngineError extends Error {

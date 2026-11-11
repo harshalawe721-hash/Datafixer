@@ -57,6 +57,20 @@ Measured (Node 22, desktop): pass 1 over 1M rows × 6 columns takes about 1.0 s.
 
 **View affected data (Step 7):** `RowQuery.issue` filters the preview to the issue's rows, using a 1-byte-per-row mask cached per scan. Flagged cells are marked by binary search in the sorted cell list, so only visible cells are looked up. Filtering combines with search and sort. Scans can be stopped with the `abortScans` request, which uses a cooperative per-scan token, so the open file stays loaded. The page side is `components/tools/detector/` (`ScanPanel`, `IssueCard`); tool panels get a `ToolApi` from `SpreadsheetWorkspace`.
 
+## Editing (Stage 4)
+
+`src/engine/edit/` adds changes without ever modifying or copying the original sheet:
+
+- **`EditedGrid`** is a `CellGrid` view: edits are stored by *original* cell position (`Map` of cell key → value, plus a per-row edit count so unedited rows skip the lookup), and deleted rows/columns are hidden through index maps.
+- **`EditSession`** owns the change layer and the history. Changes are described in *view* positions (what the user sees) and converted when applied. Each history entry stores only its new values and the values just before (for undo). Original values are read from the unchanged data. Undo and Redo walk the history. A new change after undo ends the redo chain, and those entries stay visible as "undone". `historyDetails()` pages through every changed cell (position in the original file, value before, new value) and every removed row or column with its reason.
+- **The edited view is a full `SheetModel`:** formulas, errors, merges, hidden rows/columns, widths and heights are remapped. A cell given a new value no longer counts as a formula or error cell. Preview, search, sort and the Error Detector scan all read it unchanged.
+- **`EngineCore`** methods: `applyChange`, `editCell` (refuses a formula cell with code `formula-cell` unless `replaceFormula` confirms the warning; Excel cells turn typed numbers into numbers, except values with leading zeros; CSV cells stay text), `undo`, `redo`, `editStats`, `history`, `historyDetails`, `hasEdits`. Any change clears the previous scan, so no stale "view affected data" filter is shown.
+- Every change is checked against the memory budget first (about 120 bytes per changed cell plus its text). A change that doesn't fit is refused with code `out-of-memory`, and nothing changes.
+
+Measured (Node 22, desktop, 1M rows × 6 columns): a full scan takes 3.5 s on the original data, 3.8 s on an edited view with a few changes or 10,000 deleted rows, and 4.9 s with 200,000 edited cells. Applying 200,000 cell edits takes 0.3 s.
+
+Limitation: only one Excel sheet is held in memory at a time (Stage 2). Switching sheets therefore discards that sheet's edits. The UI must warn before switching (`hasEdits()`).
+
 ## Supported formats
 
 | Format | Status | Notes |
