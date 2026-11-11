@@ -1,6 +1,7 @@
 # Stage 4 development plan: automatic fixing, editing and clean downloads
 
-**Status:** plan approved by the project owner on 11 November 2026. **Implementation has not started.** It starts only when the owner says so.
+**Status:** plan **approved** by the project owner on 11 November 2026, together with the four owner decisions and five additional safeguards.
+**Implementation: NOT AUTHORIZED YET.** No Stage 4 code is written until the owner explicitly says to start.
 
 Stages 1–3 are complete (see `README.md`, `docs/stage-2-test-report.md`, `docs/stage-3-test-report.md`).
 
@@ -8,11 +9,11 @@ Stages 1–3 are complete (see `README.md`, `docs/stage-2-test-report.md`, `docs
 
 Turn DataFixer from "find problems" into "find **and fix** problems":
 
-> Upload → see the problems explained → preview the fixes → apply → check, undo or redo → download a new, clean file
+> Upload → see the problems explained → preview the fixes → apply → check, undo or redo → download a new, clean file → see a verified summary
 
 Fixing appears directly on the Error Detector's problem cards, and the Spreadsheet Cleaner page uses the same engine for people who go straight to it.
 
-## Owner decisions (approved)
+## Owner decisions (approved, unchanged)
 
 | # | Topic | Decision |
 |---|---|---|
@@ -31,39 +32,129 @@ Fixing appears directly on the Error Detector's problem cards, and the Spreadshe
 6. **Exported files are tested by reopening them** and verifying their contents.
 7. **Privacy:** files are processed locally on the device. Nothing is uploaded.
 8. **The editor is responsive** and usable on Android tablets and phones.
-9. Carried over from earlier stages: lightweight on low-end Android, no unnecessary dependencies, don't break Stages 1–3, test every feature before calling it complete, no fake or non-working buttons.
+
+## Additional safeguards (approved)
+
+### S1. Formula protection
+
+- **Automatic fixes never change formula cells.** Formula cells are skipped by every automatic fix (spaces, capitalization, numbers stored as text, dates, phone layouts), even when their saved result looks like a problem. The preview shows how many formula cells were skipped and why.
+- **Manually editing a formula cell** shows a warning first: the formula (shown in full) will be replaced with the typed value, and other cells that use this cell will be recalculated by Excel when the file is opened. The user must confirm.
+- **Formulas in all unaffected cells are preserved exactly** (the original XML is kept).
+- **Before deleting rows or columns,** formula dependencies are checked (see S2).
+
+### S2. Complete Excel reference protection
+
+Before any row or column deletion in an Excel file, DataFixer inspects the **whole workbook**, not just the open sheet:
+
+| Checked | Where it's found |
+|---|---|
+| Formulas on the current worksheet | Sheet XML `<f>` (including shared and array formulas) |
+| Formulas on other worksheets that refer to this sheet | Other sheets' XML |
+| Merged cells | `<mergeCells>` |
+| Conditional formatting | `<conditionalFormatting sqref>` and formulas inside rules, including the newer `x14` extension format |
+| Data validation | `<dataValidation sqref>` and list/formula sources, including `x14` |
+| Charts and chart references | Chart XML `<c:f>` series and label ranges |
+| Tables | Table parts (`ref`, and structured references in formulas) |
+| Named ranges | `workbook.xml` `<definedName>` (including print areas and filter ranges) |
+| Also checked (added for completeness) | AutoFilter, pivot table sources, hyperlinks and comments anchored to cells, sparklines, external links |
+
+**Rule:** if a deletion could shift or break any reference, DataFixer **does not delete**. It lists the affected features (for example "2 formulas on sheet Summary refer to rows 10–500", "1 chart uses B2:B500") and offers safe alternatives:
+
+1. **Clear the rows instead of deleting them.** Positions stay the same, so no reference can break.
+2. **Download as CSV** (values only; the user is told that formatting and formulas aren't part of CSV).
+3. **Cancel.**
+
+References that can't be checked statically are treated as **possibly affected**, never as safe: `INDIRECT`, `OFFSET`, references built from text, external workbook links, and any part DataFixer doesn't recognise.
+
+Rewriting references automatically (as Excel does when you delete rows) is **not** part of Stage 4. It would be a separate, later proposal.
+
+### S3. Download verification summary
+
+After an export, DataFixer shows a summary **only once the export and its verification have both passed**:
+
+- Export successful
+- Original file name and downloaded file name
+- Cells edited
+- Rows removed
+- Columns removed
+- Duplicates removed
+- Automatic corrections applied
+- Features that could not be preserved (or "none")
+- Warnings the user should know about (for example "formulas will recalculate when opened", "cleared rows remain as empty rows")
+
+If verification fails, there is **no** success message and **no** download. The user gets a clear error and the editing history is kept.
+
+### S4. Recoverable large-file exports (50, 100 and 150 MB)
+
+- The original uploaded file is never changed.
+- The editing history is kept if an export fails or is cancelled. The user can retry straight away.
+- **No partial or corrupted downloads:** the download is only offered after the complete file has been built and verified. An unfinished file is never handed to the browser.
+- Memory is checked against the **existing memory budget** before an export starts and while it runs. If there isn't enough, the export stops with a clear message instead of crashing the tab.
+- **Safer retry options:** for example, exporting as CSV instead of Excel, or exporting without in-memory verification steps that need extra memory, which then switch to a slower, lower-memory chunked check. A file is never reported as verified without a check.
+- Exports can be cancelled at any time without losing edits.
+
+### S5. Complete change history
+
+A detailed, scrollable history (paged, so it stays fast with very many changes):
+
+| Information | Example |
+|---|---|
+| Cell | B4 |
+| Original value | "·john·" (spaces made visible) |
+| New value | "john" |
+| Operation | Remove extra spaces |
+| Status | Applied / Undone |
+
+- **Row and column operations** list which rows or columns were removed (or cleared) and **why** (for example "Row 28: exact copy of row 3").
+- Undo and Redo update the history: undone entries are marked **Undone**, and redone entries become **Applied** again.
+- Bulk operations appear as one history group (for example "Remove extra spaces: 439 cells"). Opening the group shows every cell.
+
+## Development rules (approved)
+
+1. Keep all original Stage 4 owner decisions unchanged.
+2. Keep processing local on the user's device. Never upload spreadsheets to external servers.
+3. Keep the editor lightweight and responsive on low-end Android devices.
+4. Avoid unnecessary dependencies.
+5. Do not break Stages 1, 2 or 3.
+6. No fake buttons or incomplete functionality.
+7. Test every feature before reporting it as complete.
+8. Verify exported files using DataFixer's reader and an independent reader.
+9. Document known limitations honestly.
+10. Commit and report each completed development step before moving to the next.
 
 ## What each fix does
 
 | Problem | Fix | Ambiguous? How it's handled |
 |---|---|---|
 | Extra spaces | Remove leading/trailing spaces, tabs and non-breaking spaces | No |
-| Duplicate rows | Delete later exact copies, keep the first | No (decision 1) |
-| Empty rows | Delete | No |
-| Empty columns | Delete | No. Named empty columns are listed in the preview so the user can untick them |
+| Duplicate rows | Delete later exact copies, keep the first | No (decision 1). Excel: reference check first (S2) |
+| Empty rows | Delete | No. Excel: reference check first (S2) |
+| Empty columns | Delete | No. Named empty columns are listed in the preview so the user can untick them. Excel: reference check first (S2) |
 | Numbers stored as text | Convert to real numbers. Values with leading zeros (IDs, postcodes) are never converted | No |
 | Inconsistent capitalization | Most common spelling per group | **Ties: the user picks** (decision 2) |
 | Inconsistent dates | Convert to one format the **user chooses** | **Ambiguous dates** (e.g. 03/04/2024) are never converted until the user says whether the column is day-first or month-first |
 | Phone layouts | Convert to one layout the user chooses | Numbers that can't be reformatted safely are left alone and listed |
 | Invalid emails, impossible dates, missing cells, unusual values, formula errors | **No automatic fix.** The user edits the cells | The correct value can't be known, so DataFixer never invents data |
 
+Formula cells are skipped by every automatic fix (S1).
+
 ## How it works
 
 ### Preview, apply, undo, redo
 
-- Every fix first shows a **preview**: how many cells or rows change, plus old → new examples. Nothing changes until the user taps **Apply**.
-- Every applied fix or manual edit becomes one entry in a history. **Undo** and **Redo** step through it. A change counter shows how many edits are pending.
+- Every fix first shows a **preview**: how many cells or rows change, old → new examples, and anything skipped (formula cells, ties, ambiguous dates). Nothing changes until the user taps **Apply**.
+- Every applied fix or manual edit becomes one entry in the history (S5). **Undo** and **Redo** step through it.
 - After each change the file is **checked again automatically**, so the cards always reflect the current data.
 
 ### Memory (low-end Android)
 
 The original data is never copied. Changes are kept as a small **change layer** on top of it, in the worker:
 
-- cell edits (cell key → new value),
-- deleted rows (1 byte per row) and deleted columns,
-- the history, with each entry storing only its own changes (for undo and redo).
+- cell edits (cell key → new value). Original values are read from the unchanged original data, so they aren't stored twice;
+- deleted or cleared rows (1 byte per row) and deleted columns;
+- the history, with each entry storing only its own changes (for undo, redo and the history view).
 
-The rest of DataFixer (preview, search, sort, scan) reads the data through this layer as an "edited view". Before a large fix is applied, its memory cost is checked against the existing memory budget, and the user gets a clear message instead of a crash.
+The rest of DataFixer (preview, search, sort, scan, export) reads the data through this layer as an "edited view". Before a large fix or an export runs, its memory cost is checked against the existing memory budget.
 
 ### CSV download
 
@@ -76,39 +167,54 @@ The rest of DataFixer (preview, search, sort, scan) reads the data through this 
 
 The download is the **original workbook package** with only the necessary parts changed (decision 4):
 
-- Only the edited worksheet's XML is rewritten, and only the edited cells inside it. Styles, charts, images, comments, other sheets, defined names and so on are copied byte for byte.
+- Only the edited worksheet's XML is rewritten, and only the edited cells inside it. Each edited cell keeps its original style. Styles, charts, images, comments, other sheets, defined names and so on are copied byte for byte.
 - Edited text cells are written as inline strings, so the shared-strings table doesn't need rebuilding.
-- If formulas elsewhere might depend on edited cells, the workbook is marked to **recalculate when opened**, so no stale results are shown.
-- **Editing a cell that contains a formula** replaces the formula with the typed value. The editor warns about this first.
-
-**Limits, stated honestly and shown to the user before download (requirement 5):**
-
-- **Deleting rows or columns in Excel files** (duplicates, empty rows, empty columns) moves everything below or to the right. Formulas, merged cells, conditional formatting, data validation, charts, tables and named ranges may refer to those positions. The plan:
-  - If the sheet has none of these features in or after the affected area, rows and columns are deleted normally.
-  - If it does, DataFixer explains exactly which features are affected, and the user chooses: **clear** the rows instead of deleting them (positions stay the same, so nothing breaks), download as **CSV**, or cancel. References are never silently broken.
-- **XLS (Excel 97–2003)** files can't be patched in place. The download is a new XLSX, and the user is first told which features won't carry over.
+- If any formula might use an edited cell, `workbook.xml` is marked to **recalculate when opened**, so no stale results are shown. That small change is listed in the summary.
+- Formula cells: see S1. Row and column deletions: see S2.
+- **XLS (Excel 97–2003)** files can't be patched in place. The download is a new XLSX, and the user is told first, feature by feature, what won't carry over (S3, requirement 5).
 - Password-protected and macro files are already refused when opened.
 
 ## Build steps
 
-Each step is tested, committed and reported before the next one starts.
+Each step is tested, committed and reported before the next one starts (rule 10).
 
 | Step | Work | Done when |
 |---|---|---|
-| 1 | Change layer and edited view, history with **Undo/Redo** | Unit tests: edits, deletions, undo/redo, and scan, preview, search and sort over edited data |
-| 2 | Safe fixes with preview: spaces, duplicates, empty rows/columns, numbers stored as text | Exact before/after counts on the test pack |
+| 1 | Change layer and edited view, history with **Undo/Redo** and history data (S5) | Unit tests: edits, deletions, clears, undo/redo, history entries, and scan, preview, search and sort over edited data |
+| 2 | Safe fixes with preview: spaces, duplicates, empty rows/columns, numbers stored as text. Formula cells skipped (S1) | Exact before/after counts on the test pack. Formula cells untouched |
 | 3 | Capitalization (tie → ask), dates (format choice, ambiguity → ask), phone layouts | Ties and ambiguous dates are never changed without a choice |
-| 4 | UI: **Fix** on cards, **Fix all safe problems**, preview sheet, Undo/Redo bar, automatic re-check. Phone and tablet layouts | Browser tests, including phone and tablet sizes |
-| 5 | Manual cell editing (tap a cell, edit, save, with undo) | Browser tests, including touch |
-| 6 | **CSV download** (UTF-8 BOM) | Exported files **reopened** by DataFixer's reader and an independent reader, contents verified cell by cell |
-| 7 | **XLSX download** by patching the original package, plus the feature warnings | Reopened by DataFixer and an independent reader (openpyxl). Unedited package parts are **byte-identical**. Formatting, formulas, charts and merges are verified as kept |
-| 8 | Cleaner page, 150 MB performance and memory tests, test pack with expected results, Stage 4 test report | All tests pass, then the owner tests on the Android tablet and approves |
+| 4 | UI: **Fix** on cards, **Fix all safe problems**, preview sheet, Undo/Redo, **change history panel** (S5), automatic re-check. Phone and tablet layouts | Browser tests at phone, tablet and desktop sizes |
+| 5 | Manual cell editing (tap a cell, edit, save, undo), with the **formula warning** (S1) | Browser tests, including touch |
+| 6 | **CSV download** (UTF-8 BOM), with **verification and summary** (S3) and **recoverable export** (S4) | Exported files reopened by DataFixer's reader and an independent reader, verified cell by cell. Failure and cancel keep the history |
+| 7 | **Workbook reference scanner** (S2), then **XLSX download** by patching the original package, plus clear-instead-of-delete and feature warnings | Reference tests for every feature in the S2 table. Exports reopened by DataFixer and openpyxl. Unedited parts byte-identical. Formulas, formatting, merges and charts verified as kept |
+| 8 | Cleaner page, 50/100/150 MB export performance and memory tests (including a low-memory heap), test pack with expected results, Stage 4 test report | All tests pass, then the owner tests on the Android tablet and approves |
 
-## Testing (requirement 6)
+## Testing
 
-- Unit tests for every fix: exact counts, the cases where no change must happen, ties and ambiguity, undo and redo.
-- **Round-trip tests:** every export is reopened and compared with the expected data, cell by cell. XLSX exports are also checked for byte-identical untouched parts, and for kept styles, formulas, merges and charts.
-- Browser tests at phone, tablet and desktop sizes, including Cancel during long operations.
+- Unit tests for every fix: exact counts, the cases where no change must happen, formula cells skipped, ties and ambiguity, undo and redo, history contents.
+- **Round-trip tests:** every export is reopened by DataFixer's reader **and an independent reader** (Python's `csv` module and openpyxl, used in the automated tests only, not shipped to users), and compared cell by cell. XLSX exports are also checked for byte-identical untouched parts, and for kept styles, formulas, merges, conditional formatting, data validation, charts, tables and named ranges.
+- Reference-protection tests: one fixture per feature in the S2 table, confirming that a deletion is blocked and that the explanation names the right feature.
+- Failure tests: low memory, cancel during export and a forced verification failure. Each must give no download, no success message, an intact history, and a working retry.
+- Browser tests at phone, tablet and desktop sizes.
 - Performance and memory tests at 50, 100 and 150 MB, including a low-memory heap.
 - A Stage 4 test pack with expected results for the owner's tablet testing.
-- No feature is reported as working until its tests pass.
+
+## Known limitations and open technical risks
+
+These must be resolved, or accepted by the owner, during implementation. None of them conflicts with the approved decisions.
+
+| # | Risk | Plan |
+|---|---|---|
+| R1 | **Patching XLSX worksheets without loading them whole.** The editor needs a cell-level XML rewriter that streams the sheet (big sheets can't become one string). This is the largest piece of new engineering. | Build it in Step 7 as a streaming rewriter on top of the existing fflate inspection code, with no new dependency. Test it against Excel-, LibreOffice- and openpyxl-made files. |
+| R2 | **Shared and array formulas.** In XLSX, one "master" cell can hold a formula used by a whole range. Editing the master or a member needs special care, otherwise other cells lose their formula. | Detect these. Editing such a cell either expands the shared formula safely for the other cells, or is blocked with an explanation. Never break the other cells silently. |
+| R3 | **References that can't be checked statically** (`INDIRECT`, `OFFSET`, text-built references, external links, unknown parts). | Treated as "possibly affected" (S2). The safe alternatives are offered instead of deleting. |
+| R4 | **In-browser verification uses DataFixer's own reader.** An independent reader such as openpyxl can't run in the browser without a large dependency (rule 4). | In the app: verify with DataFixer's reader, re-reading the file from the exported bytes rather than from memory. In automated tests: also verify with independent readers (rule 8). Proposed interpretation of rule 8; **needs owner confirmation.** |
+| R5 | **Verification time and memory on large files.** Re-reading a 150 MB export takes about as long as opening it (about 10–20 s on the tablet, estimated from the Stage 2/3 timings) and needs memory. | Chunked verification that compares row by row without a second full copy. If memory is short, the export stops cleanly (S4). Exact timings will be measured. |
+| R6 | **Size of the change history** when a fix touches millions of cells (for example spaces in a 150 MB file). | Store only new values (originals come from the unchanged data), in compact arrays. Page the history view. Budget-check before applying. |
+| R7 | **"Export successful" can only cover what DataFixer controls.** DataFixer can build and verify the file, but saving to disk is done by the browser (Android Chrome has no API to confirm the save). | The summary says the file was created and verified. If the browser's download is blocked, the user can tap download again without re-exporting. |
+| R8 | **XLS input** can't keep everything. | Exported as XLSX, with a feature-by-feature list of what won't carry over, shown before download (requirement 5, S3). |
+| R9 | **Large XLSX files** above about 90 MB (one sheet) can't be opened today (a Stage 2 limit), so they can't be exported either. | No change. This limit is already documented, and the export limit follows the open limit. |
+
+## Confirmation
+
+This document was the only change made for the Stage 4 approval. No application code was changed, no dependencies were installed, and Stage 4 implementation has not started.
