@@ -202,7 +202,7 @@ test("larger data: 300,000 rows export and verify (DataFixer and Python)", async
 test("memory: an export that wouldn't fit the device's budget is refused before it starts; changes are kept", async () => {
   const core = new EngineCore();
   const csv = "a,b\n" + Array.from({ length: 2000 }, (_, i) => ` ${i},x`).join("\n");
-  const s = await core.open(new File([csv], "m.csv"), "csv", { memoryBudgetBytes: 60 * 1024 * 1024 }, noop);
+  const s = await core.open(new File([csv], "m.csv"), "csv", { memoryBudgetBytes: 20 * 1024 * 1024 }, noop);
   core.editCell(s.activeSheet, 1, 0, "0");
   await assert.rejects(core.exportCsv(s.activeSheet, noop), (e: unknown) => e instanceof EngineError && e.code === "out-of-memory" && /changes are kept/.test(e.message));
   assert.equal(core.editStats(s.activeSheet).cellsEdited, 1);

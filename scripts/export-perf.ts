@@ -131,7 +131,9 @@ async function run(name: string, file: string, kind: "csv" | "xlsx", expectRows?
     await page.getByText(/Opened on your device in/).first().waitFor({ timeout: 300000 });
     row.openS = secs(t);
     t = Date.now();
-    await analysed.waitFor({ timeout: 300000 });
+    const notChecked = page.getByRole("heading", { name: "This sheet couldn't be checked" });
+    await analysed.or(notChecked).first().waitFor({ timeout: 300000 });
+    if (await notChecked.isVisible()) throw new Error(`check refused safely: ${(await page.getByRole("alert").first().textContent()) ?? ""}`);
     row.checkS = secs(t);
     t = Date.now();
     await page.getByRole("button", { name: "Fix all safe problems" }).click();
@@ -163,7 +165,8 @@ async function run(name: string, file: string, kind: "csv" | "xlsx", expectRows?
     row.outcome = crashed ? "CRASHED" : "ok";
   } catch (err) {
     const alert = await page.getByRole("alert").first().textContent({ timeout: 1000 }).catch(() => null);
-    row.outcome = crashed ? "CRASHED (tab)" : alert ? `stopped safely: ${alert.trim().slice(0, 140)}` : `failed: ${String(err).slice(0, 140)}`;
+    const msg = String(err);
+    row.outcome = crashed ? "CRASHED (tab)" : msg.includes("refused safely") ? msg.replace(/^Error: /, "").slice(0, 160) : alert ? `stopped safely: ${alert.trim().slice(0, 140)}` : `failed: ${msg.slice(0, 140)}`;
   }
   clearInterval(poll);
   row.peakMB = peak - baseline;

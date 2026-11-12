@@ -675,12 +675,15 @@ export class EngineCore {
     const delimiter = st.csv?.delimiter ?? ",";
     const lineEnding: "\n" | "\r\n" = st.csv?.lineEnding === "\n" ? "\n" : "\r\n";
     // Running out of memory in a worker crashes the whole tab in Chromium, so check first.
-    // The export streams: it needs the data already held plus a few chunks (~64 MB).
-    if (st.memoryBudgetBytes && view.grid.approxBytes * 1.6 + 64 * 1024 * 1024 > st.memoryBudgetBytes) {
+    // The export streams (2 MB text parts become Blobs at once; verification reads 4 MB at a
+    // time), so beyond the data already held it needs only a few chunks: ~32 MB. The budget is
+    // 45% of the heap limit and leaves room for scans; a streamed export may use up to 1.3× it
+    // (≈ 60% of the limit). Measured: a 150 MB CSV exports within a 512 MB heap in Node.
+    if (st.memoryBudgetBytes && view.grid.approxBytes * 1.6 + 32 * 1024 * 1024 > st.memoryBudgetBytes * 1.3) {
       throw new EngineError(
         "out-of-memory",
         "This sheet is too large to create a download safely in this browser on this device. Nothing was downloaded, and your changes are kept. Close other tabs and try again, or use a device with more memory.",
-        `export needs ~${Math.round(view.grid.approxBytes * 1.6 / 1048576) + 64} MB, budget ${Math.round(st.memoryBudgetBytes / 1048576)} MB`,
+        `export needs ~${Math.round(view.grid.approxBytes * 1.6 / 1048576) + 32} MB, allowed ${Math.round((st.memoryBudgetBytes * 1.3) / 1048576)} MB`,
       );
     }
     try {
