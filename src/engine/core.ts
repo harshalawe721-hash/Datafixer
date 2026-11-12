@@ -21,7 +21,9 @@ import { runScan, type Finding, type ScanOptions, type ScanResult } from "./scan
 import { ALL_CHECKS } from "./scan/checks/index.ts";
 import { EditSession, type ChangeRequest, type EditStats, type HistoryItem, type HistorySummary } from "./edit/session.ts";
 import { columnLetter } from "./query/query.ts";
-import { planFix, type FixId, type FixOptions, type FixPreview } from "./fix/fixes.ts";
+import { planFix, type FixId, type FixOptions, type FixPlan, type FixPreview, type PlanContext } from "./fix/fixes.ts";
+import { isRepairId, VALIDATOR_FIX_ALL, type AnyFixId } from "./fix/fix-ids.ts";
+import { planRepair } from "./validate/repairs.ts";
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
 import { classify } from "./scan/classify.ts";
 import { buildCsv, verifyCsv } from "./export/csv-export.ts";
@@ -99,6 +101,8 @@ export interface ExportSummary {
   cellsEdited: number;
   rowsRemoved: number;
   columnsRemoved: number;
+  /** CSV Validator: rows made shorter (empty extra fields removed). */
+  rowsShortened?: number;
   duplicatesRemoved: number;
   /** Cells, rows and columns changed by automatic fixes. */
   automaticCorrections: number;
@@ -176,6 +180,7 @@ export interface FixAllPreview {
   cellsChanged: number;
   rowsRemoved: number;
   columnsRemoved: number;
+  rowsShortened: number;
   /** What "Fix all" leaves for the user, with the reason. */
   notes: string[];
 }
@@ -184,7 +189,7 @@ export interface FixAllPreview {
 const FIX_ALL_ORDER: FixId[] = ["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows", "empty-columns"];
 const ROW_OR_COLUMN_FIXES = new Set<FixId>(["duplicate-rows", "empty-rows", "empty-columns"]);
 
-const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
+const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
 export function featureWarnings(f: FeatureInventory | null): string[] {
   if (!f) return [];
@@ -560,10 +565,18 @@ export class EngineCore {
    * is kept until it is applied, replaced by another preview, or made stale by
    * any other change.
    */
-  async previewFix(sheetName: string, fixId: FixId, options: FixOptions, onProgress: Progress, cancel?: CancelToken): Promise<FixPreviewResult> {
+  /** Plan a Stage 4 fix or a Stage 5 CSV Validator repair on `view`. */
+  private planAny(view: SheetModel, fixId: AnyFixId, options: FixOptions, pc: PlanContext): Promise<FixPlan> {
+    if (!isRepairId(fixId)) return planFix(view, fixId, options, pc);
+    const st = this.requireState();
+    if (st.format !== "csv" || !st.csv) throw new EngineError("unsupported-format", "These repairs are for CSV files only.");
+    return planRepair(view, fixId, { headerRow: options.headerRow, delimiter: st.csv.delimiter }, pc);
+  }
+
+  async previewFix(sheetName: string, fixId: AnyFixId, options: FixOptions, onProgress: Progress, cancel?: CancelToken): Promise<FixPreviewResult> {
     const st = this.requireState();
     const session = this.session(sheetName);
-    const plan = await planFix(session.view(), fixId, { ...options, textOnly: st.format === "csv" }, {
+    const plan = await this.planAny(session.view(), fixId, { ...options, textOnly: st.format === "csv" }, {
       cancel,
       memoryBudgetBytes: st.memoryBudgetBytes,
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
@@ -610,7 +623,7 @@ export class EngineCore {
    * that already includes the previous fixes, so the preview is exact. Excel
    * files: no rows or columns are removed (the workbook reference check comes first).
    */
-  async previewFixAll(sheetName: string, options: { headerRow: boolean }, onProgress: Progress, cancel?: CancelToken): Promise<FixAllPreview> {
+  async previewFixAll(sheetName: string, options: { headerRow: boolean; set?: "detector" | "validator" }, onProgress: Progress, cancel?: CancelToken): Promise<FixAllPreview> {
     const st = this.requireState();
     const session = this.session(sheetName);
     const excel = st.format !== "csv";
@@ -619,7 +632,9 @@ export class EngineCore {
     const requests: ChangeRequest[] = [];
     const notes: string[] = [];
     // .xls: references can't be checked, so no removals. .xlsx: removals only where nothing refers to them (S2).
-    const order = FIX_ALL_ORDER.filter((id) => !(st.format === "xls" && ROW_OR_COLUMN_FIXES.has(id)));
+    // CSV Validator: only its safe repairs (never short rows, decision 1).
+    const order: AnyFixId[] =
+      options.set === "validator" ? [...VALIDATOR_FIX_ALL] : FIX_ALL_ORDER.filter((id) => !(st.format === "xls" && ROW_OR_COLUMN_FIXES.has(id)));
     const removedRows: number[] = [];
     const removedCols: number[] = [];
     for (let i = 0; i < order.length; i++) {
@@ -631,7 +646,7 @@ export class EngineCore {
         keepColumns = probe.preview.columns.filter((c) => c.name).map((c) => c.index);
         if (keepColumns.length) notes.push(`${keepColumns.length === 1 ? "1 empty column has" : `${keepColumns.length} empty columns have`} a name, so ${keepColumns.length === 1 ? "it was" : "they were"} kept. Use “Remove empty columns” to decide.`);
       }
-      const plan = await planFix(scratch.view(), fixId, { headerRow: options.headerRow, textOnly: !excel, keepColumns }, {
+      const plan = await this.planAny(scratch.view(), fixId, { headerRow: options.headerRow, textOnly: !excel, keepColumns }, {
         cancel,
         memoryBudgetBytes: st.memoryBudgetBytes,
         onProgress: (done, total) => onProgress({ phase: "scanning", loaded: i * total + done, total: order.length * total }),
@@ -644,7 +659,7 @@ export class EngineCore {
         notes.push(`${plan.preview.label}: ${s.reason}${perColumn ? "" : ` (${s.count.toLocaleString("en-US")})`}`);
       }
       if (!plan.request) continue;
-      if (st.format === "xlsx" && ROW_OR_COLUMN_FIXES.has(fixId)) {
+      if (st.format === "xlsx" && ROW_OR_COLUMN_FIXES.has(fixId as FixId)) {
         const toOriginal = (r: number) => session.grid().baseRow(scratch.grid().baseRow(r));
         const toOriginalCol = (c: number) => session.grid().baseCol(scratch.grid().baseCol(c));
         const rows = (plan.request.deleteRows ?? []).map((d) => toOriginal(d.row));
@@ -670,6 +685,7 @@ export class EngineCore {
       cellsChanged: steps.reduce((n, s) => n + s.cellsChanged, 0),
       rowsRemoved: steps.reduce((n, s) => n + s.rowsRemoved, 0),
       columnsRemoved: steps.reduce((n, s) => n + s.columnsRemoved, 0),
+      rowsShortened: steps.reduce((n, s) => n + (s.rowsShortened ?? 0), 0),
       notes,
     };
   }
@@ -785,8 +801,9 @@ export class EngineCore {
           cellsEdited: stats.cellsEdited,
           rowsRemoved: stats.rowsRemoved,
           columnsRemoved: stats.columnsRemoved,
+          ...(stats.rowsShortened ? { rowsShortened: stats.rowsShortened } : {}),
           duplicatesRemoved: auto.filter((e) => e.operation === "duplicate-rows").reduce((n, e) => n + e.rowsRemoved, 0),
-          automaticCorrections: auto.reduce((n, e) => n + e.cells + e.rowsRemoved + e.columnsRemoved, 0),
+          automaticCorrections: auto.reduce((n, e) => n + e.cells + e.rowsRemoved + e.columnsRemoved + e.rowsShortened, 0),
           manualEdits: applied.length - auto.length,
           notPreserved,
           warnings,

@@ -24,6 +24,7 @@ export function IssueCard({
   active,
   onView,
   fix,
+  extraFixes = [],
   columnLabel,
 }: {
   issue: ScanIssue;
@@ -34,6 +35,8 @@ export function IssueCard({
   onView: (issue: ScanIssue | null) => void;
   /** Stage 4: a working fix for this problem, or the reason there isn't one yet. */
   fix?: { label: string; onFix: () => void } | { unavailable: string };
+  /** More working fixes for this problem (CSV Validator: short rows and empty extra fields). */
+  extraFixes?: { label: string; onFix: () => void }[];
 }) {
   const s = SEVERITY[issue.severity];
   const Icon = s.icon;
@@ -123,6 +126,11 @@ export function IssueCard({
             <Wand2 className="size-4" aria-hidden="true" /> {fix.label}
           </button>
         )}
+        {extraFixes.map((f) => (
+          <button key={f.label} type="button" onClick={f.onFix} className="inline-flex h-10 items-center gap-2 rounded-xl bg-success px-4 text-sm font-semibold text-white hover:opacity-90 dark:text-black">
+            <Wand2 className="size-4" aria-hidden="true" /> {f.label}
+          </button>
+        ))}
         {issue.viewable === false ? null : active ? (
           <button type="button" onClick={() => onView(null)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-line-strong px-4 text-sm font-semibold hover:bg-surface-muted">
             <X className="size-4" aria-hidden="true" /> Show all rows

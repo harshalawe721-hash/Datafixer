@@ -16,7 +16,8 @@ import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
 import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
-import type { FixId, FixOptions } from "./fix/fixes";
+import type { FixOptions } from "./fix/fixes";
+import type { AnyFixId } from "./fix/fix-ids";
 import type { HistoryItem, HistorySummary } from "./edit/session";
 
 type Pending = {
@@ -105,11 +106,11 @@ export class EngineClient {
 
   // ---- Stage 4: fixing and editing (all on this device, in the worker)
 
-  previewFix(sheet: string, fixId: FixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult> {
+  previewFix(sheet: string, fixId: AnyFixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult> {
     return this.request<"previewFix">({ type: "previewFix", sheet, fixId, options }, onProgress);
   }
 
-  previewFixAll(sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<FixAllPreview> {
+  previewFixAll(sheet: string, options: { headerRow: boolean; set?: "detector" | "validator" }, onProgress?: (p: ProgressEvent) => void): Promise<FixAllPreview> {
     return this.request<"previewFixAll">({ type: "previewFixAll", sheet, options }, onProgress);
   }
 

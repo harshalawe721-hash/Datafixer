@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCcw, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCcw, Wand2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ProcessingProgress } from "@/components/spreadsheet/ProcessingProgress";
@@ -13,6 +13,10 @@ import { EngineError } from "@/engine/errors";
 import { columnLetter } from "@/engine/query/query";
 import { IssueCard } from "@/components/tools/detector/IssueCard";
 import { cn } from "@/lib/cn";
+import { EditBar } from "@/components/tools/fix/EditBar";
+import { FixDialog, type FixRequest } from "@/components/tools/fix/FixDialog";
+import { REPAIR_LABELS, type RepairId } from "@/engine/fix/fix-ids";
+import type { ScanIssue } from "@/engine/scan/scan";
 
 type State =
   | { status: "checking"; progress: ProgressEvent | null }
@@ -39,6 +43,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
  */
 export function ValidatorPanel({ api }: { api: ToolApi }) {
   const [recheck, setRecheck] = useState(0);
+  const [fixRequest, setFixRequest] = useState<FixRequest | null>(null);
   const key = `${api.viewKey}:${api.headerRow}:${recheck}:${api.edits.version}`;
   const [state, setState] = useState<State>({ status: "checking", progress: null });
   const [startedKey, setStartedKey] = useState("");
@@ -74,11 +79,23 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
   if (!api.sheetReady) return null;
 
   if (state.status === "checking") {
-    return <ProcessingProgress fileName="Validating the CSV file" progress={state.progress} key={startedKey} onCancel={() => apiRef.current.abortScans()} />;
+    return (
+      <div className="space-y-4">
+        <EditBar api={api} />
+        <ProcessingProgress
+          fileName={api.edits.changesApplied ? "Checking again after your changes" : "Validating the CSV file"}
+          progress={state.progress}
+          key={startedKey}
+          onCancel={() => apiRef.current.abortScans()}
+        />
+      </div>
+    );
   }
 
   if (state.status === "cancelled" || state.status === "error") {
     return (
+      <div className="space-y-4">
+      <EditBar api={api} />
       <Card className={state.status === "error" ? "border-danger/40" : ""}>
         <h2 className="font-semibold">{state.status === "cancelled" ? "Check cancelled" : "This file couldn't be checked"}</h2>
         <p role={state.status === "error" ? "alert" : "status"} className="mt-1 text-sm text-muted">
@@ -88,6 +105,7 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
           <RotateCcw className="size-4" aria-hidden="true" /> Check again
         </Button>
       </Card>
+      </div>
     );
   }
 
@@ -99,6 +117,31 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
     const short = name && name.length > 40 ? `${name.slice(0, 39)}…` : name;
     return short ? `${short} (${columnLetter(i)})` : `Column ${columnLetter(i)}`;
   };
+  const changed = api.edits.changesApplied > 0;
+  const repair = (id: RepairId) => ({ label: REPAIR_LABELS[id], onFix: () => setFixRequest({ kind: "one", fixId: id }) });
+  const has = (id: string) => result.issues.some((i) => i.id === id);
+  /** The repairs offered on each problem (decisions 1 and 2; nothing for problems whose fix can't be known). */
+  const repairsFor = (issue: ScanIssue) => {
+    switch (issue.id) {
+      case "uneven-rows":
+        return [
+          ...(result.rowShapes.short ? [repair("pad-short-rows")] : []),
+          ...(result.rowShapes.longEmpty ? [repair("trim-extra-fields")] : []),
+        ];
+      case "empty-header":
+      case "duplicate-header":
+        return [repair("fix-header-names")];
+      case "header-spaces":
+        return [repair("trim-header-spaces")];
+      case "control-characters":
+        return [repair("remove-control-chars")];
+      case "blank-lines":
+        return [repair("remove-blank-lines")];
+      default:
+        return [];
+    }
+  };
+  const canFixAll = result.rowShapes.longEmpty > 0 || has("header-spaces") || has("blank-lines");
   const tone = !verdict.valid ? "invalid" : verdict.warnings ? "warnings" : "valid";
   const VerdictIcon = tone === "invalid" ? XCircle : tone === "warnings" ? AlertTriangle : CheckCircle2;
   const headline =
@@ -110,6 +153,7 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
 
   return (
     <section aria-labelledby="validator-heading" className="space-y-4">
+      <EditBar api={api} />
       <Card>
         <div className="flex items-start gap-3">
           <VerdictIcon
@@ -124,7 +168,8 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
               {verdict.importReady}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Checked {plural(result.rows, "row")} on this device in {(result.timings.totalMs / 1000).toFixed(1)}s. Nothing was changed or uploaded.
+              Checked {plural(result.rows, "row")} on this device in {(result.timings.totalMs / 1000).toFixed(1)}s.{" "}
+              {changed ? "These results include your changes. Your original file is unchanged." : "Nothing was changed or uploaded."}
             </p>
           </div>
         </div>
@@ -141,6 +186,17 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
           {file.hadBom ? " with BOM" : ""} · Separator: {SEPARATORS[file.delimiter] ?? `“${file.delimiter}”`} · Line endings: {ENDINGS[file.lineEnding]} ·{" "}
           {file.finalLineBreak ? "Ends with a line break" : "No line break at the end"}
         </p>
+
+        {canFixAll && (
+          <div className="mt-4 flex flex-col gap-2 rounded-xl bg-success-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <strong>Fix the safe problems in one go.</strong> Empty extra fields, spaces around names and blank lines. You&apos;ll see every change first.
+            </p>
+            <Button className="h-11 shrink-0" onClick={() => setFixRequest({ kind: "all", set: "validator" })}>
+              <Wand2 className="size-4" aria-hidden="true" /> Fix all safe problems
+            </Button>
+          </div>
+        )}
 
         <label className="mt-4 flex items-start gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={api.headerRow} onChange={(e) => api.setHeaderRow(e.target.checked)} />
@@ -188,8 +244,17 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
 
       {result.issues.length > 0 && <h2 className="pt-2 text-lg font-semibold">Problems found, with how to fix each one</h2>}
       {result.issues.map((issue) => (
-        <IssueCard key={issue.id} issue={issue} profiles={[]} columnLabel={columnLabel} active={api.activeIssueId === issue.id} onView={api.viewIssue} />
+        <IssueCard
+          key={issue.id}
+          issue={issue}
+          profiles={[]}
+          columnLabel={columnLabel}
+          active={api.activeIssueId === issue.id}
+          onView={api.viewIssue}
+          extraFixes={repairsFor(issue)}
+        />
       ))}
+      {fixRequest && <FixDialog api={api} request={fixRequest} columnName={columnLabel} onClose={() => setFixRequest(null)} />}
     </section>
   );
 }

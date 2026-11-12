@@ -19,6 +19,7 @@ function describe(e: HistorySummary): string {
     e.cells ? plural(e.cells, "cell") : null,
     e.rowsRemoved ? `${plural(e.rowsRemoved, "row")} removed` : null,
     e.columnsRemoved ? `${plural(e.columnsRemoved, "column")} removed` : null,
+    e.rowsShortened ? `${plural(e.rowsShortened, "row")} shortened` : null,
   ].filter(Boolean);
   return `${e.label} (${parts.join(", ")})`;
 }
@@ -51,6 +52,7 @@ export function EditBar({ api }: { api: ToolApi }) {
     edits.cellsEdited ? `${plural(edits.cellsEdited, "cell")} changed` : null,
     edits.rowsRemoved ? `${plural(edits.rowsRemoved, "row")} removed` : null,
     edits.columnsRemoved ? `${plural(edits.columnsRemoved, "column")} removed` : null,
+    edits.rowsShortened ? `${plural(edits.rowsShortened, "row")} shortened` : null,
   ].filter(Boolean);
 
   return (
@@ -159,7 +161,7 @@ function HistoryEntry({ api, entry }: { api: ToolApi; entry: HistorySummary }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const count = [entry.cells ? plural(entry.cells, "cell") : null, entry.rowsRemoved ? `${plural(entry.rowsRemoved, "row")} removed` : null, entry.columnsRemoved ? `${plural(entry.columnsRemoved, "column")} removed` : null]
+  const count = [entry.cells ? plural(entry.cells, "cell") : null, entry.rowsRemoved ? `${plural(entry.rowsRemoved, "row")} removed` : null, entry.columnsRemoved ? `${plural(entry.columnsRemoved, "column")} removed` : null, entry.rowsShortened ? `${plural(entry.rowsShortened, "row")} shortened` : null]
     .filter(Boolean)
     .join(" · ");
 
@@ -240,6 +242,10 @@ function HistoryEntry({ api, entry }: { api: ToolApi; entry: HistorySummary }) {
               ) : i.kind === "column" ? (
                 <li key={k}>
                   Column {i.column} {entry.status === "applied" ? "removed" : "(removal undone)"} — {i.reason}
+                </li>
+              ) : i.kind === "trim" ? (
+                <li key={k}>
+                  Row {fmt(i.row)} {entry.status === "applied" ? "shortened" : "(shortening undone)"} from {plural(i.from, "field")} to {fmt(i.to)} — {i.reason}
                 </li>
               ) : null,
             )}

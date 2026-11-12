@@ -9,7 +9,8 @@ import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { ValidationResult } from "@/engine/validate/validate";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { FixId, FixOptions } from "@/engine/fix/fixes";
+import type { FixOptions } from "@/engine/fix/fixes";
+import type { AnyFixId } from "@/engine/fix/fix-ids";
 
 export type EngineState =
   | { status: "idle" }
@@ -107,11 +108,11 @@ export function useSpreadsheetEngine() {
 
   // ---- Stage 4: fixing and editing (in the worker, on this device)
   const previewFix = useCallback(
-    (sheet: string, fixId: FixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void) => client().previewFix(sheet, fixId, options, onProgress),
+    (sheet: string, fixId: AnyFixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void) => client().previewFix(sheet, fixId, options, onProgress),
     [client],
   );
   const previewFixAll = useCallback(
-    (sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void) => client().previewFixAll(sheet, options, onProgress),
+    (sheet: string, options: { headerRow: boolean; set?: "detector" | "validator" }, onProgress?: (p: ProgressEvent) => void) => client().previewFixAll(sheet, options, onProgress),
     [client],
   );
   const applyFix = useCallback((sheet: string, token: string) => client().applyFix(sheet, token), [client]);

@@ -26,7 +26,7 @@ import { invalidPhones } from "../scan/checks/contacts.ts";
 import { planCase, planDates, planPhones } from "./choice-fixes.ts";
 
 export { SAFE_FIX_IDS, CHOICE_FIX_IDS, FIX_IDS, FIX_LABELS, type FixId } from "./fix-ids.ts";
-import { FIX_LABELS, type FixId } from "./fix-ids.ts";
+import { FIX_LABELS, type AnyFixId, type FixId } from "./fix-ids.ts";
 
 /** Target formats for the date fix: text formats (CSV) or real Excel dates with a display format (Excel). */
 export type DateTarget = "iso" | "dmy-slash" | "mdy-slash" | "dmy-dot" | "d-mon-y" | "mon-d-y" | "excel-iso" | "excel-dmy" | "excel-mdy" | "excel-d-mon-y";
@@ -86,11 +86,13 @@ export interface FixOptions {
    * the cells instead, so every position stays where it is.
    */
   clearInsteadOfRemove?: boolean;
+  /** Stage 5 (CSV Validator): the file's separator, to recognise an Excel “sep=” line. */
+  delimiter?: string;
 }
 
 /** What a fix would do, shown to the user before anything changes. Positions are view positions. */
 export interface FixPreview {
-  fixId: FixId;
+  fixId: AnyFixId;
   label: string;
   description: string;
   cellsChanged: number;
@@ -106,6 +108,12 @@ export interface FixPreview {
   skipped: { reason: string; count: number }[];
   /** Decisions for the user (Step 3 fixes); empty for the safe fixes. */
   choices: FixChoice[];
+  /** Stage 5: rows that will be made shorter (empty extra fields removed). */
+  rowsShortened?: number;
+  /** Stage 5: whole rows before and after (fields), up to 20, for row-length repairs. */
+  lines?: { row: number; before: string[]; after: string[] }[];
+  /** Stage 5: something the user must know before applying (shown prominently). */
+  warning?: string;
 }
 
 export interface FixPlan {

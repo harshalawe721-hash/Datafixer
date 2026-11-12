@@ -57,6 +57,8 @@ export interface ValidationResult {
   firstDataRow: number;
   /** Column names from the header row (empty when there is no header row). */
   columnNames: string[];
+  /** Rows with the wrong number of fields: too few, too many but only empty extras, too many with data in the extras. */
+  rowShapes: { short: number; longEmpty: number; longData: number };
   issues: ScanIssue[];
   checks: ValidationCheck[];
   verdict: { valid: boolean; errors: number; warnings: number; notes: number; importReady: string };
@@ -114,7 +116,36 @@ const sepName = (d: string) => SEPARATOR_NAME[d] ?? `“${d}”`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 const rowLabel = (r: number) => `Row ${(r + 1).toLocaleString("en-US")}`;
 
-function cellText(sheet: SheetModel, r: number, c: number): string {
+/**
+ * Where the data starts and how many fields each row should have: the header's
+ * width, or the most common width among data rows (blank lines ignored).
+ * Shared by the checks and the repairs, so both use exactly the same rule.
+ */
+export function layoutOf(sheet: SheetModel, sep: string | null, headerRow: boolean): { headerIndex: number; firstData: number; expectedFields: number } {
+  const g = sheet.grid;
+  const rows = g.rowCount;
+  const headerIndex = sep !== null ? 1 : 0;
+  const hasHeader = headerRow && rows > headerIndex;
+  const firstData = hasHeader ? headerIndex + 1 : headerIndex;
+  if (hasHeader) return { headerIndex, firstData, expectedFields: g.rowLength(headerIndex) };
+  const freq = new Map<number, number>();
+  for (let r = firstData; r < rows; r++) {
+    if (isBlankLine(sheet, r)) continue;
+    const n = g.rowLength(r);
+    freq.set(n, (freq.get(n) ?? 0) + 1);
+  }
+  let expectedFields = 0;
+  let best = -1;
+  for (const [n, f] of freq) if (f > best || (f === best && n > expectedFields)) [expectedFields, best] = [n, f];
+  return { headerIndex, firstData, expectedFields };
+}
+
+/** An empty line in the file (one empty field). Rows of only separators are not blank lines. */
+export function isBlankLine(sheet: SheetModel, r: number): boolean {
+  return sheet.grid.rowLength(r) <= 1 && isBlankRow(sheet, r);
+}
+
+export function cellText(sheet: SheetModel, r: number, c: number): string {
   const v = sheet.grid.get(r, c);
   return v === null ? "" : String(v);
 }
@@ -127,7 +158,7 @@ function isBlankRow(sheet: SheetModel, r: number): boolean {
 }
 
 /** "Excel sep= line": the first line only says which separator to use. */
-function sepLine(sheet: SheetModel, delimiter: string): string | null {
+export function sepLine(sheet: SheetModel, delimiter: string): string | null {
   if (sheet.grid.rowCount === 0) return null;
   const len = sheet.grid.rowLength(0);
   const first = cellText(sheet, 0, 0).trim().toLowerCase();
@@ -161,27 +192,14 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
   const add = (issue: Omit<ScanIssue, "unit"> & { unit?: ScanIssue["unit"] }, extra: Omit<Finding, "issue"> = {}) =>
     findings.push({ issue: { unit: "rows", ...issue } as ScanIssue, ...extra });
 
-  // ---- expected width: the header's, or the most common width among data rows.
-  const firstData = headerRow ? headerIndex + 1 : headerIndex;
-  let expectedFields: number;
-  if (headerRow && rows > headerIndex) expectedFields = g.rowLength(headerIndex);
-  else {
-    const freq = new Map<number, number>();
-    for (let r = firstData; r < rows; r++) {
-      if (isBlankRow(sheet, r) && g.rowLength(r) <= 1) continue;
-      const n = g.rowLength(r);
-      freq.set(n, (freq.get(n) ?? 0) + 1);
-    }
-    expectedFields = 0;
-    let best = -1;
-    for (const [n, f] of freq) if (f > best || (f === best && n > expectedFields)) [expectedFields, best] = [n, f];
-  }
+  const { firstData, expectedFields } = layoutOf(sheet, sep, headerRow);
 
   // ---- one pass over all rows and cells
   const uneven = new RowList();
   const unevenFreq = new Map<number, number>();
   const unevenEx: ScanIssue["examples"] = [];
   let extraAllEmpty = true;
+  const shape = { short: 0, longEmpty: 0, longData: 0 };
   const blank = new RowList();
   const unreadable = new CellList();
   const unreadableEx: ScanIssue["examples"] = [];
@@ -210,7 +228,16 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
     } else if (isData && len !== expectedFields) {
       uneven.add(r);
       unevenFreq.set(len, (unevenFreq.get(len) ?? 0) + 1);
-      if (len > expectedFields) for (let c = expectedFields; c < len; c++) if (cellText(sheet, r, c) !== "") extraAllEmpty = false;
+      if (len < expectedFields) shape.short++;
+      else {
+        let empty = true;
+        for (let c = expectedFields; c < len; c++) if (cellText(sheet, r, c) !== "") empty = false;
+        if (empty) shape.longEmpty++;
+        else {
+          shape.longData++;
+          extraAllEmpty = false;
+        }
+      }
       if (unevenEx.length < MAX_EXAMPLES) {
         unevenEx.push({ row: r, col: 0, value: "", note: `${plural(len, "field")} instead of ${expectedFields.toLocaleString("en-US")}` });
       }
@@ -324,7 +351,8 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
         howToFix: `Choose ${sepName(suggestion)} in the “Column separator” box above and check the columns again.`,
       });
     }
-  } else if (delimiterIssue) {
+  } else if (delimiterIssue && uneven.size > 0) {
+    // Only while rows disagree: once every row has the same number of fields, the separator clearly works.
     add({
       id: "separator-uncertain",
       severity: "warning",
@@ -675,6 +703,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       expectedFields,
       headerRow,
       firstDataRow: firstData,
+      rowShapes: shape,
       columnNames: headerRow && rows > headerIndex ? Array.from({ length: g.rowLength(headerIndex) }, (_, c) => cellText(sheet, headerIndex, c)) : [],
       issues,
       checks,

@@ -126,6 +126,20 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - Browser test: `npm run test:validator`, 65 checks (all problem types in the pack, decision 4 and 5 behaviour, separator change, refusals, Cancel/Check again on 50 MB, phone and tablet widths, no off-site requests, no console errors).
 - **Owner's Android tablet (12 November 2026, Vercel deployment of commit `7141b14`):** 0-clean valid; 1-uneven and 2-header not valid; 3-quotes and 5-line-endings valid with warnings; 6-control (NUL bytes) accepted and not valid. Unticking “First row contains column names” on 2-header gives “Valid CSV file”; “View affected data” on 1-uneven shows only rows 6, 13, 20, 27 and 33. All as expected.
 
+### Step 4 — Repairs with preview (done, 12 November 2026)
+
+- Repair buttons on the problem cards, each with a preview first, then Undo/Redo and the change history (the Stage 4 engine: preview tokens, stale-preview refusal, all-or-nothing apply). Planned by `src/engine/validate/repairs.ts` with the validator's own layout rule, so they change exactly what the checks report.
+  - **Add empty cells** (short rows, decision 1): before/after for each row, a warning that short rows can mean shifted data, never in Fix all. Existing values are not moved.
+  - **Remove empty extra fields:** rows longer than the header whose extra fields are all empty are shortened. Rows with data in the extra fields are left alone and counted, with the reason.
+  - **Fix column names** (decision 2): empty → “Column C”, duplicates → “email (2)”, next free number when taken (e.g. “email (3)”); only header cells change; every rename in the preview. Not offered when “First row contains column names” is unticked; the empty last column made by trailing separators is not named.
+  - **Remove spaces around names**, **Remove blank lines** (exactly the reported blank lines; rows of separators are kept), **Remove hidden characters** (with a warning when U+0080–U+009F codes suggest the wrong encoding).
+  - **Fix all safe problems** (Validator): empty extra fields, spaces around names, blank lines only.
+  - Never automatic: extra fields with data, unclosed quotes, unreadable characters (the right result can't be known).
+- **Edit layer:** new “shorten row” change (`trimRows`), with undo/redo, stats (`rowsShortened`), history details (“Row 2 shortened from 4 fields to 2”) and the download summary (“Rows shortened”).
+- The page now has the shared editing tools: tap a cell to edit, Undo/Redo, History and the verified CSV download (the download keeps the original separator and line endings until Step 5). It also accepts .tsv and .txt files.
+- “Column separator not certain” is now shown only while rows still disagree on the number of fields (it was a read-time guess that stayed after repairs).
+- Tests: `tests/engine/repairs.test.ts` (12, including a check that breaking the duplicate-name rule makes them fail); Validator browser test now 91 checks (repairs, Fix all, Undo, history, a real download read by Python's `csv` module, .tsv). 100 MB (1.85 M rows): validation 1.3 s; shortening every row: preview 0.7 s, apply 4.4 s; download with verification 7.0 s (Node).
+
 ## Testing
 
 - Unit tests per check with exact counts, including false-alarm guards: quoted separators, quoted line breaks, and ragged rows that are legitimate when there is no header.

@@ -19,6 +19,8 @@ export interface EditLayer {
   readonly extent: Map<number, number>;
   /** Number format given to an edited cell (e.g. a text date converted to a real Excel date). */
   readonly formats: Map<number, string>;
+  /** Stage 5: original rows made shorter (empty extra fields removed): row → new length, in original columns. */
+  readonly trim: Map<number, number>;
 }
 
 function text(v: CellValue): string {
@@ -75,8 +77,19 @@ export class EditedGrid implements CellGrid {
       const ext = this.layer.extent.get(br);
       if (ext !== undefined && ext > len) len = ext;
     }
+    if (this.layer.trim.size) {
+      const t = this.layer.trim.get(br);
+      if (t !== undefined && t < len) len = t;
+    }
     if (!this.keptBefore) return len;
     return this.keptBefore[Math.min(len, this.keptBefore.length - 1)]!;
+  }
+
+  /** True when original cell (br, bc) was cut off by a shortened row. */
+  private trimmed(br: number, bc: number): boolean {
+    if (!this.layer.trim.size) return false;
+    const t = this.layer.trim.get(br);
+    return t !== undefined && bc >= t;
   }
 
   get(r: number, c: number): CellValue {
@@ -84,6 +97,7 @@ export class EditedGrid implements CellGrid {
     const bc = this.baseCol(c);
     if (bc < 0) return null;
     const br = this.baseRow(r);
+    if (this.trimmed(br, bc)) return null;
     if (this.layer.editedRows[br]) {
       const v = this.layer.edits.get(cellKey(br, bc));
       if (v !== undefined) return v;
@@ -112,6 +126,7 @@ export class EditedGrid implements CellGrid {
     const bc = this.baseCol(c);
     if (bc < 0) return "";
     const br = this.baseRow(r);
+    if (this.trimmed(br, bc)) return "";
     if (this.layer.editedRows[br]) {
       const key = cellKey(br, bc);
       const v = this.layer.edits.get(key);

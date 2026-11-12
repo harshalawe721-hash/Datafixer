@@ -1,17 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, Info, Loader2, Undo2, Wand2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, Info, Loader2, Undo2, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { ToolApi } from "@/components/spreadsheet/tool-api";
 import type { FixAllPreview, FixPreviewResult } from "@/engine/core";
 import type { DateTarget, FixChoice, FixOptions, FixPreview } from "@/engine/fix/fixes";
-import type { FixId } from "@/engine/fix/fix-ids";
+import type { AnyFixId } from "@/engine/fix/fix-ids";
 import type { ProgressEvent } from "@/engine/types";
 import { EngineError } from "@/engine/errors";
 import { columnLetter } from "@/engine/query/query";
 
-export type FixRequest = { kind: "one"; fixId: FixId } | { kind: "all" };
+export type FixRequest = { kind: "one"; fixId: AnyFixId } | { kind: "all"; set?: "detector" | "validator" };
 
 type Choices = Omit<FixOptions, "headerRow">;
 
@@ -67,7 +67,7 @@ export function FixDialog({
         if (mySeq === seq.current) setState((s) => (s.status === "loading" ? { ...s, progress } : s));
       };
       const a = apiRef.current;
-      const p = request.kind === "all" ? a.previewFixAll(onProgress) : a.previewFix(request.fixId, next, onProgress);
+      const p = request.kind === "all" ? a.previewFixAll(onProgress, request.set) : a.previewFix(request.fixId, next, onProgress);
       p.then(
         (preview) => mySeq === seq.current && setState({ status: "ready", preview }),
         (err: unknown) => {
@@ -139,7 +139,7 @@ export function FixDialog({
 
   const title = request.kind === "all" ? "Fix all safe problems" : (state.status === "ready" || state.status === "applying" ? (state.preview as FixPreviewResult).label : "Preparing the fix");
   const preview = state.status === "ready" || state.status === "applying" ? state.preview : null;
-  const total = preview ? preview.cellsChanged + preview.rowsRemoved + preview.columnsRemoved : 0;
+  const total = preview ? preview.cellsChanged + preview.rowsRemoved + preview.columnsRemoved + (preview.rowsShortened ?? 0) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close()}>
@@ -180,7 +180,7 @@ export function FixDialog({
               <span>{state.message}</span>
             </div>
           )}
-          {preview && "steps" in preview && <AllPreview preview={preview} columnName={columnName} />}
+          {preview && "steps" in preview && <AllPreview preview={preview} columnName={columnName} validator={request.kind === "all" && request.set === "validator"} />}
           {preview && !("steps" in preview) && <OnePreview preview={preview} columnName={columnName} choices={choices} onChoose={choose} />}
         </div>
 
@@ -205,11 +205,12 @@ export function FixDialog({
   );
 }
 
-function Totals({ p }: { p: { cellsChanged: number; rowsRemoved: number; columnsRemoved: number } }) {
+function Totals({ p }: { p: { cellsChanged: number; rowsRemoved: number; columnsRemoved: number; rowsShortened?: number } }) {
   const parts = [
     p.cellsChanged ? `${plural(p.cellsChanged, "cell")} will change` : null,
     p.rowsRemoved ? `${plural(p.rowsRemoved, "row")} will be removed` : null,
     p.columnsRemoved ? `${plural(p.columnsRemoved, "column")} will be removed` : null,
+    p.rowsShortened ? `${plural(p.rowsShortened, "row")} will be shortened` : null,
   ].filter(Boolean);
   if (parts.length === 0) {
     return (
@@ -240,7 +241,7 @@ function Examples({ preview, columnName, limit = 20 }: { preview: FixPreview; co
                   Row {fmt(e.row + 1)} · {columnName(e.col)}
                 </span>
                 <span className="flex flex-wrap items-center gap-x-2 font-mono text-xs break-all">
-                  <span>{showSpaces ? reveal(e.before) : e.before}</span>
+                  {e.before === "" ? <span className="font-sans text-muted italic">empty</span> : <span>{showSpaces ? reveal(e.before) : e.before}</span>}
                   <ArrowRight className="size-3 shrink-0 text-muted" aria-hidden="true" />
                   <span className="sr-only">changes to</span>
                   <span className="font-semibold">{e.after}</span>
@@ -254,6 +255,7 @@ function Examples({ preview, columnName, limit = 20 }: { preview: FixPreview; co
           {showSpaces && <p className="mt-1 text-xs text-muted">· marks a space, ⍽ a non-breaking space and ⇥ a tab.</p>}
         </div>
       )}
+      {preview.lines && preview.lines.length > 0 && <Lines lines={preview.lines} limit={limit} />}
       {preview.rows.length > 0 && (
         <ul className="space-y-0.5 text-sm">
           {preview.rows.slice(0, limit).map((r) => (
@@ -265,6 +267,36 @@ function Examples({ preview, columnName, limit = 20 }: { preview: FixPreview; co
         </ul>
       )}
     </>
+  );
+}
+
+/** Whole rows before and after (CSV Validator row-length repairs): one box per field; added or removed empty fields marked. */
+function Lines({ lines, limit }: { lines: NonNullable<FixPreview["lines"]>; limit: number }) {
+  const Fields = ({ fields, other, label }: { fields: string[]; other: number; label: string }) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="w-12 shrink-0 text-xs text-muted">{label}</span>
+      {fields.map((f, i) => (
+        <span
+          key={i}
+          className={`max-w-[12rem] truncate rounded border px-1.5 py-0.5 font-mono text-xs ${i >= other ? "border-dashed border-primary bg-secondary text-secondary-foreground" : "border-line"}`}
+        >
+          {f === "" ? <span className="font-sans text-muted italic">empty</span> : f}
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <ul className="divide-y divide-line">
+      {lines.slice(0, limit).map((l) => (
+        <li key={l.row} className="space-y-1 py-2">
+          <p className="text-xs font-medium">
+            Row {fmt(l.row + 1)} · {plural(l.before.length, "field")} → {fmt(l.after.length)}
+          </p>
+          <Fields fields={l.before} other={l.after.length} label="Before" />
+          <Fields fields={l.after} other={l.before.length} label="After" />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -288,6 +320,12 @@ function OnePreview({ preview, columnName, choices, onChoose }: { preview: FixPr
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">{preview.description}</p>
+      {preview.warning && (
+        <p role="alert" className="flex items-start gap-2 rounded-xl border border-warning/60 bg-warning-soft/60 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <span>{preview.warning}</span>
+        </p>
+      )}
       {preview.choices.length > 0 && <ChoiceList choices={preview.choices} onChoose={onChoose} />}
       {preview.excelCheck && <ExcelCheck check={preview.excelCheck} onChoose={onChoose} />}
       {preview.fixId === "empty-columns" && (preview.columns.length > 0 || (choices.keepColumns?.length ?? 0) > 0) && (
@@ -336,7 +374,7 @@ function ExcelCheck({ check, onChoose }: { check: NonNullable<FixPreviewResult["
   );
 }
 
-function AllPreview({ preview, columnName }: { preview: FixAllPreview; columnName: (i: number) => string }) {
+function AllPreview({ preview, columnName, validator }: { preview: FixAllPreview; columnName: (i: number) => string; validator: boolean }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">These fixes need no decisions from you. They are applied in this order, and each one can be undone separately.</p>
@@ -344,13 +382,21 @@ function AllPreview({ preview, columnName }: { preview: FixAllPreview; columnNam
       {preview.steps.map((s) => (
         <section key={s.fixId} className="rounded-xl border border-line px-4 py-3">
           <h3 className="text-sm font-semibold">
-            {s.label} <span className="font-normal text-muted">· {plural(s.cellsChanged + s.rowsRemoved + s.columnsRemoved, s.cellsChanged ? "cell" : s.rowsRemoved ? "row" : "column")}</span>
+            {s.label}{" "}
+            <span className="font-normal text-muted">
+              · {plural(s.cellsChanged + s.rowsRemoved + s.columnsRemoved + (s.rowsShortened ?? 0), s.cellsChanged ? "cell" : s.rowsRemoved || s.rowsShortened ? "row" : "column")}
+            </span>
           </h3>
           <div className="mt-2">
             <Examples preview={s} columnName={columnName} limit={3} />
           </div>
         </section>
       ))}
+      {validator && (
+        <p className="text-xs text-muted">
+          Not included: adding empty cells to short rows, renaming columns and removing hidden characters. Those need your review: use the button on each problem.
+        </p>
+      )}
       {preview.notes.length > 0 && (
         <div className="rounded-xl border border-line px-4 py-3">
           <p className="text-sm font-semibold">Not included</p>

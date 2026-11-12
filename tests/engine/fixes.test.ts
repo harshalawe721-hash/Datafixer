@@ -101,7 +101,7 @@ test("applying every safe fix in turn leaves none of those problems; the header 
   const r = await core.scan(sheet, { headerRow: true }, noop);
   for (const id of FIX_IDS) assert.equal(r.issues.find((i) => i.id === id), undefined, id);
   assert.deepEqual(core.getSheet(sheet)!.grid.row(0), header.slice(0, 7), "header kept (the empty “notes” column was removed)");
-  assert.deepEqual(core.editStats(sheet), { cellsEdited: 3, rowsRemoved: 3, columnsRemoved: 1, changesApplied: 5, canUndo: true, canRedo: false, version: 5 });
+  assert.deepEqual(core.editStats(sheet), { cellsEdited: 3, rowsRemoved: 3, columnsRemoved: 1, rowsShortened: 0, changesApplied: 5, canUndo: true, canRedo: false, version: 5 });
   const hist = core.history(sheet);
   assert.deepEqual(hist.map((h) => h.label), ["Remove empty columns", "Remove empty rows", "Remove duplicate rows", "Convert numbers stored as text", "Remove extra spaces"]);
 });
@@ -324,7 +324,7 @@ test("applying several fixes is all-or-nothing: a failure part-way rolls back th
   s.apply({ operation: "a", label: "A", cells: [{ row: 1, col: 0, value: "x" }] });
   s.apply({ operation: "b", label: "B", cells: [{ row: 2, col: 0, value: "y" }] });
   s.rollback(2);
-  assert.deepEqual(s.stats(), { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 4 });
+  assert.deepEqual(s.stats(), { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 4 });
   assert.equal(s.history().length, 0, "rolled-back steps leave no history");
 });
 

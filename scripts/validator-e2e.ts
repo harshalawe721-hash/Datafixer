@@ -4,6 +4,7 @@
  */
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -139,7 +140,7 @@ await page.goto(PAGE, { waitUntil: "networkidle" });
 await page.locator("input[type=file]").setInputFiles({ name: "binary.csv", mimeType: "text/csv", buffer: Buffer.from([0x00, 0x01, 0x02, 0x41]) });
 check(await visible(page.getByText(/contains binary data/)), "binary data is refused");
 await page.locator("input[type=file]").setInputFiles({ name: "book.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("PK\x03\x04") });
-check(await visible(page.getByText(/not a supported file type. Please choose a file in CSV format/)), "Excel files are refused (CSV only)");
+check(await visible(page.getByText(/not a supported file type. Please choose a file in CSV, TSV or TXT format/)), "Excel files are refused (CSV, TSV and TXT only)");
 
 console.log("\nCancel and check again (50 MB, examples spread through the file)");
 const dir = mkdtempSync(path.join(tmpdir(), "validator-"));
@@ -164,6 +165,81 @@ await heading().waitFor({ state: "visible", timeout: 120000 });
 check((await cardCount("Rows with the wrong number of fields")) === "5", "50 MB: the 5 planted rows found");
 check(await visible(card("Rows with the wrong number of fields").locator("pre", { hasText: "1249999,Person 1249999" })), "50 MB: file line found near the end of the file");
 rmSync(dir, { recursive: true, force: true });
+
+console.log("\nRepairs (Step 4)");
+const dialog = () => page.getByRole("dialog");
+const settle = async () => {
+  await dialog().waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  await heading().waitFor({ state: "visible", timeout: 30000 });
+};
+await openFile("1-uneven.csv");
+const uneven = card("Rows with the wrong number of fields");
+check(await visible(uneven.getByRole("button", { name: "Add empty cells" })), "short rows: “Add empty cells” offered");
+check((await uneven.getByRole("button", { name: "Remove empty extra fields" }).count()) === 0, "no “Remove empty extra fields” when the extra fields contain data");
+check((await page.getByRole("button", { name: "Fix all safe problems" }).count()) === 0, "no Fix all when nothing safe can be fixed");
+await uneven.getByRole("button", { name: "Add empty cells" }).click();
+check(await visible(dialog().getByText(/shifted into the wrong columns/)), "preview warns that short rows can mean shifted data (decision 1)");
+check(await visible(dialog().getByText("Row 6 · 3 fields → 4")), "before/after row shown");
+check((await dialog().getByText("Before").count()) >= 3 && (await dialog().getByText("After").count()) >= 3, "before and after for each row");
+await dialog().getByRole("button", { name: /^Apply fix \(3 changes\)/ }).click();
+await settle();
+check((await cardCount("Rows with the wrong number of fields")) === "2", "after the repair: the 2 rows with extra data remain (never automatic)");
+check(await visible(page.getByText("3 cells changed (1 fix applied)")), "changes bar: 3 cells changed");
+check(await visible(page.getByText(/The data was changed, so examples show cell values/)), "examples say the file lines no longer apply");
+await page.getByRole("button", { name: "Undo" }).click();
+await page.waitForFunction(() => document.querySelector("#validator-heading")?.textContent === "Not a valid CSV file: 1 error", null, { timeout: 30000 }).catch(() => {});
+await page.waitForTimeout(500);
+check((await cardCount("Rows with the wrong number of fields")) === "5", "Undo brings back all 5 rows");
+
+await openFile("2-header.csv");
+await card("Columns without a name").getByRole("button", { name: "Fix column names" }).click();
+check(await visible(dialog().getByText("Column C")) && (await visible(dialog().getByText("email (2)"))), "rename preview: Column C and email (2) (decision 2)");
+check(await visible(dialog().getByText(/no new name repeats an existing one/)), "says no new duplicates are created");
+await dialog().getByRole("button", { name: /^Apply fix \(2 changes\)/ }).click();
+await settle();
+check((await heading().textContent()) === "Valid CSV, with 1 warning", `names fixed: ${await heading().textContent()}`);
+await page.getByRole("button", { name: "Fix all safe problems" }).click();
+check(await visible(dialog().getByText("Remove spaces around names")), "Fix all lists the safe repair");
+check(await visible(dialog().getByText(/Not included: adding empty cells to short rows/)), "Fix all says what is never included");
+await dialog().getByRole("button", { name: /^Apply all fixes/ }).click();
+await settle();
+check((await heading().textContent()) === "Valid CSV file", "after Fix all: Valid CSV file");
+await page.getByRole("button", { name: "History", exact: true }).click();
+check(await visible(page.getByText("Fix column names")) && (await visible(page.getByText("Remove spaces around names"))), "both repairs are in the history");
+
+await openFile({ name: "extra.csv", mimeType: "text/csv", buffer: Buffer.from("a,b\r\n1,2,,\r\n\r\n3,4\r\n5,6,\r\n") });
+check(await visible(card("Rows with the wrong number of fields").getByRole("button", { name: "Remove empty extra fields" })), "empty extra fields: repair offered");
+await page.getByRole("button", { name: "Fix all safe problems" }).click();
+check(await visible(dialog().getByText("2 rows will be shortened")), "Fix all: 2 rows will be shortened");
+await dialog().getByRole("button", { name: /^Apply all fixes \(3 changes\)/ }).click();
+await settle();
+check((await heading().textContent()) === "Valid CSV file", "empty extra fields and the blank line removed: valid");
+
+await openFile("6-control.csv");
+await card("Hidden control characters").getByRole("button", { name: "Remove hidden characters" }).click();
+check(await visible(dialog().getByText("Ben␀")), "preview shows where the hidden characters are");
+await dialog().getByRole("button", { name: /^Apply fix \(3 changes\)/ }).click();
+await settle();
+check((await heading().textContent()) === "Valid CSV, with 1 warning", "hidden characters removed (formula-like warning remains)");
+const DL = mkdtempSync(path.join(tmpdir(), "validator-dl-"));
+const dlPromise = page.waitForEvent("download", { timeout: 30000 });
+await page.getByRole("button", { name: "Download corrected CSV" }).click();
+const dl = await dlPromise;
+const saved = path.join(DL, "repaired.csv");
+await dl.saveAs(saved);
+check(await visible(dialog().getByRole("heading", { name: "Export successful" })), "download verified and offered");
+const bytes = readFileSync(saved);
+check(!bytes.includes(0x00) && !bytes.includes(0x07), "downloaded file has no NUL or bell characters");
+const py = spawnSync("python3", ["-I", "-c", "import csv,sys,json\nwith open(sys.argv[1],newline='',encoding='utf-8-sig') as f: print(json.dumps(list(csv.reader(f, strict=True))))", saved], { encoding: "utf8" });
+const pyRows = py.status === 0 ? (JSON.parse(py.stdout) as string[][]) : [];
+check(pyRows.length === 21 && pyRows[3]![1] === "Ben" && pyRows[8]![3] === "Leeds", `Python reads the repaired download (${pyRows.length} rows)`);
+await dialog().getByRole("button", { name: "Close" }).first().click();
+rmSync(DL, { recursive: true, force: true });
+
+console.log("\nTSV and TXT files");
+await openFile({ name: "data.tsv", mimeType: "text/tab-separated-values", buffer: Buffer.from("a\tb\r\n1\t2\r\n") });
+check((await heading().textContent()) === "Valid CSV file" && (await page.getByRole("combobox", { name: "Column separator" }).inputValue()) === "\t", "a .tsv file opens with the tab separator");
 
 console.log("\nPhone and tablet layouts");
 for (const [name, device] of [["phone", devices["Pixel 7"]], ["tablet", devices["Galaxy Tab S4"]]] as const) {

@@ -148,7 +148,7 @@ test("undo and redo step through changes; stats stay exact", () => {
   s.apply({ operation: "remove-extra-spaces", label: "Remove extra spaces", cells: [{ row: 1, col: 1, value: "Ann" }] });
   s.apply({ operation: "fix-capitalization", label: "Fix capitalization", cells: [{ row: 2, col: 2, value: "Paris" }, { row: 4, col: 2, value: "Paris" }] });
   s.apply({ operation: "remove-duplicates", label: "Remove duplicate rows", deleteRows: [{ row: 4, reason: "Exact copy of row 3" }] });
-  assert.deepEqual(s.stats(), { cellsEdited: 3, rowsRemoved: 1, columnsRemoved: 0, changesApplied: 3, canUndo: true, canRedo: false, version: 3 });
+  assert.deepEqual(s.stats(), { cellsEdited: 3, rowsRemoved: 1, columnsRemoved: 0, rowsShortened: 0, changesApplied: 3, canUndo: true, canRedo: false, version: 3 });
 
   s.undo();
   assert.equal(s.view().grid.rowCount, 5);

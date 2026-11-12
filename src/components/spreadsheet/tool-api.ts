@@ -11,7 +11,8 @@ export interface LastChange {
   seq: number;
 }
 import type { EditStats, HistoryItem, HistorySummary } from "@/engine/edit/session";
-import type { FixId, FixOptions } from "@/engine/fix/fixes";
+import type { FixOptions } from "@/engine/fix/fixes";
+import type { AnyFixId } from "@/engine/fix/fix-ids";
 import type { ValidationResult } from "@/engine/validate/validate";
 
 /** What a tool panel (e.g. the Error Detector) can use from the shared workspace. */
@@ -37,8 +38,9 @@ export interface ToolApi {
   /** Current changes; `version` changes after every change, undo and redo. */
   edits: EditStats;
   lastChange: LastChange | null;
-  previewFix(fixId: FixId, options: Omit<FixOptions, "headerRow">, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult>;
-  previewFixAll(onProgress?: (p: ProgressEvent) => void): Promise<FixAllPreview>;
+  previewFix(fixId: AnyFixId, options: Omit<FixOptions, "headerRow">, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult>;
+  /** `set`: "validator" for the CSV Validator's safe repairs. */
+  previewFixAll(onProgress?: (p: ProgressEvent) => void, set?: "detector" | "validator"): Promise<FixAllPreview>;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */

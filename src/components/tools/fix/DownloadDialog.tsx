@@ -203,6 +203,7 @@ function Summary({ result }: { result: ExportResult }) {
     ["Cells edited", fmt(s.cellsEdited)],
     ["Rows removed", fmt(s.rowsRemoved)],
     ["Columns removed", fmt(s.columnsRemoved)],
+    ...(s.rowsShortened ? [["Rows shortened (empty extra fields removed)", fmt(s.rowsShortened)] as [string, string]] : []),
     ["Duplicates removed", fmt(s.duplicatesRemoved)],
     ["Automatic corrections applied", fmt(s.automaticCorrections)],
     ["Cells edited by hand", fmt(s.manualEdits)],

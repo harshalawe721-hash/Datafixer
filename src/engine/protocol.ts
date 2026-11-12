@@ -5,7 +5,8 @@ import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
 import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core.ts";
-import type { FixId, FixOptions } from "./fix/fixes.ts";
+import type { FixOptions } from "./fix/fixes.ts";
+import type { AnyFixId } from "./fix/fix-ids.ts";
 import type { HistoryItem, HistorySummary } from "./edit/session.ts";
 import type { ValidationResult } from "./validate/validate.ts";
 
@@ -26,8 +27,8 @@ export type EngineRequest =
   /** Stop running scans (cooperatively, between batches); the open file is kept. */
   | { id: number; type: "abortScans" }
   /** Stage 4: work out what a fix would change (cancellable with abortScans). */
-  | { id: number; type: "previewFix"; sheet: string; fixId: FixId; options: FixOptions }
-  | { id: number; type: "previewFixAll"; sheet: string; options: { headerRow: boolean } }
+  | { id: number; type: "previewFix"; sheet: string; fixId: AnyFixId; options: FixOptions }
+  | { id: number; type: "previewFixAll"; sheet: string; options: { headerRow: boolean; set?: "detector" | "validator" } }
   /** Apply exactly the previewed fix(es). */
   | { id: number; type: "applyFix"; sheet: string; token: string }
   | { id: number; type: "cellInfo"; sheet: string; row: number; col: number }
