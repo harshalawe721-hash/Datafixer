@@ -21,6 +21,9 @@ import { ALL_CHECKS } from "./scan/checks/index.ts";
 import { EditSession, type ChangeRequest, type EditStats, type HistoryItem, type HistorySummary } from "./edit/session.ts";
 import { columnLetter } from "./query/query.ts";
 import { planFix, type FixId, type FixOptions, type FixPreview } from "./fix/fixes.ts";
+import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
+import { classify } from "./scan/classify.ts";
+import { familyOf } from "./scan/checks/dates.ts";
 
 interface OpenState {
   file: Blob;
@@ -63,9 +66,27 @@ interface LoadedSheet {
 
 /** Result of every Stage 4 change, undo or redo. */
 export interface EditResult {
-  /** The history entry changed by this call (null when nothing changed). */
+  /** The (last) history entry changed by this call (null when nothing changed). */
   entry: HistorySummary | null;
+  /** Every history entry changed by this call ("Fix all" applies several). */
+  entries: HistorySummary[];
   stats: EditStats;
+}
+
+/** One cell, for the cell editor. */
+export interface CellInfo {
+  row: number;
+  col: number;
+  /** "B4" (current position). */
+  ref: string;
+  /** As shown in the table. */
+  display: string;
+  /** Text to start editing with. */
+  editText: string;
+  /** Formula text (without "="), if the cell holds a formula. */
+  formula: string | null;
+  isDate: boolean;
+  edited: boolean;
 }
 
 /** A fix preview as sent to the page: the token must be passed back to apply exactly this preview. */
@@ -369,10 +390,25 @@ export class EngineCore {
   }
 
   /** After any change the previous scan no longer matches the data. */
-  private changed(sheetName: string, entry: HistorySummary | null): EditResult {
+  private changed(sheetName: string, entry: HistorySummary | null, entries: HistorySummary[] = entry ? [entry] : []): EditResult {
     const st = this.requireState();
     if (entry && st.lastScan?.sheet === sheetName) st.lastScan = null;
-    return { entry, stats: this.session(sheetName).stats() };
+    return { entry, entries, stats: this.session(sheetName).stats() };
+  }
+
+  /** What the cell editor needs to know about one cell (view position). */
+  cellInfo(sheetName: string, row: number, col: number): CellInfo {
+    const view = this.current(sheetName).sheet;
+    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= view.grid.rowCount || col >= view.columnCount) {
+      throw new EngineError("invalid-edit", "That cell doesn't exist.");
+    }
+    const g = view.grid;
+    const v = g.get(row, col);
+    const display = g.display ? g.display(row, col) : v === null ? "" : String(v);
+    const isDate = v !== null && !!g.isDate?.(row, col);
+    const editText = v === null ? "" : typeof v === "number" && !isDate ? String(v) : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : display;
+    const edited = typeof (g as { isEdited?: unknown }).isEdited === "function" ? (g as unknown as { isEdited(r: number, c: number): boolean }).isEdited(row, col) : false;
+    return { row, col, ref: `${columnLetter(col)}${row + 1}`, display, editText, formula: view.formulas.get(cellKey(row, col)) ?? null, isDate, edited };
   }
 
   /** Apply a change (from a fix or the editor). Positions are view positions. */
@@ -399,12 +435,26 @@ export class EngineCore {
       );
     }
     let value: string | number | null = text;
+    let format: string | undefined;
     if (st.format !== "csv") {
       const t = text.trim();
       if (t === "") value = null;
       else if (/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(t) && !/^[+-]?0\d/.test(t) && Number.isFinite(Number(t))) value = Number(t);
+      else if (view.grid.get(row, col) !== null && view.grid.isDate?.(row, col)) {
+        // A date typed into a date cell stays a real Excel date (same display format),
+        // when the text is a clear date (31/01/2024 yes; 03/04/2024 is ambiguous: kept as text).
+        const fam = familyOf(classify(t, false, false));
+        const parsed = fam && fam !== "excel" ? parseTextDate(fam, t, null) : null;
+        if (parsed && "ok" in parsed) {
+          const serial = excelSerial(parsed.ok, view.date1904 ?? false);
+          if (serial !== null) {
+            value = serial;
+            format = view.numberFormats.get(cellKey(row, col)) ?? "yyyy-mm-dd";
+          }
+        }
+      }
     }
-    return this.applyChange(sheetName, { operation: "edit-cell", label: "Edit cell", cells: [{ row, col, value }] });
+    return this.applyChange(sheetName, { operation: "edit-cell", label: `Edit cell ${columnLetter(col)}${row + 1}`, cells: [{ row, col, value, format }] });
   }
 
   /**
@@ -485,6 +535,7 @@ export class EngineCore {
     }
     this.pendingFix = null;
     let entry: HistorySummary | null = null;
+    const entries: HistorySummary[] = [];
     let applied = 0;
     try {
       // Positions in each request match the view after the previous requests (planned that way).
@@ -492,6 +543,7 @@ export class EngineCore {
         const e = session.apply(req);
         if (e) {
           entry = e;
+          entries.push(e);
           applied++;
         }
       }
@@ -500,7 +552,7 @@ export class EngineCore {
       session.rollback(applied);
       throw err;
     }
-    return this.changed(sheetName, entry);
+    return this.changed(sheetName, entry, entries);
   }
 
   undo(sheetName: string): EditResult {

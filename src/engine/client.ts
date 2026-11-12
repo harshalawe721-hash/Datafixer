@@ -14,7 +14,7 @@ import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
-import type { EditResult, FixAllPreview, FixPreviewResult } from "./core";
+import type { CellInfo, EditResult, FixAllPreview, FixPreviewResult } from "./core";
 import type { FixId, FixOptions } from "./fix/fixes";
 import type { HistoryItem, HistorySummary } from "./edit/session";
 
@@ -109,6 +109,14 @@ export class EngineClient {
 
   applyFix(sheet: string, token: string): Promise<EditResult> {
     return this.request<"applyFix">({ type: "applyFix", sheet, token });
+  }
+
+  cellInfo(sheet: string, row: number, col: number): Promise<CellInfo> {
+    return this.request<"cellInfo">({ type: "cellInfo", sheet, row, col });
+  }
+
+  editCell(sheet: string, row: number, col: number, text: string, replaceFormula = false): Promise<EditResult> {
+    return this.request<"editCell">({ type: "editCell", sheet, row, col, text, replaceFormula });
   }
 
   undo(sheet: string): Promise<EditResult> {

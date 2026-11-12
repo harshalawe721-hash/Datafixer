@@ -70,6 +70,12 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
       case "applyFix":
         result = core.applyFix(req.sheet, req.token);
         break;
+      case "cellInfo":
+        result = core.cellInfo(req.sheet, req.row, req.col);
+        break;
+      case "editCell":
+        result = core.editCell(req.sheet, req.row, req.col, req.text, { replaceFormula: req.replaceFormula });
+        break;
       case "undo":
         result = core.undo(req.sheet);
         break;

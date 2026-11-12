@@ -4,7 +4,7 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
-import type { EditResult, FixAllPreview, FixPreviewResult } from "./core.ts";
+import type { CellInfo, EditResult, FixAllPreview, FixPreviewResult } from "./core.ts";
 import type { FixId, FixOptions } from "./fix/fixes.ts";
 import type { HistoryItem, HistorySummary } from "./edit/session.ts";
 
@@ -27,6 +27,9 @@ export type EngineRequest =
   | { id: number; type: "previewFixAll"; sheet: string; options: { headerRow: boolean } }
   /** Apply exactly the previewed fix(es). */
   | { id: number; type: "applyFix"; sheet: string; token: string }
+  | { id: number; type: "cellInfo"; sheet: string; row: number; col: number }
+  /** Manual edit of one cell; a formula cell needs replaceFormula (the user saw the warning). */
+  | { id: number; type: "editCell"; sheet: string; row: number; col: number; text: string; replaceFormula: boolean }
   | { id: number; type: "undo"; sheet: string }
   | { id: number; type: "redo"; sheet: string }
   | { id: number; type: "history"; sheet: string }
@@ -42,6 +45,8 @@ export interface EngineResults {
   previewFix: FixPreviewResult;
   previewFixAll: FixAllPreview;
   applyFix: EditResult;
+  cellInfo: CellInfo;
+  editCell: EditResult;
   undo: EditResult;
   redo: EditResult;
   history: HistorySummary[];

@@ -210,7 +210,8 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 2 | ✅ Done: five safe fixes with preview (spaces, duplicates, empty rows, empty columns, numbers stored as text). Formula cells skipped. 24 new unit tests. On the 25 MB and 50 MB test-pack files every preview count matched the detector exactly (439/3,950 and 873/7,850) | `src/engine/fix/fixes.ts`, `EngineCore.previewFix` / `applyFix` |
 | 3 | ✅ Done: capitalization (ties → user chooses), date formats (user chooses; ambiguous order → user chooses; Excel → real dates), phone layouts (user chooses; same digits only). 15 new unit tests. Capitalization on the 25 MB and 50 MB files: 565 and 1,122 cells, exactly the detector's counts | `src/engine/fix/choice-fixes.ts` |
 | 4 | ✅ Done: Fix buttons on cards, “Fix all safe problems”, preview dialog with choices, Undo/Redo, change history panel, automatic re-check, changed cells highlighted, confirmation before discarding changes. Phone, tablet and desktop layouts. 4 new unit tests, 57-check browser test (`npm run test:fix`) | `components/tools/fix/`, worker messages |
-| 5–8 | Not started | — |
+| 5 | ✅ Done: tap a cell to edit it (formula warning with explicit confirmation; dates typed into Excel date cells stay real dates; Undo), plus a “Done / Undone / Redone” message after every change naming each fix and its counts. 4 new unit tests; browser test now 75 checks | `CellEditor.tsx`, `EngineCore.cellInfo` / `editCell` |
+| 6–8 | Not started | — |
 
 ### Decisions made while building (for owner review)
 

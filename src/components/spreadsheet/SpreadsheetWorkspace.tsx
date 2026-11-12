@@ -10,7 +10,8 @@ import { useSpreadsheetEngine } from "./useSpreadsheetEngine";
 import { ProcessingProgress } from "./ProcessingProgress";
 import { FileSummary } from "./FileSummary";
 import { SpreadsheetPreview } from "./SpreadsheetPreview";
-import type { ToolApi } from "./tool-api";
+import type { LastChange, ToolApi } from "./tool-api";
+import { CellEditor } from "@/components/tools/fix/CellEditor";
 import type { ScanIssue } from "@/engine/scan/scan";
 import type { EditResult } from "@/engine/core";
 import type { EditStats } from "@/engine/edit/session";
@@ -33,14 +34,19 @@ function confirmDiscard(edits: EditStats, action: string): boolean {
 export function SpreadsheetWorkspace({
   accept,
   renderTool,
+  allowEditing = false,
 }: {
   accept?: readonly string[];
   renderTool?: (api: ToolApi) => React.ReactNode;
+  /** Stage 4: tap a cell in the table to edit it. */
+  allowEditing?: boolean;
 }) {
   const engine = useSpreadsheetEngine();
   const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = engine;
   /** Changes to the current sheet (Stage 4), tied to the view they were made in. */
-  const [editState, setEditState] = useState<{ key: string; stats: EditStats }>({ key: "", stats: NO_EDITS });
+  const [editState, setEditState] = useState<{ key: string; stats: EditStats; last: LastChange | null }>({ key: "", stats: NO_EDITS, last: null });
+  /** Cell open in the cell editor (view position). */
+  const [editing, setEditing] = useState<{ row: number; col: number; label: string } | null>(null);
   /** Column-names setting and the issue being viewed, reset for each file/sheet/separator. */
   const [view, setView] = useState<{ key: string; headerRow: boolean; issue: ScanIssue | null }>({ key: "", headerRow: false, issue: null });
   const { peekPending, clearPending } = useFileHandoff();
@@ -72,11 +78,11 @@ export function SpreadsheetWorkspace({
       <span>{advisory}</span>
     </p>
   );
-  const currentEdits = state.status === "ready" ? editState : { key: "", stats: NO_EDITS };
+  const currentEdits = state.status === "ready" ? editState : { key: "", stats: NO_EDITS, last: null };
   const resetAll = () => {
     if (state.status === "ready" && !confirmDiscard(currentEdits.stats, "Opening another file")) return;
     setAdvisory(null);
-    setEditState({ key: "", stats: NO_EDITS });
+    setEditState({ key: "", stats: NO_EDITS, last: null });
     reset();
   };
 
@@ -130,8 +136,13 @@ export function SpreadsheetWorkspace({
   if (current !== view) setView(current);
   // Changes belong to one file/sheet view; a new view starts with none.
   const edits = editState.key === viewKey ? editState.stats : NO_EDITS;
-  const track = (r: EditResult) => {
-    setEditState({ key: viewKey, stats: r.stats });
+  const lastChange = editState.key === viewKey ? editState.last : null;
+  const track = (action: LastChange["action"]) => (r: EditResult) => {
+    setEditState((prev) => ({
+      key: viewKey,
+      stats: r.stats,
+      last: r.entries.length ? { action, entries: r.entries, seq: (prev.last?.seq ?? 0) + 1 } : prev.key === viewKey ? prev.last : null,
+    }));
     return r;
   };
   const sheetName = summary.activeSheet;
@@ -152,9 +163,10 @@ export function SpreadsheetWorkspace({
     edits,
     previewFix: (fixId, options, onProgress) => engine.previewFix(sheetName, fixId, { ...options, headerRow: current.headerRow }, onProgress),
     previewFixAll: (onProgress) => engine.previewFixAll(sheetName, { headerRow: current.headerRow }, onProgress),
-    applyFix: (token) => engine.applyFix(sheetName, token).then(track),
-    undo: () => engine.undo(sheetName).then(track),
-    redo: () => engine.redo(sheetName).then(track),
+    lastChange,
+    applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
+    undo: () => engine.undo(sheetName).then(track("undone")),
+    redo: () => engine.redo(sheetName).then(track("redone")),
     history: () => engine.history(sheetName),
     historyDetails: (entry, offset, limit) => engine.historyDetails(sheetName, entry, offset, limit),
   };
@@ -190,9 +202,20 @@ export function SpreadsheetWorkspace({
             issue={current.issue}
             onClearIssue={() => setView((v) => ({ ...v, issue: null }))}
             dataVersion={edits.version}
+            onCellClick={allowEditing ? (row, col, label) => setEditing({ row, col, label }) : undefined}
           />
         </div>
       ) : null}
+      {editing && (
+        <CellEditor
+          key={`${editing.row}:${editing.col}:${edits.version}`}
+          row={editing.row}
+          columnLabel={editing.label}
+          loadInfo={() => engine.cellInfo(sheetName, editing.row, editing.col)}
+          save={(text, replaceFormula) => engine.editCell(sheetName, editing.row, editing.col, text, replaceFormula).then(track("applied"))}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

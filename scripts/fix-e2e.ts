@@ -78,7 +78,7 @@ const settled = async (page: Page) => {
   await page.getByRole("button", { name: "Redo" }).click();
   await settled(page);
   check(await gone(card(page, "Extra spaces")), "Redo: fixed again");
-  await page.getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
   const hist = page.locator("#change-history");
   check(await visible(hist.getByText("Remove extra spaces")), "history lists the fix");
   check(await visible(hist.getByText("Applied")), "history status: Applied");
@@ -177,7 +177,7 @@ for (const [label, viewport] of [
   check(await visible(page.getByRole("button", { name: "Undo" })), "Undo available");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(overflow <= 0, `no page-level horizontal scroll (${overflow}px)`);
-  await page.getByRole("button", { name: "History" }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
   await page.locator("#change-history").getByRole("button", { name: "Details" }).first().click();
   await page.locator("#change-history").getByText("Original value").waitFor();
   const hb = await page.locator("#change-history").boundingBox();
@@ -186,6 +186,68 @@ for (const [label, viewport] of [
     await page.locator("#change-history").scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(SHOTS, `history-${label}.png`) });
   }
+  await page.close();
+}
+
+// ---------------------------------------------------------------- Step 5: editing cells by hand
+{
+  console.log("\nEditing cells by hand (CSV)");
+  const page = await setup({ width: 1280, height: 900 });
+  await open(page, "1-problems.csv");
+  check(await visible(page.getByText("Tap any cell to edit it.")), "table says cells can be edited");
+  await page.getByRole("cell", { name: "person7example.com", exact: true }).click();
+  check(await visible(dialog(page).getByRole("heading", { name: "Edit cell C8" })), "editor opens for C8");
+  check(await visible(dialog(page).getByText("“person7example.com”")), "shows the current value");
+  await dialog(page).getByLabel("New value").fill("person7@example.com");
+  await dialog(page).getByRole("button", { name: "Save" }).click();
+  check(await gone(dialog(page)), "editor closes after Save");
+  check(await visible(page.getByText(/Done:.*Edit cell C8 \(1 cell\)/)), "Done message names the change");
+  let emails = "";
+  for (let i = 0; i < 40 && emails !== "1"; i++) {
+    emails = ((await card(page, "Invalid email addresses").locator("p.text-right span").first().textContent({ timeout: 2000 }).catch(() => "")) ?? "").trim();
+    if (emails !== "1") await page.waitForTimeout(250);
+  }
+  check(emails === "1", `re-checked: 1 invalid email left (got ${emails})`);
+  check(await visible(page.locator("td[data-edited]", { hasText: "person7@example.com" })), "edited cell highlighted in green");
+  await page.getByRole("button", { name: "Undo" }).click();
+  check(await visible(page.getByText(/Undone:.*Edit cell C8/)), "Undo message");
+  check(await visible(page.getByRole("cell", { name: "person7example.com", exact: true })), "Undo restores the old value in the table");
+
+  console.log("\nFix all: Done message lists every fix");
+  await page.getByRole("button", { name: "Fix all safe problems" }).click();
+  await dialog(page).getByRole("button", { name: /^Apply all fixes/ }).click();
+  check(await visible(page.getByText(/Done:.*Remove extra spaces \(2 cells\).*Remove duplicate rows \(2 rows removed\)/)), "Done message lists the fixes with counts");
+  await page.close();
+}
+{
+  console.log("\nEditing a formula cell (Excel)");
+  const page = await setup({ width: 1280, height: 900 });
+  await open(page, "2-problems.xlsx");
+  await page.getByRole("cell", { name: /#DIV\/0!/ }).first().click();
+  check(await visible(dialog(page).getByText("This cell contains a formula")), "formula warning shown before editing");
+  const save = dialog(page).getByRole("button", { name: "Save" });
+  await dialog(page).getByLabel("New value").fill("0");
+  check(await save.isDisabled(), "Save disabled until the user confirms");
+  await dialog(page).getByLabel("Replace the formula with my value").check();
+  check(await save.isEnabled(), "Save enabled after confirming");
+  await save.click();
+  check(await gone(dialog(page)), "saved");
+  check(await gone(card(page, "Formula errors")), "re-checked: Formula errors card gone");
+  await page.close();
+}
+{
+  console.log("\nEditing on a phone");
+  const page = await setup({ width: 390, height: 844 });
+  await open(page, "1-problems.csv");
+  await page.getByRole("cell", { name: "N/A", exact: true }).click();
+  const box = await dialog(page).boundingBox();
+  check(box && box.width <= 391, "editor fits the phone screen");
+  const sb = await dialog(page).getByRole("button", { name: "Save" }).boundingBox();
+  check(sb && sb.height >= 40 && sb.y + sb.height <= 845, "Save button visible and easy to tap");
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "cell-editor-phone.png") });
+  await dialog(page).getByLabel("New value").fill("");
+  await dialog(page).getByRole("button", { name: "Save" }).click();
+  check(await visible(page.getByText(/Done:.*Edit cell D10/)), "clearing a cell works");
   await page.close();
 }
 

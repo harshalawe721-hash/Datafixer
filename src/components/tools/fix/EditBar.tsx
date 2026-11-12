@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, History, Loader2, Redo2, ShieldCheck, Undo2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, History, Loader2, Redo2, ShieldCheck, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ToolApi } from "@/components/spreadsheet/tool-api";
@@ -11,6 +11,16 @@ import { cn } from "@/lib/cn";
 const fmt = (n: number) => n.toLocaleString("en-US");
 const plural = (n: number, one: string, many = `${one}s`) => `${fmt(n)} ${n === 1 ? one : many}`;
 const DETAIL_PAGE = 50;
+
+/** "Remove extra spaces (2 cells)", "Remove duplicate rows (2 rows removed)". */
+function describe(e: HistorySummary): string {
+  const parts = [
+    e.cells ? plural(e.cells, "cell") : null,
+    e.rowsRemoved ? `${plural(e.rowsRemoved, "row")} removed` : null,
+    e.columnsRemoved ? `${plural(e.columnsRemoved, "column")} removed` : null,
+  ].filter(Boolean);
+  return `${e.label} (${parts.join(", ")})`;
+}
 
 /**
  * Changes made on this device: totals, Undo, Redo and the change history.
@@ -64,6 +74,18 @@ export function EditBar({ api }: { api: ToolApi }) {
           </Button>
         </div>
       </div>
+      {api.lastChange && (
+        <div key={api.lastChange.seq} className="mt-3 flex items-start gap-2 rounded-xl bg-success-soft px-3 py-2 text-sm" role="status" aria-live="polite">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+          <p>
+            <strong>{api.lastChange.action === "applied" ? "Done:" : api.lastChange.action === "undone" ? "Undone:" : "Redone:"}</strong>{" "}
+            {api.lastChange.entries.map(describe).join("; ")}.{" "}
+            <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setShowHistory(true)}>
+              See every change in History
+            </button>
+          </p>
+        </div>
+      )}
       {busy && (
         <p className="mt-2 flex items-center gap-2 text-sm text-muted" role="status">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Working…

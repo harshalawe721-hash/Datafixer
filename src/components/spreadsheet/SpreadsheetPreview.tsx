@@ -19,6 +19,8 @@ export interface SpreadsheetPreviewProps {
   onClearIssue?: () => void;
   /** Changes whenever the data changes (Stage 4 fixes, undo, redo): the page is fetched again. */
   dataVersion?: number;
+  /** Stage 4: called when a data cell is tapped (row/column are positions in the current data). */
+  onCellClick?: (row: number, col: number, columnLabel: string) => void;
 }
 
 const PAGE_SIZES = [50, 100, 250, 500] as const;
@@ -35,7 +37,7 @@ const flagClass: Record<Severity, string> = {
  * Reusable spreadsheet table. Rows are paged and columns are windowed, so the
  * DOM stays small for any file size; sorting and searching run in the worker.
  */
-export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChange, issue = null, onClearIssue, dataVersion = 0 }: SpreadsheetPreviewProps) {
+export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChange, issue = null, onClearIssue, dataVersion = 0, onCellClick }: SpreadsheetPreviewProps) {
   const id = useId();
   const issueId = issue?.id;
   const [pageSize, setPageSize] = useState<number>(100);
@@ -165,6 +167,10 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
         </div>
       </div>
 
+      {onCellClick && (
+        <p className="border-b border-line px-4 py-2 text-xs text-muted">Tap any cell to edit it. Changed cells are shown in green.</p>
+      )}
+
       {issue && (
         <div className="flex flex-col gap-2 border-b border-line bg-surface-muted px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
           <p className="flex items-start gap-2">
@@ -255,9 +261,11 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                           key={col}
                           title={isEdited ? `Changed: ${value}` : value.length > 40 ? value : undefined}
                           data-edited={isEdited || undefined}
+                          onClick={onCellClick ? () => onCellClick(row.index, col, (headerRow && data?.header?.[i]) || `Column ${columnLetter(col)}`) : undefined}
                           className={cn(
                             "max-w-64 truncate border-r border-b border-line px-3 py-1.5 whitespace-pre group-hover:bg-surface-muted/60",
                             isEdited && !flagged && "bg-success-soft",
+                            onCellClick && "cursor-pointer hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-primary/50",
                             flagged && flagClass[issue.severity],
                             isError && "font-medium text-danger",
                           )}

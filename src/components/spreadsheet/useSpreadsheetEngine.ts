@@ -108,6 +108,11 @@ export function useSpreadsheetEngine() {
     [client],
   );
   const applyFix = useCallback((sheet: string, token: string) => client().applyFix(sheet, token), [client]);
+  const cellInfo = useCallback((sheet: string, row: number, col: number) => client().cellInfo(sheet, row, col), [client]);
+  const editCell = useCallback(
+    (sheet: string, row: number, col: number, text: string, replaceFormula = false) => client().editCell(sheet, row, col, text, replaceFormula),
+    [client],
+  );
   const undo = useCallback((sheet: string) => client().undo(sheet), [client]);
   const redo = useCallback((sheet: string) => client().redo(sheet), [client]);
   const history = useCallback((sheet: string) => client().history(sheet), [client]);
@@ -116,5 +121,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, undo, redo, history, historyDetails };
 }

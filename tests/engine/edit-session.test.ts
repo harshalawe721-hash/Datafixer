@@ -349,3 +349,57 @@ test("performance: 200,000 rows, 20,000 deleted rows and 50,000 edits, then a fu
   assert.equal(s.view().grid.rowCount, 200_001);
   assert.equal(s.view().grid.get(1, 1), "Name 0");
 });
+
+// ---------------------------------------------------------------- Step 5: manual editing
+
+test("cell info: value to edit, formula, date and edited flags", async () => {
+  const csv = await openPack("1-problems.csv");
+  const i = csv.core.cellInfo(csv.sheet, 3, 1);
+  assert.deepEqual(i, { row: 3, col: 1, ref: "B4", display: " Person 3", editText: " Person 3", formula: null, isDate: false, edited: false });
+  csv.core.editCell(csv.sheet, 3, 1, "Person 3");
+  assert.equal(csv.core.cellInfo(csv.sheet, 3, 1).edited, true);
+  throwsCode(() => csv.core.cellInfo(csv.sheet, 999, 0), "invalid-edit");
+
+  const xl = await openPack("2-problems.xlsx");
+  const view = xl.core.getSheet(xl.sheet)!;
+  const fkey = [...view.formulas.keys()][0]!;
+  const fi = xl.core.cellInfo(xl.sheet, Math.floor(fkey / 16384), fkey % 16384);
+  assert.ok(fi.formula && fi.formula.length > 0, "formula reported before editing");
+  const d = xl.core.cellInfo(xl.sheet, 1, 6);
+  assert.equal(d.isDate, true);
+  assert.equal(d.editText, d.display, "dates are edited as shown, not as serial numbers");
+});
+
+test("manual edits: each is a history entry named after the cell; results report every entry", async () => {
+  const { core, sheet } = await openPack("1-problems.csv");
+  const r = core.editCell(sheet, 7, 2, "person7@example.com");
+  assert.equal(r.entry!.label, "Edit cell C8");
+  assert.deepEqual(r.entries.map((e) => e.label), ["Edit cell C8"]);
+  const scan = await core.scan(sheet, { headerRow: true }, () => {});
+  assert.equal(scan.issues.find((i) => i.id === "invalid-emails")!.count, 1, "one invalid email left after correcting row 8");
+  const d = core.historyDetails(sheet, r.entry!.id);
+  assert.deepEqual(d.items, [{ kind: "cell", cell: "C8", row: 8, column: "C", original: "person7example.com", newValue: "person7@example.com" }]);
+  const u = core.undo(sheet);
+  assert.deepEqual(u.entries.map((e) => e.status), ["undone"]);
+});
+
+test("Excel: a clear date typed into a date cell stays a real date with the cell's format; an ambiguous one is kept as text", async () => {
+  const { core, sheet } = await openPack("2-problems.xlsx");
+  const before = core.cellInfo(sheet, 1, 6);
+  core.editCell(sheet, 1, 6, "2024-03-15");
+  const v = core.getSheet(sheet)!;
+  assert.equal(typeof v.grid.get(1, 6), "number");
+  assert.equal(v.grid.isDate!(1, 6), true);
+  assert.equal(core.cellInfo(sheet, 1, 6).display.includes("2024") || core.cellInfo(sheet, 1, 6).display.includes("24"), true);
+  core.editCell(sheet, 2, 6, "03/04/2024");
+  assert.equal(core.getSheet(sheet)!.grid.get(2, 6), "03/04/2024", "ambiguous: kept exactly as typed");
+  assert.ok(before.display.length > 0);
+});
+
+test("Fix all reports every applied fix", async () => {
+  const { core, sheet } = await openPack("1-problems.csv");
+  const p = await core.previewFixAll(sheet, { headerRow: true }, () => {});
+  const r = core.applyFix(sheet, p.token);
+  assert.equal(r.entries.length, 5);
+  assert.deepEqual(r.entries.map((e) => e.label), ["Remove extra spaces", "Fix capitalization", "Convert numbers stored as text", "Remove duplicate rows", "Remove empty rows"]);
+});

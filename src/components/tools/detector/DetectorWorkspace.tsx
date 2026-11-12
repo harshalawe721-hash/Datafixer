@@ -19,7 +19,7 @@ export function DetectorWorkspace() {
           showing a preview. Everything happens on your device, and your original file is never changed.
         </span>
       </p>
-      <SpreadsheetWorkspace renderTool={(api) => <ScanPanel api={api} />} />
+      <SpreadsheetWorkspace allowEditing renderTool={(api) => <ScanPanel api={api} />} />
     </div>
   );
 }
