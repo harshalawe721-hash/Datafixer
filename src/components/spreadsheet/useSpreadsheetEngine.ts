@@ -114,6 +114,7 @@ export function useSpreadsheetEngine() {
     [client],
   );
   const exportCsv = useCallback((sheet: string, onProgress?: (p: ProgressEvent) => void) => client().exportCsv(sheet, onProgress), [client]);
+  const exportXlsx = useCallback((sheet: string, onProgress?: (p: ProgressEvent) => void) => client().exportXlsx(sheet, onProgress), [client]);
   const undo = useCallback((sheet: string) => client().undo(sheet), [client]);
   const redo = useCallback((sheet: string) => client().redo(sheet), [client]);
   const history = useCallback((sheet: string) => client().history(sheet), [client]);
@@ -122,5 +123,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }

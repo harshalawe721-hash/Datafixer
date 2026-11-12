@@ -9,12 +9,15 @@ import type { ExportResult } from "@/engine/core";
 import type { ProgressEvent } from "@/engine/types";
 import { EngineError } from "@/engine/errors";
 import { formatBytes } from "@/lib/format";
+import { XLS_REBUILD_LOSSES } from "@/engine/export/xls-losses";
+
+type Kind = "xlsx" | "csv";
 
 type State =
   | { status: "confirm" }
-  | { status: "working"; progress: ProgressEvent | null }
+  | { status: "working"; progress: ProgressEvent | null; kind: Kind }
   | { status: "done"; result: ExportResult }
-  | { status: "error"; message: string; cancelled: boolean };
+  | { status: "error"; message: string; cancelled: boolean; kind: Kind };
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -32,15 +35,16 @@ function saveBlob(blob: Blob, name: string) {
 }
 
 /**
- * Download the corrected file as CSV (safeguards S3, S4): the file is created
- * and checked cell by cell in the worker; only then is it offered, with a
- * summary of everything that changed. A failed or cancelled export downloads
- * nothing and keeps all changes.
+ * Download the corrected file (safeguards S3, S4): CSV files as CSV; Excel
+ * files as Excel (recommended: only the edited cells change inside the original
+ * workbook) or as CSV. The file is created and checked cell by cell in the
+ * worker; only then is it offered, with a summary of everything that changed.
+ * A failed or cancelled export downloads nothing and keeps all changes.
  */
 export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => void }) {
   const excel = api.format !== "csv";
-  // Excel files: say what a CSV can't keep before anything is created.
-  const [state, setState] = useState<State>(excel ? { status: "confirm" } : { status: "working", progress: null });
+  // Excel files: choose Excel or CSV first, with what each keeps.
+  const [state, setState] = useState<State>(excel ? { status: "confirm" } : { status: "working", progress: null, kind: "csv" });
   const seq = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef(api);
@@ -48,11 +52,11 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
     apiRef.current = api;
   });
 
-  const run = (mySeq: number) => {
-    apiRef.current
-      .exportCsv((progress) => {
-        if (mySeq === seq.current) setState((s) => (s.status === "working" ? { ...s, progress } : s));
-      })
+  const run = (mySeq: number, kind: Kind) => {
+    const onProgress = (progress: ProgressEvent) => {
+      if (mySeq === seq.current) setState((s) => (s.status === "working" ? { ...s, progress } : s));
+    };
+    (kind === "xlsx" ? apiRef.current.exportXlsx(onProgress) : apiRef.current.exportCsv(onProgress))
       .then(
         (result) => {
           if (mySeq !== seq.current) return;
@@ -62,19 +66,19 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
         (err: unknown) => {
           if (mySeq !== seq.current) return;
           const cancelled = err instanceof EngineError && err.code === "cancelled";
-          setState({ status: "error", cancelled, message: cancelled ? "The download was cancelled. Nothing was downloaded, and your changes are kept." : err instanceof Error ? err.message : "The file could not be created. Your changes are kept." });
+          setState({ status: "error", kind, cancelled, message: cancelled ? "The download was cancelled. Nothing was downloaded, and your changes are kept." : err instanceof Error ? err.message : "The file could not be created. Your changes are kept." });
         },
       );
   };
-  const start = () => {
+  const start = (kind: Kind) => {
     const mySeq = ++seq.current;
-    setState({ status: "working", progress: null });
-    run(mySeq);
+    setState({ status: "working", progress: null, kind });
+    run(mySeq, kind);
   };
 
   // CSV files start straight away (the initial state is already "working").
   useEffect(() => {
-    if (!excel) run(++seq.current);
+    if (!excel) run(++seq.current, "csv");
     const before = document.activeElement as HTMLElement | null;
     panelRef.current?.focus();
     const overflow = document.body.style.overflow;
@@ -115,21 +119,38 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           {state.status === "confirm" && (
             <>
-              <p className="text-sm">
-                Excel download (keeping formatting and formulas) is being built next. For now you can download this sheet as a <strong>CSV file</strong>, which
-                holds the values only.
-              </p>
-              <div className="rounded-xl bg-warning-soft px-4 py-3 text-sm">
-                <p className="flex items-center gap-2 font-semibold text-warning">
-                  <AlertTriangle className="size-4" aria-hidden="true" /> A CSV file doesn&apos;t keep
+              <p className="text-sm">Choose the kind of file. Your original file is never changed; the download is a new file.</p>
+              <section className="rounded-xl border-2 border-primary/50 px-4 py-3 text-sm">
+                <h3 className="font-semibold">Excel file (.xlsx) · recommended</h3>
+                {api.format === "xlsx" ? (
+                  <p className="mt-1 text-muted">
+                    Only the cells you changed are changed inside your original workbook. Formatting, formulas, other sheets, charts and everything else stay exactly
+                    as they are.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1 text-muted">Old .xls files are saved in the newer .xlsx format. Values, formulas, number formats, merged cells, comments and other sheets are kept, but not:</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">
+                      {XLS_REBUILD_LOSSES.map((l) => (
+                        <li key={l}>{l}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <Button className="mt-3 w-full sm:w-auto" onClick={() => start("xlsx")}>
+                  <Download className="size-4" aria-hidden="true" /> Download Excel file
+                </Button>
+              </section>
+              <section className="rounded-xl border border-line px-4 py-3 text-sm">
+                <h3 className="font-semibold">CSV file · values only</h3>
+                <p className="mt-1 flex items-start gap-2 text-muted">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+                  <span>A CSV holds this sheet&apos;s values only: no formatting, formulas, other sheets, charts or images.</span>
                 </p>
-                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">
-                  <li>Formatting such as fonts, colours, borders and column widths</li>
-                  <li>Formulas (the values they show are saved instead)</li>
-                  <li>Other sheets, charts, images, comments and merged cells</li>
-                </ul>
-                <p className="mt-2 text-muted">Your original Excel file is not changed. After the download you&apos;ll see exactly what wasn&apos;t kept.</p>
-              </div>
+                <Button variant="outline" className="mt-3 w-full sm:w-auto" onClick={() => start("csv")}>
+                  <Download className="size-4" aria-hidden="true" /> Download as CSV
+                </Button>
+              </section>
             </>
           )}
 
@@ -151,13 +172,8 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
           <Button variant="outline" onClick={close}>
             {state.status === "done" ? "Close" : "Cancel"}
           </Button>
-          {state.status === "confirm" && (
-            <Button onClick={start}>
-              <Download className="size-4" aria-hidden="true" /> Download as CSV
-            </Button>
-          )}
           {state.status === "error" && (
-            <Button onClick={start}>
+            <Button onClick={() => start(state.kind)}>
               {state.cancelled ? "Start again" : "Try again"}
             </Button>
           )}
@@ -210,7 +226,9 @@ function Summary({ result }: { result: ExportResult }) {
             ))}
           </ul>
         ) : (
-          <p className="mt-1 text-muted">None. A CSV file holds values only, and all of them are included.</p>
+          <p className="mt-1 text-muted">
+            {s.format === "xlsx" ? "None. Formatting, formulas, other sheets, charts and every other part of your workbook are kept." : "None. A CSV file holds values only, and all of them are included."}
+          </p>
         )}
       </div>
       {s.warnings.length > 0 && (

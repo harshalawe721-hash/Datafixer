@@ -9,7 +9,7 @@
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { EngineError, isOutOfMemory } from "./errors.ts";
 import { cellKey } from "./types.ts";
-import type { CancelToken } from "./cancel.ts";
+import { throwIfCancelled, type CancelToken } from "./cancel.ts";
 import { parseCsv } from "./csv/parse-csv.ts";
 import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspect.ts";
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
@@ -24,6 +24,12 @@ import { planFix, type FixId, type FixOptions, type FixPreview } from "./fix/fix
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
 import { classify } from "./scan/classify.ts";
 import { buildCsv, verifyCsv } from "./export/csv-export.ts";
+import { readZipEntries, type ZipEntry } from "./xlsx/zip.ts";
+import { affectedBy, buildReferenceIndex, type ReferenceIndex } from "./xlsx/references.ts";
+import { patchXlsx } from "./xlsx/patch.ts";
+import { estimateExcelMemory } from "./xlsx/read-workbook.ts";
+import { XLS_REBUILD_LOSSES, rebuildXlsAsXlsx } from "./export/xls-export.ts";
+import type { CellValue } from "./types.ts";
 import { familyOf } from "./scan/checks/dates.ts";
 
 interface OpenState {
@@ -33,6 +39,9 @@ interface OpenState {
   sheets: SheetInfo[];
   loaded: Map<string, LoadedSheet>;
   inspection: InspectionResult | null;
+  /** Stage 4 (Excel download): ZIP directory and per-sheet reference indexes, built when first needed. */
+  zip?: ZipEntry[];
+  refIndex?: Map<string, ReferenceIndex>;
   csv: CsvMeta | null;
   activeSheet: string;
   sheetError: { code: string; message: string } | null;
@@ -78,8 +87,10 @@ export interface EditResult {
 export interface ExportSummary {
   originalName: string;
   downloadName: string;
-  format: "csv";
+  format: "csv" | "xlsx";
   bytes: number;
+  /** Excel download: workbook parts that were rewritten or removed (all others are byte-identical). */
+  changedParts?: string[];
   /** Rows and columns in the downloaded file (including the header row). */
   rows: number;
   columns: number;
@@ -125,6 +136,26 @@ export interface FixPreviewResult extends FixPreview {
   token: string;
   /** Rows or columns would be removed from an Excel file (workbook references must be checked before download). */
   deletesFromExcel: boolean;
+  /**
+   * Excel files (S2): what removing these rows/columns would break. When not
+   * empty, removal is not offered; `clearing` says the preview clears the cells instead.
+   */
+  excelCheck: { affected: string[]; clearing: boolean } | null;
+}
+
+/** Turn row/column removals into clearing their cells (positions stay; nothing that refers to them breaks). */
+function removalsToClears(view: SheetModel, req: ChangeRequest): ChangeRequest | null {
+  const keys: number[] = [];
+  const g = view.grid;
+  const add = (r: number, c: number) => {
+    const v = g.get(r, c);
+    if (v !== null && v !== "" && !view.formulas.has(cellKey(r, c))) keys.push(cellKey(r, c));
+  };
+  for (const d of req.deleteRows ?? []) for (let c = 0; c < g.rowLength(d.row); c++) add(d.row, c);
+  for (const d of req.deleteColumns ?? []) for (let r = 0; r < g.rowCount; r++) if (d.col < g.rowLength(r)) add(r, d.col);
+  const unique = [...new Set(keys)];
+  if (!unique.length) return null;
+  return { operation: req.operation, label: `${req.label} (cells cleared, positions kept)`, cellKeys: Float64Array.from(unique), cellValues: unique.map(() => null) };
 }
 
 /** "Fix all safe problems": every safe fix, planned one after another, applied as one step each. */
@@ -502,9 +533,38 @@ export class EngineCore {
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
       originalRow: (r) => session.grid().baseRow(r),
     });
+    let request = plan.request;
+    let preview = plan.preview;
+    let excelCheck: FixPreviewResult["excelCheck"] = null;
+    const removes = !!request && ((request.deleteRows?.length ?? 0) > 0 || (request.deleteColumns?.length ?? 0) > 0);
+    if (removes && st.format !== "csv") {
+      // S2: check everything in the workbook that refers to these rows/columns.
+      const g = session.grid();
+      const rows = (request!.deleteRows ?? []).map((d) => g.baseRow(d.row));
+      const cols = (request!.deleteColumns ?? []).map((d) => g.baseCol(d.col));
+      const affected = st.format === "xlsx" ? await this.excelRemovalCheck(sheetName, rows, cols, cancel) : ["References in old .xls files can't be checked"];
+      if (affected.length) {
+        excelCheck = { affected, clearing: !!options.clearInsteadOfRemove };
+        if (options.clearInsteadOfRemove) {
+          request = removalsToClears(session.view(), request!);
+          const cells = request?.cellKeys?.length ?? 0;
+          preview = {
+            ...preview,
+            cellsChanged: cells,
+            rowsRemoved: 0,
+            columnsRemoved: 0,
+            description: `${preview.description} Instead of removing them, their ${cells === 1 ? "cell is" : "cells are"} cleared, so nothing in the workbook that refers to these positions breaks.`,
+          };
+        } else {
+          // Blocked: nothing will change until the user chooses to clear the cells instead.
+          request = null;
+          preview = { ...preview, rowsRemoved: 0, columnsRemoved: 0, rows: [], columns: [] };
+        }
+      } else excelCheck = { affected: [], clearing: false };
+    }
     const token = `fix-${++this.fixSeq}`;
-    this.pendingFix = { token, sheet: sheetName, version: session.version, requests: plan.request ? [plan.request] : [] };
-    return { ...plan.preview, token, deletesFromExcel: st.format !== "csv" && (plan.preview.rowsRemoved > 0 || plan.preview.columnsRemoved > 0) };
+    this.pendingFix = { token, sheet: sheetName, version: session.version, requests: request ? [request] : [] };
+    return { ...preview, token, excelCheck, deletesFromExcel: st.format !== "csv" && removes };
   }
 
   /**
@@ -522,7 +582,10 @@ export class EngineCore {
     const steps: FixPreview[] = [];
     const requests: ChangeRequest[] = [];
     const notes: string[] = [];
-    const order = FIX_ALL_ORDER.filter((id) => !(excel && ROW_OR_COLUMN_FIXES.has(id)));
+    // .xls: references can't be checked, so no removals. .xlsx: removals only where nothing refers to them (S2).
+    const order = FIX_ALL_ORDER.filter((id) => !(st.format === "xls" && ROW_OR_COLUMN_FIXES.has(id)));
+    const removedRows: number[] = [];
+    const removedCols: number[] = [];
     for (let i = 0; i < order.length; i++) {
       const fixId = order[i]!;
       let keepColumns: number[] | undefined;
@@ -540,11 +603,24 @@ export class EngineCore {
       });
       for (const s of plan.preview.skipped) if (!notes.includes(`${plan.preview.label}: ${s.reason}`) && !(fixId === "empty-columns" && s.reason === "Columns you chose to keep.")) notes.push(`${plan.preview.label}: ${s.reason} (${s.count.toLocaleString("en-US")})`);
       if (!plan.request) continue;
+      if (st.format === "xlsx" && ROW_OR_COLUMN_FIXES.has(fixId)) {
+        const toOriginal = (r: number) => session.grid().baseRow(scratch.grid().baseRow(r));
+        const toOriginalCol = (c: number) => session.grid().baseCol(scratch.grid().baseCol(c));
+        const rows = (plan.request.deleteRows ?? []).map((d) => toOriginal(d.row));
+        const cols = (plan.request.deleteColumns ?? []).map((d) => toOriginalCol(d.col));
+        const affected = await this.excelRemovalCheck(sheetName, [...removedRows, ...rows], [...removedCols, ...cols], cancel);
+        if (affected.length) {
+          notes.push(`${plan.preview.label}: not done here, because removing them would break ${affected.join("; ")}. Use the Fix button on that problem to clear them instead.`);
+          continue;
+        }
+        removedRows.push(...rows);
+        removedCols.push(...cols);
+      }
       scratch.apply(plan.request);
       steps.push(plan.preview);
       requests.push(plan.request);
     }
-    if (excel) notes.push("Excel file: duplicate and empty rows and columns are not removed yet, because removing rows can break formulas and charts that refer to them.");
+    if (st.format === "xls") notes.push("Old .xls file: duplicate and empty rows and columns are not removed, because DataFixer can't check what refers to them. Use the Fix button on those problems to clear them instead.");
     const token = `fix-${++this.fixSeq}`;
     this.pendingFix = { token, sheet: sheetName, version: session.version, requests };
     return {
@@ -682,6 +758,218 @@ export class EngineCore {
       }
       throw err;
     }
+  }
+
+  // ------------------------------------------------------------------ Stage 4: Excel download
+
+  /** Index of everything in the workbook that refers to positions on this sheet (S2), cached per sheet. */
+  private async referenceIndex(sheetName: string, cancel?: CancelToken): Promise<ReferenceIndex> {
+    const st = this.requireState();
+    if (st.format !== "xlsx" || !st.inspection) throw new EngineError("internal", "Reference checks are for Excel (.xlsx) files.");
+    st.refIndex ??= new Map();
+    const hit = st.refIndex.get(sheetName);
+    if (hit) return hit;
+    st.zip ??= await readZipEntries(st.file);
+    const sheetIndex = st.inspection.sheets.findIndex((s) => s.name === sheetName);
+    const entry = st.loaded.get(sheetName);
+    if (sheetIndex < 0 || !entry) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” is not loaded.`);
+    const index = await buildReferenceIndex({ blob: st.file, entries: st.zip, sheets: st.inspection.sheets, sheetIndex, sheet: entry.sheet, cancel });
+    st.refIndex.set(sheetName, index);
+    return index;
+  }
+
+  /**
+   * Would removing these rows/columns (original positions, together with the
+   * ones already removed) break anything in the workbook? Returns the features.
+   */
+  async excelRemovalCheck(sheetName: string, rows: number[], cols: number[], cancel?: CancelToken): Promise<string[]> {
+    const index = await this.referenceIndex(sheetName, cancel);
+    const plan = this.session(sheetName).exportPlan();
+    return [...new Set(affectedBy(index, [...plan.deletedRows, ...rows], [...plan.deletedCols, ...cols]))];
+  }
+
+  /**
+   * Create the corrected Excel file by changing only the edited cells inside
+   * the original package (owner decision 4), then read the generated bytes back
+   * with DataFixer's Excel reader and compare every cell before returning it.
+   */
+  async exportXlsx(sheetName: string, onProgress: Progress, cancel?: CancelToken): Promise<ExportResult> {
+    const st = this.requireState();
+    if (st.format === "xls") return this.exportXlsAsXlsx(sheetName, onProgress, cancel);
+    if (st.format !== "xlsx" || !st.inspection) throw new EngineError("internal", "Excel download is for Excel files.");
+    if (st.inspection.conformance === "strict") {
+      throw new EngineError("unsupported-format", "This workbook uses the “Strict Open XML” format, which DataFixer can't rewrite safely. Download it as CSV instead, or save it as a normal .xlsx in Excel and try again.");
+    }
+    const session = this.session(sheetName);
+    const view = session.view();
+    const base = session.base;
+    const sheetIndex = st.inspection.sheets.findIndex((s) => s.name === sheetName);
+    const part = st.inspection.sheets[sheetIndex]?.part;
+    if (!part) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” could not be found in the workbook.`);
+    const plan = session.exportPlan();
+
+    // S2: never remove rows/columns that something in the workbook refers to.
+    let referenceNotes: string[] = [];
+    if (plan.deletedRows.length || plan.deletedCols.length) {
+      const index = await this.referenceIndex(sheetName, cancel);
+      const affected = [...new Set(affectedBy(index, plan.deletedRows, plan.deletedCols))];
+      if (affected.length) {
+        throw new EngineError(
+          "would-break-references",
+          `Removing rows or columns from this Excel file would break: ${affected.join("; ")}. Nothing was downloaded, and your changes are kept. Undo the removal and use “Clear the rows instead”, or download as CSV.`,
+        );
+      }
+      referenceNotes = index.notes;
+    }
+
+    // Verification re-reads the new workbook: make sure that fits next to the data already held.
+    const verifyNeed = estimateExcelMemory(st.file.size, "xlsx", st.inspection, sheetIndex);
+    if (st.memoryBudgetBytes && view.grid.approxBytes * 1.6 + verifyNeed > st.memoryBudgetBytes) {
+      throw new EngineError(
+        "out-of-memory",
+        "This workbook is too large to create and check an Excel download in this browser on this device. Nothing was downloaded, and your changes are kept. Download it as CSV instead, or use a device with more memory.",
+      );
+    }
+
+    st.zip ??= await readZipEntries(st.file);
+    const formulaCells = new Set(base.formulas.keys());
+    const { blob, changedParts, removedParts } = await patchXlsx({
+      source: st.file,
+      entries: st.zip,
+      sheetPart: part,
+      edits: plan.edits,
+      deletedRows: plan.deletedRows,
+      deletedCols: plan.deletedCols,
+      formulaCells,
+      cancel,
+      onProgress: (done, total) => onProgress({ phase: "exporting", loaded: done, total }),
+    });
+
+    // V1/V2: read the generated bytes back with DataFixer's reader and compare every cell.
+    onProgress({ phase: "verifying", loaded: null, total: null });
+    const verification = await this.verifyXlsx(blob, sheetIndex, view, plan.edits.size ? session : null, cancel);
+
+    const stats = session.stats();
+    const applied = session.appliedEntries();
+    const auto = applied.filter((e) => e.operation !== "edit-cell");
+    const replacedFormulas = [...plan.edits.keys()].filter((k) => formulaCells.has(k)).length;
+    const warnings: string[] = [];
+    if (plan.edits.size) warnings.push("Formulas will recalculate when the file is opened in Excel, so totals that use changed cells are up to date.");
+    if (replacedFormulas) warnings.push(`${replacedFormulas} formula${replacedFormulas > 1 ? "s were" : " was"} replaced by the value${replacedFormulas > 1 ? "s" : ""} you typed (you confirmed this).`);
+    warnings.push(`Only these parts of the workbook were changed: ${[...changedParts, ...removedParts.map((p) => `${p} (removed; Excel rebuilds it)`)].join(", ")}. Everything else is exactly as in your original file.`);
+    warnings.push(...referenceNotes);
+    const baseName = st.fileName.replace(/\.[^.]+$/, "") || "workbook";
+    return {
+      blob,
+      summary: {
+        originalName: st.fileName,
+        downloadName: `${baseName}-cleaned.xlsx`,
+        format: "xlsx",
+        bytes: blob.size,
+        changedParts: [...changedParts, ...removedParts],
+        rows: view.grid.rowCount,
+        columns: view.columnCount,
+        cellsEdited: stats.cellsEdited,
+        rowsRemoved: stats.rowsRemoved,
+        columnsRemoved: stats.columnsRemoved,
+        duplicatesRemoved: auto.filter((e) => e.operation === "duplicate-rows").reduce((n, e) => n + e.rowsRemoved, 0),
+        automaticCorrections: auto.reduce((n, e) => n + e.cells + e.rowsRemoved + e.columnsRemoved, 0),
+        manualEdits: applied.length - auto.length,
+        notPreserved: [],
+        warnings,
+        verification: { reader: "DataFixer's Excel reader", rows: verification.rows, cells: verification.cells },
+        version: stats.version,
+      },
+    };
+  }
+
+  /** Old .xls files: rebuilt as a new .xlsx (they can't be patched in place); losses are listed. */
+  private async exportXlsAsXlsx(sheetName: string, onProgress: Progress, cancel?: CancelToken): Promise<ExportResult> {
+    const st = this.requireState();
+    const session = this.session(sheetName);
+    const view = session.view();
+    const plan = session.exportPlan();
+    if (plan.deletedRows.length || plan.deletedCols.length) {
+      throw new EngineError("would-break-references", "Rows or columns can't be removed from .xls files, because DataFixer can't check what refers to them. Undo the removal, or download as CSV.");
+    }
+    const sheetIndex = st.sheets.findIndex((s) => s.name === sheetName);
+    if (st.memoryBudgetBytes && view.grid.approxBytes * 1.6 + 2 * estimateExcelMemory(st.file.size, "xls", null, sheetIndex) > st.memoryBudgetBytes) {
+      throw new EngineError("out-of-memory", "This .xls workbook is too large to rebuild and check in this browser on this device. Nothing was downloaded, and your changes are kept. Download it as CSV instead.");
+    }
+    onProgress({ phase: "exporting", loaded: null, total: null });
+    const blob = await rebuildXlsAsXlsx(st.file, sheetIndex, plan.edits, cancel);
+    onProgress({ phase: "verifying", loaded: null, total: null });
+    const verification = await this.verifyXlsx(blob, sheetIndex, view, session, cancel, st.sheets.map((s) => s.name));
+    const stats = session.stats();
+    const applied = session.appliedEntries();
+    const auto = applied.filter((e) => e.operation !== "edit-cell");
+    const baseName = st.fileName.replace(/\.[^.]+$/, "") || "workbook";
+    return {
+      blob,
+      summary: {
+        originalName: st.fileName,
+        downloadName: `${baseName}-cleaned.xlsx`,
+        format: "xlsx",
+        bytes: blob.size,
+        rows: view.grid.rowCount,
+        columns: view.columnCount,
+        cellsEdited: stats.cellsEdited,
+        rowsRemoved: 0,
+        columnsRemoved: 0,
+        duplicatesRemoved: 0,
+        automaticCorrections: auto.reduce((n, e) => n + e.cells, 0),
+        manualEdits: applied.length - auto.length,
+        notPreserved: [...XLS_REBUILD_LOSSES],
+        warnings: ["The old .xls format was converted to the newer .xlsx format, which every current spreadsheet app opens.", "Your original .xls file is unchanged."],
+        verification: { reader: "DataFixer's Excel reader", rows: verification.rows, cells: verification.cells },
+        version: stats.version,
+      },
+    };
+  }
+
+  /** Read the new workbook back and compare it with the expected (edited) sheet, cell by cell. */
+  private async verifyXlsx(
+    blob: Blob,
+    sheetIndex: number,
+    view: SheetModel,
+    session: EditSession | null,
+    cancel?: CancelToken,
+    expectedSheets: string[] = this.requireState().inspection!.sheets.map((s) => s.name),
+  ): Promise<{ rows: number; cells: number }> {
+    const fail = (detail: string) =>
+      new EngineError(
+        "internal",
+        "The corrected Excel file didn't pass DataFixer's check, so it was not offered for download. Your changes are kept. Please try again, or download as CSV.",
+        `XLSX verification failed: ${detail}`,
+      );
+    const inspection = await inspectXlsx(blob, { cancel });
+    const names = inspection.sheets.map((s) => s.name).join("\u0000");
+    if (names !== expectedSheets.join("\u0000")) throw fail("sheet list changed");
+    const { sheet: back } = await readExcelSheet(blob, "xlsx", { sheetIndex, inspection, cancel });
+    const g = view.grid;
+    const b = back.grid;
+    const rows = Math.max(g.rowCount, b.rowCount);
+    let cells = 0;
+    const same = (x: CellValue, y: CellValue) => x === y || (x === null && y === "") || (x === "" && y === null);
+    for (let r = 0; r < rows; r++) {
+      const len = Math.max(g.rowLength(r), b.rowLength(r));
+      for (let c = 0; c < len; c++) {
+        const want = g.get(r, c);
+        const got = b.get(r, c);
+        if (!same(want, got)) throw fail(`cell ${columnLetter(c)}${r + 1}`);
+        if (want !== null) cells++;
+        const key = cellKey(r, c);
+        if ((view.formulas.get(key) ?? null) !== (back.formulas.get(key) ?? null)) throw fail(`formula at ${columnLetter(c)}${r + 1}`);
+        const fmt = view.numberFormats.get(key);
+        if (session && fmt !== undefined && (g as { isEdited?(r: number, c: number): boolean }).isEdited?.(r, c)) {
+          const gotFmt = (b as { format?(r: number, c: number): string | null }).format?.(r, c) ?? null;
+          if (gotFmt !== fmt) throw fail(`number format at ${columnLetter(c)}${r + 1}`);
+        }
+      }
+      if ((r & 0x3fff) === 0) throwIfCancelled(cancel);
+    }
+    if (back.merges.length !== view.merges.length) throw fail("merged cells changed");
+    return { rows, cells };
   }
 
   undo(sheetName: string): EditResult {

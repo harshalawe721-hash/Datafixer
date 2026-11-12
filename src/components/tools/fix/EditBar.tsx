@@ -66,7 +66,7 @@ export function EditBar({ api }: { api: ToolApi }) {
         <div className="flex flex-wrap gap-2">
           {edits.changesApplied > 0 && (
             <Button size="sm" className="h-10" disabled={busy} onClick={() => setDownloading(true)}>
-              <Download className="size-4" aria-hidden="true" /> {api.format === "csv" ? "Download corrected CSV" : "Download as CSV"}
+              <Download className="size-4" aria-hidden="true" /> {api.format === "csv" ? "Download corrected CSV" : "Download corrected file"}
             </Button>
           )}
           <Button variant="outline" size="sm" className="h-10" disabled={!edits.canUndo || busy} onClick={() => void run(api.undo)}>
@@ -107,7 +107,7 @@ export function EditBar({ api }: { api: ToolApi }) {
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
         <span>
           Changes are kept on this device, in this tab only, until you download them. Your original file is never changed; the download is a new file.
-          {api.format !== "csv" && " Excel download that keeps formatting and formulas is being built next; for now you can download this sheet as CSV."}
+
         </span>
       </p>
       {showHistory && <HistoryPanel api={api} />}

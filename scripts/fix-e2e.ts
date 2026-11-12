@@ -139,8 +139,10 @@ const settled = async (page: Page) => {
   console.log("\nExcel: rules for workbooks");
   const page = await setup({ width: 1280, height: 900 });
   await open(page, "2-problems.xlsx");
-  check((await card(page, "Duplicate rows").getByRole("button", { name: "Remove duplicate rows" }).count()) === 0, "no row removal for Excel yet");
-  check(await visible(card(page, "Duplicate rows").getByText(/check the workbook's formulas and charts/)), "explains why");
+  await card(page, "Duplicate rows").getByRole("button", { name: "Remove duplicate rows" }).click();
+  check(await visible(dialog(page).getByText(/Checked: nothing else in this workbook/)), "Excel: workbook checked before removing rows (safe here)");
+  check(await visible(dialog(page).getByText("2 rows will be removed")), "Excel: 2 rows will be removed");
+  await dialog(page).getByRole("button", { name: "Cancel" }).click();
   await card(page, "Inconsistent dates").getByRole("button", { name: "Make date formats consistent" }).click();
   await dialog(page).getByRole("combobox").selectOption("excel-dmy");
   check(await visible(dialog(page).getByText("1 cell will change")), "text date → real Excel date: 1 cell");
@@ -153,7 +155,7 @@ const settled = async (page: Page) => {
   }
   check(remaining === "1", `only the impossible text date remains inconsistent (got ${remaining})`);
   await page.getByRole("button", { name: "Fix all safe problems" }).click();
-  check(await visible(dialog(page).getByText(/Excel file: duplicate and empty rows and columns are not removed yet/)), "Fix all explains Excel limits");
+  check(await visible(dialog(page).getByText(/Remove duplicate rows/)), "Fix all includes row removal when the workbook check passes");
   await dialog(page).getByRole("button", { name: "Cancel" }).click();
   await page.close();
 }
@@ -296,23 +298,76 @@ const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
   await page.close();
 }
 {
-  console.log("\nExcel sheet: download as CSV (values only, with warning)");
+  console.log("\nExcel file: download as Excel (only edited cells change) or as CSV");
   const page = await setup({ width: 390, height: 844 });
   await open(page, "2-problems.xlsx");
   await card(page, "Extra spaces").getByRole("button", { name: "Remove extra spaces" }).click();
   await dialog(page).getByRole("button", { name: /^Apply fix/ }).click();
   await settled(page);
-  await page.getByRole("button", { name: "Download as CSV" }).click();
-  check(await visible(dialog(page).getByText(/A CSV file doesn.t keep/)), "warns what CSV can't keep before creating anything");
-  const dlPromise = page.waitForEvent("download", { timeout: 30000 });
-  await dialog(page).getByRole("button", { name: "Download as CSV" }).click();
-  const dl = await dlPromise;
-  check(/2-problems - .*-cleaned\.csv/.test(dl.suggestedFilename()), `file name ${dl.suggestedFilename()}`);
-  check(await visible(dialog(page).getByText(/Formatting such as fonts/)), "summary lists features not kept");
-  check(await visible(dialog(page).getByText(/Formulas \(1\)/)), "summary lists the formula");
+  await page.getByRole("button", { name: "Download corrected file" }).click();
+  check(await visible(dialog(page).getByText("Excel file (.xlsx) · recommended")), "choice: Excel (recommended) or CSV");
+  check(await visible(dialog(page).getByText(/Only the cells you changed are changed/)), "explains that everything else stays");
+  let dlPromise = page.waitForEvent("download", { timeout: 30000 });
+  await dialog(page).getByRole("button", { name: "Download Excel file" }).click();
+  let dl = await dlPromise;
+  check(dl.suggestedFilename() === "2-problems-cleaned.xlsx", `file name ${dl.suggestedFilename()}`);
+  check(await visible(dialog(page).getByText(/None\. Formatting, formulas, other sheets, charts/)), "summary: nothing lost");
+  check(await visible(dialog(page).getByText(/Only these parts of the workbook were changed/)), "summary lists the changed parts");
+  const xf = path.join(DL, "b.xlsx");
+  await dl.saveAs(xf);
+  const opx = spawnSync("python3", ["-I", "-c", "import openpyxl,sys,json; ws=openpyxl.load_workbook(sys.argv[1]).active; print(json.dumps(ws['B4'].value))", xf], { encoding: "utf8" });
+  check(opx.status === 0 && JSON.parse(opx.stdout) === "Person 3", "openpyxl opens the downloaded Excel file; the fix is in it");
   const box = await dialog(page).boundingBox();
   check(box && box.width <= 391, "summary fits the phone screen");
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "export-summary-phone.png") });
+  await dialog(page).getByRole("button", { name: "Close" }).last().click();
+  await page.getByRole("button", { name: "Download corrected file" }).click();
+  dlPromise = page.waitForEvent("download", { timeout: 30000 });
+  await dialog(page).getByRole("button", { name: "Download as CSV" }).click();
+  dl = await dlPromise;
+  check(/2-problems - .*-cleaned\.csv/.test(dl.suggestedFilename()), `CSV option still works: ${dl.suggestedFilename()}`);
+  check(await visible(dialog(page).getByText(/Formulas \(1\)/)), "CSV summary lists the formula it can't keep");
+  await page.close();
+}
+{
+  console.log("\nExcel file where removing rows would break a formula and a chart");
+  const wbPath = path.join(DL, "refs.xlsx");
+  const gen = spawnSync(
+    "python3",
+    [
+      "-I",
+      "-c",
+      [
+        "import openpyxl, sys",
+        "from openpyxl.chart import BarChart, Reference",
+        "wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'Data'",
+        "ws.append(['id', 'name', 'amount'])",
+        "for i in range(1, 9): ws.append([i, f'Name {i}', i * 10])",
+        "ws.append([2, 'Name 2', 20]); ws.append([3, 'Name 3', 30])",
+        "s = wb.create_sheet('Summary'); s['A1'] = '=SUM(Data!C2:C11)'",
+        "ch = BarChart(); ch.add_data(Reference(ws, min_col=3, min_row=1, max_row=11)); ws.add_chart(ch, 'E2')",
+        "wb.save(sys.argv[1])",
+      ].join("\n"),
+      wbPath,
+    ],
+    { encoding: "utf8" },
+  );
+  check(gen.status === 0, "test workbook created");
+  const page = await setup({ width: 800, height: 1280 });
+  await page.goto(URL, { waitUntil: "networkidle" });
+  await page.locator("input[type=file]").setInputFiles(wbPath);
+  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  await card(page, "Duplicate rows").getByRole("button", { name: "Remove duplicate rows" }).click();
+  check(await visible(dialog(page).getByText("Removing them could break parts of this workbook")), "warning shown");
+  check(await visible(dialog(page).getByText(/Formulas or rules on sheet “Summary”/)), "names the formula on the Summary sheet");
+  check(await visible(dialog(page).getByText(/Chart/).first()), "names the chart");
+  check((await dialog(page).getByRole("button", { name: /^Apply/ }).count()) === 0, "removal not offered");
+  await dialog(page).getByLabel("Clear the cells instead (rows stay in place)").check();
+  check(await visible(dialog(page).getByText("6 cells will change")), "clearing instead: 6 cells");
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "excel-reference-check-tablet.png") });
+  await dialog(page).getByRole("button", { name: /^Apply fix/ }).click();
+  check(await gone(dialog(page)), "applied");
+  check(await visible(page.getByText(/cells cleared, positions kept/)), "Done message says the cells were cleared");
   await page.close();
 }
 rmSync(DL, { recursive: true, force: true });

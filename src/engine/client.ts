@@ -124,6 +124,11 @@ export class EngineClient {
     return this.request<"exportCsv">({ type: "exportCsv", sheet }, onProgress);
   }
 
+  /** Create and verify the corrected Excel file. */
+  exportXlsx(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<ExportResult> {
+    return this.request<"exportXlsx">({ type: "exportXlsx", sheet }, onProgress);
+  }
+
   undo(sheet: string): Promise<EditResult> {
     return this.request<"undo">({ type: "undo", sheet });
   }

@@ -30,7 +30,7 @@ let xlsxModule: Promise<XLSXModule> | null = null;
 let codepagesLoaded = false;
 
 /** Load SheetJS only when an Excel file is opened (keeps CSV processing light). */
-async function loadSheetJS(withCodepages: boolean): Promise<XLSXModule> {
+export async function loadSheetJS(withCodepages: boolean): Promise<XLSXModule> {
   xlsxModule ??= import("xlsx") as Promise<XLSXModule>;
   const XLSX = await xlsxModule;
   if (withCodepages && !codepagesLoaded) {

@@ -299,12 +299,12 @@ test("Fix all (CSV): exact combined preview, applied as one history entry per fi
   assert.equal(back.issues.find((i) => i.id === "duplicate-rows")!.count, 2);
 });
 
-test("Fix all (Excel): no rows or columns are removed (reference check comes first)", async () => {
+test("Fix all (Excel): rows are removed only after the workbook reference check passes", async () => {
   const { core, sheet } = await openPack("2-problems.xlsx");
   const p = await core.previewFixAll(sheet, { headerRow: true }, noop);
-  assert.deepEqual(p.steps.map((s) => s.fixId), ["extra-spaces", "inconsistent-case", "numbers-as-text"]);
-  assert.equal(p.rowsRemoved + p.columnsRemoved, 0);
-  assert.ok(p.notes.some((n) => /Excel file/.test(n)));
+  // Nothing in 2-problems.xlsx refers to the duplicate or empty rows (its one formula is above them).
+  assert.deepEqual(p.steps.map((s) => s.fixId), ["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows"]);
+  assert.equal(p.rowsRemoved, 3);
 });
 
 test("Fix all positions stay correct when an earlier step changes what a later step finds", async () => {

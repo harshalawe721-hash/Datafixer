@@ -81,6 +81,11 @@ export interface FixOptions {
   dateChoices?: Record<number, { target: DateTarget; order?: "dmy" | "mdy" }>;
   /** Phone columns (view index) → layout template (from the preview's choices). */
   phoneChoices?: Record<number, string>;
+  /**
+   * Excel files where removing rows/columns would break references (S2): clear
+   * the cells instead, so every position stays where it is.
+   */
+  clearInsteadOfRemove?: boolean;
 }
 
 /** What a fix would do, shown to the user before anything changes. Positions are view positions. */

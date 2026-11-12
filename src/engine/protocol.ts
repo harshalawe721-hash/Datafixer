@@ -32,6 +32,8 @@ export type EngineRequest =
   | { id: number; type: "editCell"; sheet: string; row: number; col: number; text: string; replaceFormula: boolean }
   /** Create and verify the corrected CSV (cancellable with abortScans). */
   | { id: number; type: "exportCsv"; sheet: string }
+  /** Create and verify the corrected Excel file (.xlsx patched in place; .xls rebuilt as .xlsx). */
+  | { id: number; type: "exportXlsx"; sheet: string }
   | { id: number; type: "undo"; sheet: string }
   | { id: number; type: "redo"; sheet: string }
   | { id: number; type: "history"; sheet: string }
@@ -50,6 +52,7 @@ export interface EngineResults {
   cellInfo: CellInfo;
   editCell: EditResult;
   exportCsv: ExportResult;
+  exportXlsx: ExportResult;
   undo: EditResult;
   redo: EditResult;
   history: HistorySummary[];

@@ -22,6 +22,8 @@ export type EngineErrorCode =
   | "formula-cell"
   /** Stage 4: the data changed after a fix was previewed, so the preview no longer applies. */
   | "stale-preview"
+  /** Stage 4: removing rows/columns from an Excel file would break references to them. */
+  | "would-break-references"
   | "internal";
 
 export class EngineError extends Error {

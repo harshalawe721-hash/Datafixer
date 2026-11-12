@@ -52,11 +52,12 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
-      case "exportCsv": {
+      case "exportCsv":
+      case "exportXlsx": {
         const t = { cancelled: false };
         scanTokens.add(t);
         try {
-          result = await core.exportCsv(req.sheet, onProgress, t);
+          result = req.type === "exportCsv" ? await core.exportCsv(req.sheet, onProgress, t) : await core.exportXlsx(req.sheet, onProgress, t);
         } finally {
           scanTokens.delete(t);
         }

@@ -212,7 +212,8 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 4 | ✅ Done: Fix buttons on cards, “Fix all safe problems”, preview dialog with choices, Undo/Redo, change history panel, automatic re-check, changed cells highlighted, confirmation before discarding changes. Phone, tablet and desktop layouts. 4 new unit tests, 57-check browser test (`npm run test:fix`) | `components/tools/fix/`, worker messages |
 | 5 | ✅ Done: tap a cell to edit it (formula warning with explicit confirmation; dates typed into Excel date cells stay real dates; Undo), plus a “Done / Undone / Redone” message after every change naming each fix and its counts. 4 new unit tests; browser test now 75 checks | `CellEditor.tsx`, `EngineCore.cellInfo` / `editCell` |
 | 6 | ✅ Done: Download corrected CSV (UTF-8 with BOM, original separator and line endings). Built in chunks, then read back from its own bytes with DataFixer's reader and compared cell by cell before “Export successful” is shown (V1, V2). Summary (S3) and recoverable export (S4: cancel, failure and low memory download nothing and keep all changes; memory checked before starting). Excel sheets can be downloaded as CSV (values only) after a warning that lists what CSV can't keep. 11 new unit tests verified independently with Python's csv module (V3); browser test now 94 checks. Measured (Node, desktop): 50 MB export+verify 2.4 s; generated 150 MB (1.78M rows, 14.2M cells) 8.8 s, also within a 512 MB heap cap | `export/csv-export.ts`, `EngineCore.exportCsv`, `DownloadDialog.tsx` |
-| 7–8 | Not started | — |
+| 7 | ✅ Done: workbook reference check (S2) before any row/column removal in Excel files, with “Clear the cells instead” when something refers to them. Excel download that patches the original package: only the edited worksheet (and, when needed, workbook.xml for the recalculate flag, styles.xml for new date formats, calcChain.xml removal) changes, and everything else is copied byte for byte. Verified by re-reading with DataFixer's Excel reader (V1, V2) and in tests with openpyxl (V4–V6). Old .xls files are rebuilt as .xlsx, with the measured losses listed. 10 new unit tests; browser test now 106 checks. Measured: 200,000-row workbook, 32,572 fixes, export+verify 10.4 s | `xlsx/zip.ts`, `xlsx/references.ts`, `xlsx/patch.ts`, `export/xls-export.ts`, `EngineCore.exportXlsx` |
+| 8 | Not started | — |
 
 ### Decisions made while building (for owner review)
 
@@ -232,6 +233,15 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 - **Step 6, quoting:** a field is quoted only when it contains the separator, a quote or a line break (RFC 4180). Spaces are kept exactly. Ragged rows stay ragged.
 - **Step 6, Excel sheets as CSV:** values are written as shown in the table (formatted dates and numbers). The summary lists what isn't kept (formatting, formulas, other sheets, charts and so on). The XLSX download that keeps them is Step 7.
 - **Step 6, "Export successful"** means the file was created and checked. Saving it to the device is done by the browser (R7). "Download again" re-offers the same verified file without creating it again.
+
+- **Step 7, reference check:** for each feature, the check works out the furthest row and column it refers to. Removal is allowed only if nothing refers to the removed rows/columns *or anything after them* (removing shifts everything below). It checks:
+  - formulas on this sheet (where they are and what they refer to) and on other sheets;
+  - merged cells, hyperlinks, conditional formatting and data validation (including the newer `x14` forms and the formulas in their rules), filters and protected ranges;
+  - tables, comments, drawings/images/charts placed on the sheet, charts anywhere that use this sheet's data, pivot tables and their sources, and named ranges (including print areas);
+  - anything else, which is treated as affected: sparklines, form controls, unknown linked parts, `INDIRECT`, `OFFSET`, structured and 3-D references, and formulas that use named ranges.
+- **Step 7, .xls files:** references can't be checked in the old binary format, so rows and columns are never removed from .xls files. Clearing is offered instead. The rebuild keeps values, formulas, number formats, merged cells, comments, hyperlinks, column widths, hidden rows and all sheets. It loses fonts/colours/fills/borders, conditional formatting, data validation, charts and images, and “very hidden” sheets become hidden (measured with openpyxl). SheetJS writes an invalid `level` attribute on columns, which openpyxl rejects, so it is removed before writing.
+- **Step 7, cells that can't be edited alone:** the first cell of a shared formula, and cells inside multi-cell array formulas or data tables, can't be written on their own. The download stops with an explanation and suggests CSV or Excel.
+- **Step 7, Strict Open XML and ZIP64 workbooks** are refused for Excel download, with CSV offered instead.
 
 ## Testing
 

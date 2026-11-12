@@ -16,10 +16,7 @@ import { FIX_IDS, FIX_LABELS, type FixId } from "@/engine/fix/fix-ids";
 
 /** Fixes included in "Fix all safe problems" (no decisions needed). */
 const FIX_ALL = new Set<string>(["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows", "empty-columns"]);
-/** Fixes that remove rows or columns: not offered for Excel files until the workbook reference check exists (Stage 4, Step 7). */
-const REMOVES_ROWS_OR_COLUMNS = new Set<string>(["duplicate-rows", "empty-rows", "empty-columns"]);
-const EXCEL_REMOVAL_NOTE =
-  "For Excel files, removing rows and columns will be added once DataFixer can first check the workbook's formulas and charts, so nothing that refers to these rows breaks.";
+
 
 type ScanState =
   | { status: "scanning"; progress: ProgressEvent | null }
@@ -120,8 +117,8 @@ export function ScanPanel({ api }: { api: ToolApi }) {
   const { result } = state;
   const problems = result.issues.filter((i) => i.severity !== "note");
   const notes = result.issues.length - problems.length;
-  const excel = api.format !== "csv";
-  const offered = (id: string) => (FIX_IDS as readonly string[]).includes(id) && !(excel && REMOVES_ROWS_OR_COLUMNS.has(id));
+  // Excel files: removals are checked against the whole workbook in the preview (S2).
+  const offered = (id: string) => (FIX_IDS as readonly string[]).includes(id);
   const canFixAll = result.issues.some((i) => FIX_ALL.has(i.id) && offered(i.id));
   const columnName = (i: number) => result.profiles[i]?.name ?? `Column ${result.profiles[i]?.letter ?? i + 1}`;
   const changed = api.edits.changesApplied > 0;
@@ -208,11 +205,7 @@ export function ScanPanel({ api }: { api: ToolApi }) {
           active={api.activeIssueId === issue.id}
           onView={api.viewIssue}
           fix={
-            offered(issue.id)
-              ? { label: FIX_LABELS[issue.id as FixId], onFix: () => setFixRequest({ kind: "one", fixId: issue.id as FixId }) }
-              : (FIX_IDS as readonly string[]).includes(issue.id)
-                ? { unavailable: EXCEL_REMOVAL_NOTE }
-                : undefined
+            offered(issue.id) ? { label: FIX_LABELS[issue.id as FixId], onFix: () => setFixRequest({ kind: "one", fixId: issue.id as FixId }) } : undefined
           }
         />
       ))}

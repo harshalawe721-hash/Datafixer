@@ -38,6 +38,8 @@ export interface ToolApi {
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */
   exportCsv(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
+  /** Create the corrected Excel file and check it cell by cell (Step 7). */
+  exportXlsx(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
   undo(): Promise<EditResult>;
   redo(): Promise<EditResult>;
   history(): Promise<HistorySummary[]>;

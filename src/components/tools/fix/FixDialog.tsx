@@ -121,6 +121,7 @@ export function FixDialog({
       phoneChoices: { ...choices.phoneChoices, ...patch.phoneChoices },
     };
     if (patch.keepColumns) next.keepColumns = patch.keepColumns;
+    if (patch.clearInsteadOfRemove !== undefined) next.clearInsteadOfRemove = patch.clearInsteadOfRemove;
     setChoices(next);
     load(next);
   };
@@ -288,6 +289,7 @@ function OnePreview({ preview, columnName, choices, onChoose }: { preview: FixPr
     <div className="space-y-4">
       <p className="text-sm text-muted">{preview.description}</p>
       {preview.choices.length > 0 && <ChoiceList choices={preview.choices} onChoose={onChoose} />}
+      {preview.excelCheck && <ExcelCheck check={preview.excelCheck} onChoose={onChoose} />}
       {preview.fixId === "empty-columns" && (preview.columns.length > 0 || (choices.keepColumns?.length ?? 0) > 0) && (
         <KeepColumns preview={preview} keep={choices.keepColumns ?? []} onChange={(keepColumns) => onChoose({ keepColumns })} />
       )}
@@ -297,6 +299,36 @@ function OnePreview({ preview, columnName, choices, onChoose }: { preview: FixPr
       <p className="flex items-center gap-1.5 text-xs text-muted">
         <Undo2 className="size-3.5" aria-hidden="true" /> Formula cells are never changed automatically. Your original file is never changed.
       </p>
+    </div>
+  );
+}
+
+/** S2: what removing rows/columns from this Excel file would break, and the safe alternative. */
+function ExcelCheck({ check, onChoose }: { check: NonNullable<FixPreviewResult["excelCheck"]>; onChoose: (c: Choices) => void }) {
+  if (check.affected.length === 0) {
+    return (
+      <p className="flex items-start gap-2 rounded-xl bg-success-soft px-4 py-3 text-sm" role="status">
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+        Checked: nothing else in this workbook (formulas, charts, named ranges, formatting rules…) refers to these rows or anything after them, so they can be
+        removed safely.
+      </p>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-warning/60 bg-warning-soft/50 px-4 py-3 text-sm" role="alert">
+      <p className="flex items-start gap-2 font-semibold text-warning">
+        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> Removing them could break parts of this workbook
+      </p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">
+        {check.affected.map((a) => (
+          <li key={a}>{a}</li>
+        ))}
+      </ul>
+      <p className="mt-2">So DataFixer won&apos;t remove them. You can clear their cells instead: the rows stay in place, so nothing that refers to them breaks.</p>
+      <label className="mt-2 inline-flex min-h-10 cursor-pointer items-center gap-2 font-medium">
+        <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={check.clearing} onChange={(e) => onChoose({ clearInsteadOfRemove: e.target.checked })} />
+        Clear the cells instead (rows stay in place)
+      </label>
     </div>
   );
 }

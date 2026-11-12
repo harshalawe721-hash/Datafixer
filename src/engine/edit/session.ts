@@ -522,6 +522,23 @@ export class EditSession {
     };
   }
 
+  /**
+   * Everything to write into the original file (Excel download), by ORIGINAL
+   * position: cell edits with any number format, and removed rows/columns.
+   */
+  exportPlan(): { edits: Map<number, { value: CellValue; format?: string }>; deletedRows: number[]; deletedCols: number[] } {
+    const edits = new Map<number, { value: CellValue; format?: string }>();
+    for (const [key, value] of this.layer.edits) {
+      const format = this.layer.formats.get(key);
+      edits.set(key, format !== undefined ? { value, format } : { value });
+    }
+    const deletedRows: number[] = [];
+    for (let r = 0; r < this.rowDeleted.length; r++) if (this.rowDeleted[r]) deletedRows.push(r);
+    const deletedCols: number[] = [];
+    for (let c = 0; c < this.colDeleted.length; c++) if (this.colDeleted[c]) deletedCols.push(c);
+    return { edits, deletedRows, deletedCols };
+  }
+
   /** Applied entries, oldest first (for the download summary). */
   appliedEntries(): HistorySummary[] {
     return this.chain.slice(0, this.cursor).map((e) => this.summaryOf(e));
