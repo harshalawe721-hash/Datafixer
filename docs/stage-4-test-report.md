@@ -96,6 +96,20 @@ Other measurements (Node, desktop):
 - CSV export + verification of a generated 150 MB file (1.78M rows, 14.2M cells): 8.8 s, also with the JS heap capped at 512 MB.
 - Excel export + verification of a 200,000-row workbook with 32,572 fixes: 10.4 s.
 
+## Real Android device testing (owner, 12 November 2026)
+
+The project owner tested on their Android tablet (Chrome) with the Stage 4 test pack, on the Vercel deployment of this branch. These results are separate from the desktop measurements above. Downloaded files sent back by the owner were checked here with Python's `csv` module and openpyxl.
+
+| Test | Expected | Result on the tablet | Verdict |
+|---|---|---|---|
+| A: 1-problems.csv: Fix all, download CSV | Fix all: spaces 2, capitalization 1, numbers 1, duplicates 2, empty rows 1 | Downloaded file checked: UTF-8 BOM, 25 rows × 8 columns (28 → 25), all five fixes present, everything else unchanged. The optional manual edit was not done | ✅ PASSED |
+| B: 2-problems.xlsx: Fix all, download Excel | 4 cells changed, 3 rows removed, 5 fixes; only the worksheet and workbook.xml change | Screen: “4 cells changed · 3 rows removed (5 fixes applied)”, 5 history entries “Applied”, re-check 24 rows. Downloaded file checked: valid, only `xl/worksheets/sheet1.xml` and `xl/workbook.xml` differ from the original (all other parts byte-identical), fixes present, formula `=1/0` and real dates kept | ✅ PASSED |
+| C: 6-excel-references.xlsx: reference protection | Fix all fixes 2 cells and skips duplicate removal, naming the chart and the Summary formula | Screen: “2 cells will change” and “Remove duplicate rows: not done here, because removing them would break Chart (chart1.xml); Formulas or rules on sheet “Summary””. Downloaded file checked: only the Sales worksheet changed; duplicates kept; `=SUM(Sales!D2:D11)`, the chart, the bold/filled header and column width unchanged | ✅ PASSED (Fix all). “Clear the cells instead” not yet tested on the device |
+| D: 5-large-problems-50mb.csv (785,000 rows) | Fix all: spaces 873, capitalization 1,122, duplicates 7,850; then 1,995 cells changed, 7,850 rows removed, 777,150 rows | **Exact match.** Opened in 5.5 s, checked in 10.4 s, re-checked (777,150 rows) in 11.5 s; emails 3,140, missing 1,963 and unusual 78 remain as expected | ✅ PASSED (download of the 50 MB file not yet confirmed) |
+| E: Spreadsheet Cleaner page | Each tool shows “N found · Preview” or “Nothing to fix” | “Cleaning tools” with “1 found · Preview” and “2 found · Preview” | ✅ PASSED |
+
+Note: the tablet renames repeated downloads of the test files (for example “1-problems_1.csv”), so the downloaded names include that suffix (“1-problems_1-cleaned.csv”). This is expected.
+
 ## Known limitations
 
 - **"Fix all" on very large files is the slowest step** (about 37 s at 150 MB on a desktop), because each fix re-reads the sheet in turn. The page stays responsive and Cancel works.
@@ -106,11 +120,11 @@ Other measurements (Node, desktop):
 - **Strict Open XML and ZIP64 workbooks** can only be downloaded as CSV.
 - **Only one Excel sheet is held at a time** (Stage 2). Switching sheets asks before discarding that sheet's changes.
 - **"Export successful"** means the file was created and checked. Saving it to the device is done by the browser.
-- Real-device testing (tablet and phone), iOS, Safari and Firefox have **not** been done yet for Stage 4.
+- Real-device testing covers one Android tablet (see above). Phones, iOS, Safari and Firefox have **not** been tested for Stage 4.
 
 ## Open items before Stage 4 can be marked complete
 
 | Item | Who |
 |---|---|
-| Android tablet testing with the Stage 4 test pack (expected results provided) | Project owner |
+| Android tablet: “Clear the cells instead” (test C) and downloading the 50 MB file (test D); tests A, B, E and the rest of C and D passed | Project owner |
 | Owner review and approval | Project owner |
