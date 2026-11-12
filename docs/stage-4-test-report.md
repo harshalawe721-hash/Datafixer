@@ -2,7 +2,7 @@
 
 **Date:** 12 November 2026
 
-**Status:** implemented; all automated tests pass, and all Stage 4 tablet tests (A–E) passed on the owner's Android tablet. **Waiting for the project owner's approval** before Stage 4 is marked complete.
+**Status:** ✅ **COMPLETE.** Approved by the project owner on 12 November 2026. All automated tests pass, and all Stage 4 tablet tests (A–E) passed on the owner's Android tablet.
 
 ## Scope
 
@@ -122,9 +122,9 @@ Note: the tablet renames repeated downloads of the test files (for example “1-
 - **"Export successful"** means the file was created and checked. Saving it to the device is done by the browser.
 - Real-device testing covers one Android tablet (see above). Phones, iOS, Safari and Firefox have **not** been tested for Stage 4.
 
-## Open items before Stage 4 can be marked complete
+## Approval
 
 | Item | Who |
 |---|---|
 | Android tablet testing (tests A–E) | ✅ Done, all passed |
-| Owner review and approval | Project owner |
+| Owner review and approval | ✅ Approved, 12 November 2026 |

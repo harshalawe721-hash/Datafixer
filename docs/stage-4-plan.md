@@ -1,7 +1,7 @@
 # Stage 4 development plan: automatic fixing, editing and clean downloads
 
 **Status:** plan **approved** by the project owner on 11 November 2026, together with the four owner decisions and five additional safeguards.
-**Implementation: all 8 steps done** (authorized 11 November 2026). Awaiting Android tablet testing and owner approval. See `docs/stage-4-test-report.md`.
+**Stage 4 is COMPLETE**, approved by the project owner on 12 November 2026. All 8 steps were done and tested. See `docs/stage-4-test-report.md`.
 
 Stages 1–3 are complete (see `README.md`, `docs/stage-2-test-report.md`, `docs/stage-3-test-report.md`).
 
