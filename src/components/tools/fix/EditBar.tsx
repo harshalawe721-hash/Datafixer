@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ChevronDown, History, Loader2, Redo2, ShieldCheck, Undo2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download, History, Loader2, Redo2, ShieldCheck, Undo2 } from "lucide-react";
+import { DownloadDialog } from "./DownloadDialog";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ToolApi } from "@/components/spreadsheet/tool-api";
@@ -31,6 +32,7 @@ export function EditBar({ api }: { api: ToolApi }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   if (edits.changesApplied === 0 && !edits.canRedo) return null;
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -62,6 +64,11 @@ export function EditBar({ api }: { api: ToolApi }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {edits.changesApplied > 0 && (
+            <Button size="sm" className="h-10" disabled={busy} onClick={() => setDownloading(true)}>
+              <Download className="size-4" aria-hidden="true" /> {api.format === "csv" ? "Download corrected CSV" : "Download as CSV"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-10" disabled={!edits.canUndo || busy} onClick={() => void run(api.undo)}>
             <Undo2 className="size-4" aria-hidden="true" /> Undo
           </Button>
@@ -99,11 +106,12 @@ export function EditBar({ api }: { api: ToolApi }) {
       <p className="mt-3 flex items-start gap-2 text-xs text-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
         <span>
-          Changes are kept on this device, in this tab only. Your original file is never changed. Downloading the corrected file isn&apos;t available yet; it is
-          the next part being built.
+          Changes are kept on this device, in this tab only, until you download them. Your original file is never changed; the download is a new file.
+          {api.format !== "csv" && " Excel download that keeps formatting and formulas is being built next; for now you can download this sheet as CSV."}
         </span>
       </p>
       {showHistory && <HistoryPanel api={api} />}
+      {downloading && <DownloadDialog api={api} onClose={() => setDownloading(false)} />}
     </Card>
   );
 }

@@ -522,6 +522,11 @@ export class EditSession {
     };
   }
 
+  /** Applied entries, oldest first (for the download summary). */
+  appliedEntries(): HistorySummary[] {
+    return this.chain.slice(0, this.cursor).map((e) => this.summaryOf(e));
+  }
+
   /** All history entries, newest first. */
   history(): HistorySummary[] {
     return [...this.discarded, ...this.chain].sort((a, b) => b.id - a.id).map((e) => this.summaryOf(e));

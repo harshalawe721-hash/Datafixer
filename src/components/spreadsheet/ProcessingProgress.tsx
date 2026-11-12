@@ -13,6 +13,8 @@ const PHASE_LABEL: Record<ProgressEvent["phase"], string> = {
   parsing: "Reading data",
   indexing: "Preparing data",
   scanning: "Checking for problems",
+  exporting: "Creating the corrected file",
+  verifying: "Checking the new file cell by cell",
 };
 
 /** Progress bar with a Cancel button. Indeterminate when a step can't report a fraction. */
@@ -53,7 +55,7 @@ export function ProcessingProgress({
             {progress ? PHASE_LABEL[progress.phase] : "Starting"}
             {pct !== null && ` · ${pct}%`}
             {progress?.loaded != null && progress.total
-              ? progress.phase === "indexing" || progress.phase === "scanning"
+              ? progress.phase === "indexing" || progress.phase === "scanning" || progress.phase === "exporting"
                 ? ` (${progress.loaded.toLocaleString("en-US")} of ${progress.total.toLocaleString("en-US")} rows)`
                 : ` (${formatBytes(progress.loaded)} of ${formatBytes(progress.total)})`
               : ""}

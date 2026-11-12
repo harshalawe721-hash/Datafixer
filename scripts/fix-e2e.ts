@@ -5,7 +5,9 @@
  * Usage: start the app (npm run build && npm start), then `npm run test:fix`.
  */
 import { createRequire } from "node:module";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -250,6 +252,70 @@ for (const [label, viewport] of [
   check(await visible(page.getByText(/Done:.*Edit cell D10/)), "clearing a cell works");
   await page.close();
 }
+
+// ---------------------------------------------------------------- Step 6: download as CSV
+const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
+{
+  console.log("\nDownload corrected CSV");
+  const page = await setup({ width: 1280, height: 900 });
+  const posts: string[] = [];
+  page.on("request", (r: { method(): string; url(): string }) => {
+    if (r.method() !== "GET" || !r.url().startsWith(BASE)) posts.push(`${r.method()} ${r.url()}`);
+  });
+  await open(page, "1-problems.csv");
+  check((await page.getByRole("button", { name: /^Download/ }).count()) === 0, "no download button before any change");
+  await page.getByRole("button", { name: "Fix all safe problems" }).click();
+  await dialog(page).getByRole("button", { name: /^Apply all fixes/ }).click();
+  await settled(page);
+  const dlPromise = page.waitForEvent("download", { timeout: 30000 });
+  await page.getByRole("button", { name: "Download corrected CSV" }).click();
+  const dl = await dlPromise;
+  check(await visible(dialog(page).getByRole("heading", { name: "Export successful" })), "“Export successful” shown");
+  check(dl.suggestedFilename() === "1-problems-cleaned.csv", `file name ${dl.suggestedFilename()}`);
+  const file = path.join(DL, "a.csv");
+  await dl.saveAs(file);
+  const bytes = readFileSync(file);
+  check(bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf, "UTF-8 with BOM");
+  const text = bytes.toString("utf8");
+  check(!text.includes(" Person 3") && text.includes("Person 3,"), "downloaded file contains the fixes");
+  const py = spawnSync("python3", ["-I", "-c", "import csv,sys,json\nwith open(sys.argv[1],newline='',encoding='utf-8-sig') as f: print(json.dumps(list(csv.reader(f, strict=True))))", file], { encoding: "utf8" });
+  const rows = py.status === 0 ? (JSON.parse(py.stdout) as string[][]) : [];
+  check(rows.length === 25 && rows[0]![0] === "id", `Python reads the download: ${rows.length} rows`);
+  for (const [label, value] of [["Original file", "1-problems.csv"], ["Rows removed", "3"], ["Duplicates removed", "2"], ["Automatic corrections applied", "7"]] as const) {
+    const dd = dialog(page).locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]");
+    check(((await dd.textContent()) ?? "").trim() === value, `summary: ${label} = ${value}`);
+  }
+  check(await visible(dialog(page).getByText(/checked all [\d,]+ cells in 25 rows/)), "summary says the file was read back and checked");
+  check(await visible(dialog(page).getByText("None. A CSV file holds values only, and all of them are included.")), "nothing lost (CSV)");
+  const again = page.waitForEvent("download", { timeout: 15000 });
+  await dialog(page).getByRole("button", { name: "Download again" }).click();
+  check((await again).suggestedFilename() === "1-problems-cleaned.csv", "“Download again” works without re-creating");
+  check(posts.length === 0, `no uploads or off-site requests (${posts.join(", ")})`);
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "export-summary-desktop.png") });
+  await dialog(page).getByRole("button", { name: "Close" }).last().click();
+  await page.close();
+}
+{
+  console.log("\nExcel sheet: download as CSV (values only, with warning)");
+  const page = await setup({ width: 390, height: 844 });
+  await open(page, "2-problems.xlsx");
+  await card(page, "Extra spaces").getByRole("button", { name: "Remove extra spaces" }).click();
+  await dialog(page).getByRole("button", { name: /^Apply fix/ }).click();
+  await settled(page);
+  await page.getByRole("button", { name: "Download as CSV" }).click();
+  check(await visible(dialog(page).getByText(/A CSV file doesn.t keep/)), "warns what CSV can't keep before creating anything");
+  const dlPromise = page.waitForEvent("download", { timeout: 30000 });
+  await dialog(page).getByRole("button", { name: "Download as CSV" }).click();
+  const dl = await dlPromise;
+  check(/2-problems - .*-cleaned\.csv/.test(dl.suggestedFilename()), `file name ${dl.suggestedFilename()}`);
+  check(await visible(dialog(page).getByText(/Formatting such as fonts/)), "summary lists features not kept");
+  check(await visible(dialog(page).getByText(/Formulas \(1\)/)), "summary lists the formula");
+  const box = await dialog(page).boundingBox();
+  check(box && box.width <= 391, "summary fits the phone screen");
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "export-summary-phone.png") });
+  await page.close();
+}
+rmSync(DL, { recursive: true, force: true });
 
 check(errors.length === 0, `no console/page errors ${errors.length ? JSON.stringify(errors.slice(0, 3)) : ""}`);
 await browser.close();

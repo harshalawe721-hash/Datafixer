@@ -30,6 +30,13 @@ export interface CsvParseOptions {
   onProgress?: (loadedBytes: number, totalBytes: number) => void;
   /** Stop with a clear error before parsed data would exceed this many bytes. */
   memoryBudgetBytes?: number;
+  /**
+   * Streaming mode (used to verify downloads): rows are handed to this function
+   * chunk by chunk instead of being stored, so no second copy is kept in memory.
+   * `firstRow` is the index of rows[0]. The final empty row produced by a trailing
+   * line break is passed on too.
+   */
+  rowSink?: (rows: string[][], firstRow: number) => void;
 }
 
 /**
@@ -112,6 +119,7 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   let lastChar = "";
   let streamError: unknown = null;
   const seenErrorCodes = new Set<string>();
+  let sunkRows = 0;
 
   let loaded = bomLength;
   const chunks = decodeBlobText(blob, encoding, {
@@ -152,14 +160,23 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     dynamicTyping: false,
     skipEmptyLines: false,
     chunk: (results: Papa.ParseResult<string[]>) => {
-      const base = grid.rowCount;
+      const base = options.rowSink ? sunkRows : grid.rowCount;
       for (const row of results.data) {
         if (row.length > columnCount) columnCount = row.length;
         for (const cell of row) if (isFormulaLike(cell)) formulaLikeCells++;
       }
       if (results.data.length) lastRow = results.data[results.data.length - 1]!;
-      // Pack this chunk compactly; Papa's per-cell strings are released.
-      grid.appendRows(results.data);
+      if (options.rowSink) {
+        try {
+          options.rowSink(results.data, base);
+        } catch (err) {
+          streamError = err;
+        }
+        sunkRows += results.data.length;
+      } else {
+        // Pack this chunk compactly; Papa's per-cell strings are released.
+        grid.appendRows(results.data);
+      }
       for (const e of results.errors) {
         // Papa reports row indexes relative to the current chunk.
         const row = typeof e.row === "number" ? base + e.row : null;
@@ -227,6 +244,7 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   throwIfCancelled(options.cancel);
   stream.emit("end");
   if (streamError) {
+    if (streamError instanceof EngineError) throw streamError;
     throw new EngineError("read-failed", "The file could not be read as CSV.", String(streamError));
   }
 

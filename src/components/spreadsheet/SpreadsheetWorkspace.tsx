@@ -165,6 +165,7 @@ export function SpreadsheetWorkspace({
     previewFixAll: (onProgress) => engine.previewFixAll(sheetName, { headerRow: current.headerRow }, onProgress),
     lastChange,
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
+    exportCsv: (onProgress) => engine.exportCsv(sheetName, onProgress),
     undo: () => engine.undo(sheetName).then(track("undone")),
     redo: () => engine.redo(sheetName).then(track("redone")),
     history: () => engine.history(sheetName),

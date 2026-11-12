@@ -52,6 +52,16 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "exportCsv": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = await core.exportCsv(req.sheet, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "previewFix":
       case "previewFixAll": {
         // Previews read the whole sheet: cancellable like a scan, without losing the open file.

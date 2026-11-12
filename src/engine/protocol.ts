@@ -4,7 +4,7 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
-import type { CellInfo, EditResult, FixAllPreview, FixPreviewResult } from "./core.ts";
+import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core.ts";
 import type { FixId, FixOptions } from "./fix/fixes.ts";
 import type { HistoryItem, HistorySummary } from "./edit/session.ts";
 
@@ -30,6 +30,8 @@ export type EngineRequest =
   | { id: number; type: "cellInfo"; sheet: string; row: number; col: number }
   /** Manual edit of one cell; a formula cell needs replaceFormula (the user saw the warning). */
   | { id: number; type: "editCell"; sheet: string; row: number; col: number; text: string; replaceFormula: boolean }
+  /** Create and verify the corrected CSV (cancellable with abortScans). */
+  | { id: number; type: "exportCsv"; sheet: string }
   | { id: number; type: "undo"; sheet: string }
   | { id: number; type: "redo"; sheet: string }
   | { id: number; type: "history"; sheet: string }
@@ -47,6 +49,7 @@ export interface EngineResults {
   applyFix: EditResult;
   cellInfo: CellInfo;
   editCell: EditResult;
+  exportCsv: ExportResult;
   undo: EditResult;
   redo: EditResult;
   history: HistorySummary[];

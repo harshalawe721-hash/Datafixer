@@ -14,7 +14,7 @@ import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
-import type { CellInfo, EditResult, FixAllPreview, FixPreviewResult } from "./core";
+import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
 import type { FixId, FixOptions } from "./fix/fixes";
 import type { HistoryItem, HistorySummary } from "./edit/session";
 
@@ -117,6 +117,11 @@ export class EngineClient {
 
   editCell(sheet: string, row: number, col: number, text: string, replaceFormula = false): Promise<EditResult> {
     return this.request<"editCell">({ type: "editCell", sheet, row, col, text, replaceFormula });
+  }
+
+  /** Create and verify the corrected CSV; the Blob comes back by reference (no copy). */
+  exportCsv(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<ExportResult> {
+    return this.request<"exportCsv">({ type: "exportCsv", sheet }, onProgress);
   }
 
   undo(sheet: string): Promise<EditResult> {

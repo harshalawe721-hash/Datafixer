@@ -211,7 +211,8 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 3 | ✅ Done: capitalization (ties → user chooses), date formats (user chooses; ambiguous order → user chooses; Excel → real dates), phone layouts (user chooses; same digits only). 15 new unit tests. Capitalization on the 25 MB and 50 MB files: 565 and 1,122 cells, exactly the detector's counts | `src/engine/fix/choice-fixes.ts` |
 | 4 | ✅ Done: Fix buttons on cards, “Fix all safe problems”, preview dialog with choices, Undo/Redo, change history panel, automatic re-check, changed cells highlighted, confirmation before discarding changes. Phone, tablet and desktop layouts. 4 new unit tests, 57-check browser test (`npm run test:fix`) | `components/tools/fix/`, worker messages |
 | 5 | ✅ Done: tap a cell to edit it (formula warning with explicit confirmation; dates typed into Excel date cells stay real dates; Undo), plus a “Done / Undone / Redone” message after every change naming each fix and its counts. 4 new unit tests; browser test now 75 checks | `CellEditor.tsx`, `EngineCore.cellInfo` / `editCell` |
-| 6–8 | Not started | — |
+| 6 | ✅ Done: Download corrected CSV (UTF-8 with BOM, original separator and line endings). Built in chunks, then read back from its own bytes with DataFixer's reader and compared cell by cell before “Export successful” is shown (V1, V2). Summary (S3) and recoverable export (S4: cancel, failure and low memory download nothing and keep all changes; memory checked before starting). Excel sheets can be downloaded as CSV (values only) after a warning that lists what CSV can't keep. 11 new unit tests verified independently with Python's csv module (V3); browser test now 94 checks. Measured (Node, desktop): 50 MB export+verify 2.4 s; generated 150 MB (1.78M rows, 14.2M cells) 8.8 s, also within a 512 MB heap cap | `export/csv-export.ts`, `EngineCore.exportCsv`, `DownloadDialog.tsx` |
+| 7–8 | Not started | — |
 
 ### Decisions made while building (for owner review)
 
@@ -227,6 +228,10 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 - **Step 4, Fix all:** includes spaces, capitalization (clear cases only), numbers stored as text, duplicate rows, empty rows and *unnamed* empty columns. Named empty columns are kept, and the user decides with “Remove empty columns”. Each fix becomes its own history entry, so Undo goes back one fix at a time. Applying is all-or-nothing: if one step fails (for example, memory), the earlier steps are rolled back.
 - **Step 4, Excel files:** duplicate rows, empty rows and empty columns show an explanation instead of a Fix button, until the reference check (Step 7) exists.
 - **Step 4, no download yet:** the changes panel says plainly that downloading the corrected file isn't available yet (Step 6). Changes live only in the open tab. Switching sheets, changing the separator or opening another file asks for confirmation first.
+
+- **Step 6, quoting:** a field is quoted only when it contains the separator, a quote or a line break (RFC 4180). Spaces are kept exactly. Ragged rows stay ragged.
+- **Step 6, Excel sheets as CSV:** values are written as shown in the table (formatted dates and numbers). The summary lists what isn't kept (formatting, formulas, other sheets, charts and so on). The XLSX download that keeps them is Step 7.
+- **Step 6, "Export successful"** means the file was created and checked. Saving it to the device is done by the browser (R7). "Download again" re-offers the same verified file without creating it again.
 
 ## Testing
 
