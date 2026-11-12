@@ -81,7 +81,16 @@ The Stage 4 test pack's expected results (`tests/fixtures/fix/expected.json`) ar
 | CSV 150 MB (2,417,607 rows) | ok | 3.4 s | 9.9 s | 37.2 s | 12.5 s | 7.9 s | 1,081 MB | BOM, 149 MB | yes |
 | XLSX 13 MB (600,000 rows) | ok | 8.9 s | 1.8 s | 6.1 s | 2.3 s | 17.8 s | 983 MB | 13 MB .xlsx | yes |
 
-**Low-memory run (JS heap capped at 512 MB):** still running when this report was committed; results will be added here.
+**Low-memory run (JS heap capped at 512 MB, imitating a low-memory phone or tablet):**
+
+| File | Outcome | Open | Check | Fix all | Re-check | Create + verify + download | Peak extra memory | Original unchanged |
+|---|---|---|---|---|---|---|---|---|
+| CSV 50 MB | ok | 1.4 s | 3.4 s | 12.3 s | 4.4 s | 2.7 s | 347 MB | yes |
+| CSV 100 MB | ok | 2.4 s | 6.5 s | 23.4 s | 7.9 s | 5.0 s | 515 MB | yes |
+| CSV 150 MB | stopped safely when opening ("too large to open safely … needs roughly 330 MB"), the known Stage 2 limit for this memory | — | — | — | — | — | 387 MB | yes |
+| XLSX 13 MB (600,000 rows) | stopped safely when opening the sheet ("needs roughly 680 MB"), the known Stage 2 limit for large Excel sheets | — | — | — | — | — | 335 MB | yes |
+
+No crashes. The first low-memory run found a real problem: the 100 MB CSV could be opened, checked and fixed, but the download was refused by an over-cautious memory check. The check now reflects the streamed export (about 32 MB beyond the data already held, allowed up to 1.3× the scan budget), and the second run above completes the download.
 
 Other measurements (Node, desktop):
 - CSV export + verification of a generated 150 MB file (1.78M rows, 14.2M cells): 8.8 s, also with the JS heap capped at 512 MB.

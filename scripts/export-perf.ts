@@ -18,7 +18,7 @@ import { Zip, ZipDeflate, strToU8 } from "fflate";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const HEAP_MB = process.env.HEAP_MB ? Number(process.env.HEAP_MB) : null;
-const SIZES = (process.env.SIZES ?? "50,100,150").split(",").map(Number);
+const SIZES = (process.env.SIZES ?? "50,100,150").split(",").map(Number).filter(Boolean);
 const DIR = path.join(tmpdir(), "datafixer-export-perf");
 const MB = 1024 * 1024;
 mkdirSync(DIR, { recursive: true });
@@ -132,7 +132,7 @@ async function run(name: string, file: string, kind: "csv" | "xlsx", expectRows?
     row.openS = secs(t);
     t = Date.now();
     const notChecked = page.getByRole("heading", { name: "This sheet couldn't be checked" });
-    await analysed.or(notChecked).first().waitFor({ timeout: 300000 });
+    await analysed.or(notChecked).first().waitFor({ timeout: Number(process.env.CHECK_TIMEOUT_MS ?? 300000) });
     if (await notChecked.isVisible()) throw new Error(`check refused safely: ${(await page.getByRole("alert").first().textContent()) ?? ""}`);
     row.checkS = secs(t);
     t = Date.now();
@@ -164,7 +164,11 @@ async function run(name: string, file: string, kind: "csv" | "xlsx", expectRows?
     rmSync(out, { force: true });
     row.outcome = crashed ? "CRASHED" : "ok";
   } catch (err) {
-    const alert = await page.getByRole("alert").first().textContent({ timeout: 1000 }).catch(() => null);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: path.join(process.env.SHOT_DIR, `fail-${name.replace(/\W+/g, "_")}.png`), fullPage: true }).catch(() => {});
+    // (Next.js has an empty role="alert" route announcer on every page, so look for the message text too.)
+    const alert =
+      (await page.getByRole("alert").filter({ hasText: /\S/ }).first().textContent({ timeout: 1000 }).catch(() => null)) ||
+      (await page.getByText(/too large|couldn.t|can.t be/i).first().textContent({ timeout: 1000 }).catch(() => null));
     const msg = String(err);
     row.outcome = crashed ? "CRASHED (tab)" : msg.includes("refused safely") ? msg.replace(/^Error: /, "").slice(0, 160) : alert ? `stopped safely: ${alert.trim().slice(0, 140)}` : `failed: ${msg.slice(0, 140)}`;
   }
