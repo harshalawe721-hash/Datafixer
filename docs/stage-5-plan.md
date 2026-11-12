@@ -1,6 +1,6 @@
 # Stage 5 plan: CSV Validator
 
-**Status:** proposal, **awaiting the project owner's approval.** Nothing is built until the owner approves the plan and says to start.
+**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). **Implementation has not started**: the owner asked to complete the Stage 4 audit first. Building starts when the owner says “Start Stage 5”.
 
 Stages 1–4 are complete. Stage 5 builds on the Stage 2 CSV reader, which already detects the encoding, separator, line endings, broken quotes, undecodable characters and formula-like cells. It also builds on the Stage 4 fixing engine: preview, Undo/Redo, change history and verified downloads.
 
@@ -56,13 +56,29 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - **Page:** the CSV Validator page gets the shared workspace (upload, progress, preview, cell editing, Undo/Redo, history, download), with a validation report instead of the problem list. It accepts CSV/TSV/TXT only.
 - **Wording:** the page's current description ("…then fix them") becomes accurate with the repairs above.
 
-## Owner decisions needed (recommendation first)
+## Owner decisions (approved 12 November 2026, with these requirements)
 
-1. **Short rows:** offer "Add empty cells" as a fix with a preview, but **not** in "Fix all", because a short row can also mean values slid into the wrong columns. *(Recommended.)* Alternative: include it in "Fix all".
-2. **Header names:** fill empty names as "Column C" and make duplicates unique as "email (2)", shown in the preview first. *(Recommended.)* Alternative: only report them.
-3. **Download options:** let the user choose the separator (comma, semicolon, tab) and line endings (Windows or Unix) when downloading. Keep **UTF-8 with BOM** as the default (decision 3 from Stage 4), and add a clearly labelled "UTF-8 without BOM (for databases and code)" option. *(Recommended.)* Alternative: keep the original separator and line endings, BOM only.
-4. **Encoding choice:** add a "Text encoding" selector next to the separator selector, so a user who sees � characters can reopen the file as Windows-1252, UTF-8 and so on. The reader already supports this. *(Recommended.)*
-5. **Strictness:** treat rows with a different number of fields as **errors** (they break most imports), and missing/duplicate headers as **errors** only when the "First row contains column names" box is ticked. *(Recommended.)*
+1. **Short rows**
+   - Uneven rows are validation errors.
+   - An “Add empty cells” fix is offered with a before/after preview.
+   - It is never part of “Fix all”.
+   - The preview explains that short rows can mean data has shifted into the wrong columns.
+2. **Column names**
+   - Empty headers are renamed after their column (“Column C”), and duplicate headers become unique (“email (2)”).
+   - Every proposed change is shown in the preview before anything is applied.
+   - Cell data is never overwritten. A new name never creates another duplicate: if “email (2)” already exists, the next free number is used.
+3. **Download options**
+   - Separator: comma, semicolon or tab. Line endings: CRLF or LF.
+   - UTF-8 with BOM stays the default. A clearly labelled “UTF-8 without BOM (for databases)” option is added.
+   - Values are preserved exactly, including special characters, quotes and separators inside values. This is verified by re-reading in the website and with Python's `csv` module in tests.
+4. **Text encoding selector**
+   - A “Text encoding” selector sits beside the separator option, with UTF-8, Windows-1252 and ISO-8859-1 where the browser supports them.
+   - The page explains that the choice changes how the original file is decoded (the file itself is never changed).
+   - Unreadable characters are never replaced silently. When the chosen encoding can't decode the file reliably (for example, � appears, or text that is invalid in that encoding), a clear warning or error says so and shows where.
+5. **Validation strictness**
+   - Uneven row lengths are always errors.
+   - Missing and duplicate headers are errors only when “First row contains column names” is ticked.
+   - When it is not ticked, the first row is treated as data and never reported as missing or duplicate headers.
 
 ## Build steps (each tested, committed and reported before the next)
 
