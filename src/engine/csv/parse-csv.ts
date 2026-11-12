@@ -16,7 +16,7 @@ import { addIssue, createSheet, type CsvMeta, type SheetModel } from "../types.t
 import { CompactTextGrid } from "../grid.ts";
 import { EngineError } from "../errors.ts";
 import { throwIfCancelled, yieldToEventLoop, type CancelToken } from "../cancel.ts";
-import { decodeBlobText, detectEncoding } from "./encoding.ts";
+import { decodeBlobText, detectEncoding, isValidUtf8 } from "./encoding.ts";
 import { detectDelimiter } from "./delimiter.ts";
 import { LineEndingNormaliser } from "./line-endings.ts";
 
@@ -272,6 +272,9 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     formulaLikeCells,
     finalLineBreak: lastChar === "\n" || lastChar === "\r",
     lineEndingRows: { ...endings.firstRow },
+    detectedEncoding: detected.encoding,
+    encodingChosen: Boolean(options.encoding),
+    looksUtf8: head.some((b) => b >= 0x80) && isValidUtf8(head, blob.size > ENCODING_SAMPLE_BYTES),
   };
   return { sheet, meta };
 }

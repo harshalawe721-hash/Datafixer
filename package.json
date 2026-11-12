@@ -17,6 +17,7 @@
     "test:perf": "node scripts/perf-test.ts",
     "test:detector": "node scripts/detector-e2e.ts",
     "test:fix": "node scripts/fix-e2e.ts",
+    "test:validator": "node scripts/validator-e2e.ts",
     "test:export-perf": "node scripts/export-perf.ts"
   },
   "dependencies": {

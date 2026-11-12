@@ -3,6 +3,7 @@
 import { AlertCircle, AlertTriangle, ChevronDown, Info, Table2, Wand2, X } from "lucide-react";
 import type { ColumnProfile, ScanIssue, Severity } from "@/engine/scan/scan";
 import { cn } from "@/lib/cn";
+import { visibleRaw } from "@/engine/csv/visible";
 
 const SEVERITY: Record<Severity, { label: string; icon: typeof AlertCircle; card: string; badge: string }> = {
   error: { label: "Error", icon: AlertCircle, card: "border-l-danger", badge: "bg-danger-soft text-danger" },
@@ -23,9 +24,12 @@ export function IssueCard({
   active,
   onView,
   fix,
+  columnLabel,
 }: {
   issue: ScanIssue;
   profiles: ColumnProfile[];
+  /** Column names when there are no column profiles (CSV Validator). */
+  columnLabel?: (index: number) => string;
   active: boolean;
   onView: (issue: ScanIssue | null) => void;
   /** Stage 4: a working fix for this problem, or the reason there isn't one yet. */
@@ -34,7 +38,8 @@ export function IssueCard({
   const s = SEVERITY[issue.severity];
   const Icon = s.icon;
   const [one, many] = UNIT[issue.unit];
-  const colLabel = (i: number) => profiles[i]?.name ?? `Column ${profiles[i]?.letter ?? ""}`;
+  const colLabel = (i: number) => columnLabel?.(i) ?? profiles[i]?.name ?? `Column ${profiles[i]?.letter ?? ""}`;
+  const rawShown = new Set<number>();
   const headingId = `issue-${issue.id}`;
   return (
     <article aria-labelledby={headingId} className={cn("rounded-2xl border border-l-4 border-line bg-surface p-5 shadow-card", s.card, active && "ring-2 ring-primary/40")}>
@@ -72,15 +77,34 @@ export function IssueCard({
         <div className="mt-3">
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">Examples</p>
           <ul className="mt-1.5 space-y-1 text-sm">
-            {issue.examples.map((e, i) => (
-              <li key={i} className="flex flex-wrap gap-x-2">
-                <span className="shrink-0 text-muted tabular-nums">Row {(e.row + 1).toLocaleString("en-US")}</span>
-                {/* Whole-row problems (duplicates, empty rows): the column isn't meaningful. */}
-                {issue.unit !== "rows" && <span className="shrink-0 text-muted">· {colLabel(e.col)}</span>}
-                {issue.unit !== "rows" && e.value !== "" && <span className="min-w-0 truncate font-medium">{e.value}</span>}
-                {e.note && <span className="text-muted">— {e.note}</span>}
-              </li>
-            ))}
+            {issue.examples.map((e, i) => {
+              // CSV Validator: the row as written in the file, shown once per row.
+              const raw = e.raw && !rawShown.has(e.row) ? e.raw : null;
+              if (raw) rawShown.add(e.row);
+              return (
+                <li key={i} className="min-w-0">
+                  <div className="flex flex-wrap gap-x-2">
+                    <span className="shrink-0 text-muted tabular-nums">
+                      Row {(e.row + 1).toLocaleString("en-US")}
+                      {e.raw && e.raw.line !== e.row + 1 && <> · line {e.raw.line.toLocaleString("en-US")}</>}
+                    </span>
+                    {/* Whole-row problems (duplicates, empty rows): the column isn't meaningful. */}
+                    {issue.unit !== "rows" && <span className="min-w-0 max-w-full truncate text-muted">· {colLabel(e.col)}</span>}
+                    {issue.unit !== "rows" && e.value !== "" && <span className="min-w-0 max-w-full truncate font-medium">{e.value}</span>}
+                    {e.note && <span className="text-muted">— {e.note}</span>}
+                  </div>
+                  {raw && (
+                    <pre
+                      className="mt-1 max-w-full overflow-x-auto rounded-lg bg-surface-muted px-2.5 py-1.5 font-mono text-xs leading-relaxed"
+                      aria-label={`Line ${raw.line} as written in the file`}
+                    >
+                      {raw.text === "" ? <span className="text-muted">(empty line)</span> : visibleRaw(raw.text)}
+                      {raw.truncated && <span className="text-muted"> … (cut: the row is longer)</span>}
+                    </pre>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -99,7 +123,7 @@ export function IssueCard({
             <Wand2 className="size-4" aria-hidden="true" /> {fix.label}
           </button>
         )}
-        {active ? (
+        {issue.viewable === false ? null : active ? (
           <button type="button" onClick={() => onView(null)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-line-strong px-4 text-sm font-semibold hover:bg-surface-muted">
             <X className="size-4" aria-hidden="true" /> Show all rows
           </button>

@@ -113,6 +113,18 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - **Cost:** none when the examples are near the top. Worst case measured: examples spread through a 100 MB file → validation 1.0 s → 5.9 s (Node), with progress shown (“Finding the example lines in the file”) and Cancel working.
 - Tests: 11 more (45 in `validate.test.ts`), including reading with chunks of 1–11 bytes, BOM and UTF-16 files, and proof that a 20 MB file is only read up to its first 4 MB chunk when the examples are near the top.
 
+### Step 3 — Validator page (done, 12 November 2026)
+
+- `/csv-validator` now works: the verdict (“Valid CSV file” / “Valid CSV, with N warnings” / “Not a valid CSV file: N errors”), the import-readiness line, file facts, the 9-check checklist (links to the cards), problem cards with the lines from the file, “View affected data”, and the table preview. CSV files only. Read-only: nothing is changed yet (repairs are Step 4).
+- **“First row contains column names”** is in the results card and stays in step with the table's setting (decision 5). On this page it starts ticked unless the first row looks like data: the preview's usual guess rejects real headers that have empty or duplicate names, which are exactly what the Validator should report.
+- **Text encoding** box beside the separator (decision 4): UTF-8, Windows-1252 and ISO-8859-1 (UTF-16 shown when the file uses it), with a sentence explaining that the choice changes how the bytes are read. The file is read again; it is never changed. A chosen encoding is kept when the separator changes.
+  - **ISO-8859-1 is decoded exactly.** Browsers treat the label “iso-8859-1” as Windows-1252 (per the WHATWG standard); DataFixer decodes it itself, so bytes 0x80–0x9F become the ISO-8859-1 control codes, which are then reported as hidden characters (shown as ▯).
+  - **Never silent:** a UTF-8 file read as Windows-1252/ISO-8859-1 gets a warning (“é” would show as “Ã©”, with no � to notice); an automatically guessed Windows-1252 gets a note; characters that can't be read stay an error.
+- **NUL bytes:** the shared upload check refuses any CSV containing a NUL byte as binary (approved Stage 1–2 rule, unchanged for the other tools). The Validator page accepts files with a few NULs (under 1% control bytes in the first 8 KB, the same threshold as other control characters) so it can report them; binary files are still refused.
+- File-level problems (mixed line endings, guessed encoding, no final line break, too many rows, separator) have no particular rows, so they have no “View affected data” button.
+- Fixed a phone layout bug in the shared issue card: a very long column name made the page wider than the screen (Error Detector and Cleaner use the same card). Long names are also shortened in Validator labels.
+- Browser test: `npm run test:validator`, 65 checks (all problem types in the pack, decision 4 and 5 behaviour, separator change, refusals, Cancel/Check again on 50 MB, phone and tablet widths, no off-site requests, no console errors).
+
 ## Testing
 
 - Unit tests per check with exact counts, including false-alarm guards: quoted separators, quoted line breaks, and ragged rows that are legitimate when there is no header.

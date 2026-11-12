@@ -35,14 +35,20 @@ export function SpreadsheetWorkspace({
   accept,
   renderTool,
   allowEditing = false,
+  csvValidator = false,
 }: {
   accept?: readonly string[];
   renderTool?: (api: ToolApi) => React.ReactNode;
   /** Stage 4: tap a cell in the table to edit it. */
   allowEditing?: boolean;
+  /**
+   * Stage 5 (CSV Validator): a "Text encoding" choice beside the separator, and
+   * CSV files with a few NUL bytes are accepted so they can be reported.
+   */
+  csvValidator?: boolean;
 }) {
   const engine = useSpreadsheetEngine();
-  const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = engine;
+  const { state, open, selectSheet, cancel, reset, getRows, scan, validate, abortScans } = engine;
   /** Changes to the current sheet (Stage 4), tied to the view they were made in. */
   const [editState, setEditState] = useState<{ key: string; stats: EditStats; last: LastChange | null }>({ key: "", stats: NO_EDITS, last: null });
   /** Edit version last downloaded, per view: changes after it are "unsaved". */
@@ -94,6 +100,7 @@ export function SpreadsheetWorkspace({
     return (
       <FileDropzone
         accept={accept}
+        allowNulBytes={csvValidator}
         onFileAccepted={(file, format, warning) => {
           setAdvisory(warning ?? null);
           void open(file, format);
@@ -160,9 +167,9 @@ export function SpreadsheetWorkspace({
 
   const { summary, file, format } = state;
   const stats = summary.sheetStats[summary.activeSheet];
-  const viewKey = `${file.name}:${file.size}:${file.lastModified}:${summary.activeSheet}:${summary.csv?.delimiter ?? ""}`;
+  const viewKey = `${file.name}:${file.size}:${file.lastModified}:${summary.activeSheet}:${summary.csv?.delimiter ?? ""}:${summary.csv?.encoding ?? ""}`;
   // A different file, sheet or separator: start from the guessed header setting, no filter.
-  const current = view.key === viewKey ? view : { key: viewKey, headerRow: summary.headerGuess, issue: null };
+  const current = view.key === viewKey ? view : { key: viewKey, headerRow: csvValidator ? (summary.namesGuess ?? summary.headerGuess) : summary.headerGuess, issue: null };
   if (current !== view) setView(current);
   // Changes belong to one file/sheet view; a new view starts with none.
   const edits = editState.key === viewKey ? editState.stats : NO_EDITS;
@@ -182,7 +189,9 @@ export function SpreadsheetWorkspace({
     viewKey,
     sheetReady: Boolean(stats) && !summary.sheetError,
     headerRow: current.headerRow,
+    setHeaderRow: (headerRow) => setView((v) => ({ ...v, headerRow, issue: null })),
     scan: (options, onProgress) => scan(summary.activeSheet, options, onProgress),
+    validate: (options, onProgress) => validate(summary.activeSheet, options, onProgress),
     abortScans,
     viewIssue: (issue) => {
       setView((v) => ({ ...v, issue }));
@@ -213,7 +222,19 @@ export function SpreadsheetWorkspace({
           // Only one Excel sheet is kept in memory: switching discards this sheet's changes.
           if (!unsaved || confirmDiscard(edits, "Switching to another sheet")) void selectSheet(name);
         }}
-        onChangeDelimiter={format === "csv" ? (d) => (!unsaved || confirmDiscard(edits, "Changing the separator")) && void open(file, format, { delimiter: d }) : undefined}
+        onChangeDelimiter={
+          format === "csv"
+            ? (d) =>
+                (!unsaved || confirmDiscard(edits, "Changing the separator")) &&
+                // Validator: an encoding the user chose is kept when the separator changes.
+                void open(file, format, { delimiter: d, encoding: csvValidator && summary.csv?.encodingChosen ? summary.csv.encoding : undefined })
+            : undefined
+        }
+        onChangeEncoding={
+          csvValidator && format === "csv"
+            ? (encoding) => (!unsaved || confirmDiscard(edits, "Changing the text encoding")) && void open(file, format, { encoding })
+            : undefined
+        }
         onReset={resetAll}
       />
       {summary.sheetError ? (

@@ -55,6 +55,8 @@ export interface ValidationResult {
   headerRow: boolean;
   /** First row of data (after a sep= line and the header row). */
   firstDataRow: number;
+  /** Column names from the header row (empty when there is no header row). */
+  columnNames: string[];
   issues: ScanIssue[];
   checks: ValidationCheck[];
   verdict: { valid: boolean; errors: number; warnings: number; notes: number; importReady: string };
@@ -70,6 +72,8 @@ export interface ValidationResult {
 /** Which check each issue belongs to. */
 export const ISSUE_CHECK: Record<string, CheckId> = {
   "unreadable-characters": "encoding",
+  "encoding-mismatch": "encoding",
+  "encoding-guessed": "encoding",
   "separator-uncertain": "separator",
   "single-column": "separator",
   "sep-line": "separator",
@@ -93,6 +97,16 @@ export const ISSUE_CHECK: Record<string, CheckId> = {
   "cell-too-long": "limits",
   "trailing-separators": "trailing-separators",
 };
+
+/** Control characters: C0 (except tab, LF, CR), DEL and the C1 range (0x80–0x9F), all invisible. */
+const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+/** C0 controls as Unicode control pictures (NUL → ␀), DEL → ␡, C1 → ▯. */
+export function visibleControls(s: string): string {
+  return s
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, (c) => String.fromCharCode(0x2400 + c.charCodeAt(0)))
+    .replace(/\u007f/g, "␡")
+    .replace(/[\u0080-\u009f]/g, "▯");
+}
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, note: 2 };
 const SEPARATOR_NAME: Record<string, string> = { ",": "comma (,)", ";": "semicolon (;)", "\t": "tab", "|": "pipe (|)" };
@@ -173,6 +187,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
   const unreadableEx: ScanIssue["examples"] = [];
   const control = new CellList();
   const controlEx: ScanIssue["examples"] = [];
+  let c1Seen = false;
   const lineBreaks = new CellList();
   const lineBreakEx: ScanIssue["examples"] = [];
   const formulaLike = new CellList();
@@ -184,7 +199,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
   const firstRowsAtWidth: number[] = [];
   // A value swallowed by a quote that never closes is reported as that error, not as line breaks.
   const unclosedRows = new Set(sheet.issues.filter((i) => i.code === "unclosed-quote" && i.row !== null).map((i) => i.row!));
-  const SPECIAL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f�\n\r]/;
+  const SPECIAL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f�\n\r]/;
 
   for (let r = headerIndex; r < rows; r++) {
     const len = g.rowLength(r);
@@ -221,11 +236,12 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
         unreadable.add(cellKey(r, c));
         if (unreadableEx.length < MAX_EXAMPLES) unreadableEx.push({ row: r, col: c, value: snippet(s) });
       }
-      if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s)) {
+      if (CONTROL.test(s)) {
         control.add(cellKey(r, c));
+        if (/[\u0080-\u009f]/.test(s)) c1Seen = true;
         if (controlEx.length < MAX_EXAMPLES) {
-          const codes = [...new Set([...s].filter((ch) => /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(ch)).map((ch) => `U+${ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}${ch === "\u0000" ? " (NUL)" : ""}`))];
-          controlEx.push({ row: r, col: c, value: snippet(s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "␀")), note: codes.join(", ") });
+          const codes = [...new Set([...s].filter((ch) => CONTROL.test(ch)).map((ch) => `U+${ch.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}${ch === "\u0000" ? " (NUL)" : ""}`))];
+          controlEx.push({ row: r, col: c, value: snippet(visibleControls(s)), note: codes.join(", ") });
         }
       }
       if (/[\n\r]/.test(s) && !unclosedRows.has(r)) {
@@ -257,6 +273,30 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       },
       { rows: rowsOfCells(arr), cells: arr },
     );
+  }
+
+  const ENC = meta.encoding.toUpperCase();
+  const singleByte = /^(windows-1252|iso-8859-1)$/i.test(meta.encoding);
+  if (singleByte && meta.looksUtf8) {
+    add({
+      id: "encoding-mismatch",
+      severity: "warning",
+      title: `The file looks like UTF-8 but is read as ${ENC}`,
+      count: 1,
+      unit: "columns",
+      explanation: `The start of the file is valid UTF-8 and contains accented or other non-English characters, but it is being read as ${ENC}. Characters made of several bytes are then shown wrongly, for example “é” as “Ã©” or “€” as “â‚¬”. No character is marked as unreadable, so this is easy to miss.`,
+      howToFix: "Choose UTF-8 in the “Text encoding” box above. The file is read again; it is never changed.",
+    });
+  } else if (meta.encoding === "windows-1252" && meta.detectedEncoding === "windows-1252" && !meta.encodingChosen) {
+    add({
+      id: "encoding-guessed",
+      severity: "note",
+      title: "Text encoding was guessed (Windows-1252)",
+      count: 1,
+      unit: "columns",
+      explanation: "The file isn't valid UTF-8, so DataFixer read it as Windows-1252, the encoding older versions of Excel on Windows use. A file can't say which encoding it uses, so this is a best guess. If letters such as é, ñ or ü look wrong in the preview, the file uses another encoding.",
+      howToFix: "Check accented letters in the preview. If they look wrong, choose another encoding in the “Text encoding” box. Databases and Google Sheets usually expect UTF-8: DataFixer's download will save the file as UTF-8.",
+    });
   }
 
   // ---- B: separator
@@ -528,7 +568,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
         title: "Hidden control characters",
         count: control.total,
         unit: "cells",
-        explanation: `${plural(control.total, "cell")} contain invisible control characters (such as NUL, bell or backspace). They are usually left over from copying or a broken export, and many databases and import tools stop with an error when they meet them. In the examples, ␀ marks where they are.`,
+        explanation: `${plural(control.total, "cell")} contain invisible control characters (such as NUL, bell or backspace). They are usually left over from copying or a broken export${c1Seen ? ", and codes between U+0080 and U+009F usually mean the file was read with the wrong text encoding" : ""}. Many databases and import tools stop with an error when they meet them. In the examples, symbols such as ␀ mark where they are${c1Seen ? " (▯ for U+0080–U+009F)" : ""}.`,
         howToFix: "Remove these characters. They carry no visible text, so removing them doesn't change what the values look like.",
         examples: controlEx,
       },
@@ -609,6 +649,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
     }
   }
 
+  for (const f of findings) if (!f.rows && !f.cells && !f.columns) f.issue.viewable = false;
   findings.sort((a, b) => SEVERITY_ORDER[a.issue.severity] - SEVERITY_ORDER[b.issue.severity] || b.issue.count - a.issue.count);
   const issues = findings.map((f) => f.issue);
   const checks: ValidationCheck[] = (Object.keys(CHECK_LABELS) as CheckId[]).map((id) => {
@@ -634,6 +675,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       expectedFields,
       headerRow,
       firstDataRow: firstData,
+      columnNames: headerRow && rows > headerIndex ? Array.from({ length: g.rowLength(headerIndex) }, (_, c) => cellText(sheet, headerIndex, c)) : [],
       issues,
       checks,
       verdict: { valid: errors === 0, errors, warnings, notes, importReady },

@@ -42,7 +42,12 @@ export async function* decodeBlobText(
   options: { startByte?: number; chunkBytes?: number; onBytes?: (loaded: number) => void } = {},
 ): AsyncGenerator<string> {
   const chunkBytes = options.chunkBytes ?? 4 * 1024 * 1024;
-  const decoder = new TextDecoder(encoding, { fatal: false, ignoreBOM: true });
+  // Browsers decode the label "iso-8859-1" as Windows-1252 (WHATWG Encoding standard),
+  // which shows bytes 0x80–0x9F as € ‚ ƒ … instead of ISO-8859-1's control codes.
+  // Real ISO-8859-1 maps every byte to the character with the same number.
+  const decoder: { decode(bytes?: Uint8Array, options?: { stream?: boolean }): string } = isLatin1(encoding)
+    ? new Latin1Decoder()
+    : new TextDecoder(encoding, { fatal: false, ignoreBOM: true });
   let offset = options.startByte ?? 0;
   while (offset < blob.size) {
     const end = Math.min(offset + chunkBytes, blob.size);
@@ -54,4 +59,18 @@ export async function* decodeBlobText(
   }
   const tail = decoder.decode();
   if (tail) yield tail;
+}
+
+export function isLatin1(encoding: string): boolean {
+  return /^(iso-8859-1|iso8859-1|latin1|l1)$/i.test(encoding);
+}
+
+/** Exact ISO-8859-1: byte n → U+00nn (single-byte, so streaming needs no state). */
+class Latin1Decoder {
+  decode(bytes?: Uint8Array): string {
+    if (!bytes || bytes.length === 0) return "";
+    let out = "";
+    for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return out;
+  }
 }

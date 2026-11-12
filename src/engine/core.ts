@@ -8,7 +8,7 @@
  */
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { EngineError, isOutOfMemory } from "./errors.ts";
-import { attachRawLines, validateCsv, type ValidationResult } from "./validate/validate.ts";
+import { attachRawLines, namesLookLikeData, validateCsv, type ValidationResult } from "./validate/validate.ts";
 import { cellKey } from "./types.ts";
 import { throwIfCancelled, type CancelToken } from "./cancel.ts";
 import { parseCsv } from "./csv/parse-csv.ts";
@@ -1081,6 +1081,7 @@ export class EngineCore {
       issues,
       sheetError: st.sheetError,
       headerGuess: active ? guessHeaderRow(active) : false,
+      namesGuess: active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
       timings: { totalMs: Date.now() - st.startedAt },
     };
   }

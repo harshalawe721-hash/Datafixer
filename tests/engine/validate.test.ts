@@ -164,7 +164,14 @@ test("encoding: Windows-1252 file opened as Windows-1252 has no unreadable chara
   const ok = await openText(bytes);
   const r = await ok.core.validate(ok.sheet, { headerRow: true }, noop);
   assert.equal(r.file.encoding, "windows-1252");
-  assert.deepEqual(r.issues.map((i) => i.id), []);
+  // Detected automatically: a guess, said so in a note (decision 4: never silent).
+  assert.deepEqual(r.issues.map((i) => [i.id, i.severity]), [["encoding-guessed", "note"]]);
+  assert.equal(r.verdict.valid, true);
+  // Chosen by the user: no note.
+  const chosen = new EngineCore();
+  const c = await chosen.open(new File([bytes], "t.csv"), "csv", { encoding: "windows-1252" }, noop);
+  assert.deepEqual((await chosen.validate(c.activeSheet, { headerRow: true }, noop)).issues.map((i) => i.id), []);
+  assert.equal(chosen.getRows(c.activeSheet, { offset: 0, limit: 1, headerRow: true }).rows[0]!.cells[0], "Renée");
   const core = new EngineCore();
   const s = await core.open(new File([bytes], "t.csv"), "csv", { encoding: "utf-8" }, noop);
   const bad = await core.validate(s.activeSheet, { headerRow: true }, noop);
@@ -398,4 +405,48 @@ test("normaliser: line breaks inside quotes are counted once (CRLF) wherever chu
     assert.equal(n.quotedBreaks, 3, `cut ${cut}`);
     assert.deepEqual(n.firstRow, whole.firstRow);
   }
+});
+
+// ---------------------------------------------------------------- Step 3: encoding choice (decision 4)
+
+const utf8Bytes = new TextEncoder().encode("name,price\r\nRenée,5 €\r\n");
+
+test("decision 4: a UTF-8 file read as Windows-1252 or ISO-8859-1 gets a clear warning (no � appears, so it is easy to miss)", async () => {
+  for (const encoding of ["windows-1252", "iso-8859-1"]) {
+    const core = new EngineCore();
+    const s = await core.open(new File([utf8Bytes], "t.csv"), "csv", { encoding }, noop);
+    const r = await core.validate(s.activeSheet, { headerRow: true }, noop);
+    const w = r.issues.find((i) => i.id === "encoding-mismatch")!;
+    assert.equal(w.severity, "warning", encoding);
+    assert.match(w.title, new RegExp(encoding.toUpperCase()));
+    assert.equal(r.checks.find((c) => c.id === "encoding")!.status, "warning");
+  }
+  const core = new EngineCore();
+  const s = await core.open(new File([utf8Bytes], "t.csv"), "csv", { encoding: "utf-8" }, noop);
+  assert.deepEqual((await core.validate(s.activeSheet, { headerRow: true }, noop)).issues.map((i) => i.id), []);
+});
+
+test("ISO-8859-1 is decoded exactly (not as Windows-1252): 0x80–0x9F are control codes, reported as hidden characters", async () => {
+  const bytes = new Uint8Array([...new TextEncoder().encode("a,b\r\nx"), 0x80, 0xe9, ...new TextEncoder().encode(",y\r\n")]);
+  const latin = new EngineCore();
+  const s = await latin.open(new File([bytes], "t.csv"), "csv", { encoding: "iso-8859-1" }, noop);
+  assert.equal(latin.getRows(s.activeSheet, { offset: 0, limit: 1, headerRow: true }).rows[0]!.cells[0], "x\u0080é");
+  const r = await latin.validate(s.activeSheet, { headerRow: true }, noop);
+  const ctl = r.issues.find((i) => i.id === "control-characters")!;
+  assert.equal(ctl.count, 1);
+  assert.equal(ctl.examples![0]!.value, "x▯é");
+  assert.match(ctl.explanation, /wrong text encoding/);
+  const win = new EngineCore();
+  const w = await win.open(new File([bytes], "t.csv"), "csv", { encoding: "windows-1252" }, noop);
+  assert.equal(win.getRows(w.activeSheet, { offset: 0, limit: 1, headerRow: true }).rows[0]!.cells[0], "x€é");
+});
+
+test("upload check: the Validator accepts a CSV with a few NUL bytes; other tools still refuse it; binary is refused everywhere", async () => {
+  const { validateSpreadsheet } = await import("../../src/lib/file-validation.ts");
+  const csv = new Uint8Array(readFileSync(new URL("6-control.csv", dir)));
+  const opts = { accept: [".csv"], maxBytes: 1e9 };
+  assert.equal(validateSpreadsheet({ name: "x.csv", size: csv.length }, csv, opts).ok, false);
+  assert.equal(validateSpreadsheet({ name: "x.csv", size: csv.length }, csv, { ...opts, allowNulBytes: true }).ok, true);
+  const binary = new Uint8Array([0x00, 0x01, 0x02, 0x41]);
+  assert.equal(validateSpreadsheet({ name: "b.csv", size: 4 }, binary, { ...opts, allowNulBytes: true }).ok, false);
 });

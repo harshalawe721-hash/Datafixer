@@ -18,6 +18,8 @@ export interface FileDropzoneProps {
   disabled?: boolean;
   /** Fixed id for the file input, so an external button can open the picker. */
   inputId?: string;
+  /** CSV Validator: accept CSV files with a few NUL bytes (reported as a problem, not refused). */
+  allowNulBytes?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function FileDropzone({
   size = "default",
   disabled = false,
   inputId: inputIdProp,
+  allowNulBytes = false,
 }: FileDropzoneProps) {
   const generatedId = useId();
   const inputId = inputIdProp ?? generatedId;
@@ -63,6 +66,7 @@ export function FileDropzone({
         accept,
         maxBytes: siteConfig.maxFileSizeBytes,
         warnAboveBytes: siteConfig.largeFileWarningBytes,
+        allowNulBytes,
       });
       if (!result.ok) {
         setError(result.error);

@@ -98,16 +98,4 @@ export async function readRawLines(
   return found;
 }
 
-/**
- * The raw text with invisible characters made visible: line breaks ↵ (CRLF
- * ␍↵ is shown as ↵), tab ⇥, other control characters as their Unicode
- * "control picture" (NUL → ␀), so nothing in the line is hidden.
- */
-export function visibleRaw(text: string): string {
-  return text
-    .replace(/\r\n|\n/g, "↵")
-    .replace(/\r/g, "␍")
-    .replace(/\t/g, "⇥")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, (c) => String.fromCharCode(0x2400 + c.charCodeAt(0)))
-    .replace(/\u007f/g, "␡");
-}
+export { visibleRaw } from "./visible.ts";

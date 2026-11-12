@@ -8,6 +8,14 @@ import { FORMAT_LABELS } from "@/lib/file-validation";
 import { formatBytes } from "@/lib/format";
 
 const DELIMITER_NAMES: Record<string, string> = { ",": "Comma (,)", ";": "Semicolon (;)", "\t": "Tab", "|": "Pipe (|)" };
+/** Encodings offered by the CSV Validator (decision 4). UTF-16 is listed only when the file uses it. */
+const ENCODINGS: Record<string, string> = {
+  "utf-8": "UTF-8",
+  "windows-1252": "Windows-1252 (Western, older Excel)",
+  "iso-8859-1": "ISO-8859-1 (Latin-1)",
+  "utf-16le": "UTF-16 LE",
+  "utf-16be": "UTF-16 BE",
+};
 const LINE_ENDINGS: Record<string, string> = { "\n": "LF (Unix/macOS)", "\r\n": "CRLF (Windows)", "\r": "CR (old Mac)", mixed: "Mixed", none: "None (single line)" };
 
 function Stat({ label, value, title }: { label: string; value: React.ReactNode; title?: string }) {
@@ -25,11 +33,14 @@ export function FileSummary({
   summary,
   onSelectSheet,
   onChangeDelimiter,
+  onChangeEncoding,
   onReset,
 }: {
   summary: WorkbookSummary;
   onSelectSheet: (name: string) => void;
   onChangeDelimiter?: (delimiter: string) => void;
+  /** CSV Validator: read the file again with another text encoding. */
+  onChangeEncoding?: (encoding: string) => void;
   onReset: () => void;
 }) {
   const stats = summary.sheetStats[summary.activeSheet];
@@ -91,8 +102,36 @@ export function FileSummary({
               </select>
             </label>
           )}
+          {onChangeEncoding && (
+            <label className="inline-flex items-center gap-2">
+              Text encoding
+              <select
+                value={summary.csv.encoding}
+                onChange={(e) => onChangeEncoding(e.target.value)}
+                aria-describedby="encoding-help"
+                className="h-9 max-w-[14rem] rounded-lg border border-line-strong bg-background px-2"
+              >
+                {Object.entries(ENCODINGS)
+                  .filter(([v]) => !v.startsWith("utf-16") || v === summary.csv!.encoding)
+                  .map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
           <span className="text-muted">Line endings: {LINE_ENDINGS[summary.csv.lineEnding]}</span>
         </div>
+      )}
+      {summary.csv && onChangeEncoding && (
+        <p id="encoding-help" className="-mt-2 text-xs text-muted">
+          The text encoding decides how the bytes in your file are turned into letters.{" "}
+          {summary.csv.encodingChosen
+            ? `You chose ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}; DataFixer detected ${ENCODINGS[summary.csv.detectedEncoding ?? ""] ?? summary.csv.detectedEncoding ?? "—"}.`
+            : `DataFixer detected ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}${summary.csv.hadBom ? " from the file's byte-order mark" : ""}.`}{" "}
+          If accented letters look wrong (é shown as Ã© or �), choose another one: the file is read again, and never changed.
+        </p>
       )}
 
       {summary.sheets.length > 1 && (

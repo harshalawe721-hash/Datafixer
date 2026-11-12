@@ -12,6 +12,7 @@ export interface LastChange {
 }
 import type { EditStats, HistoryItem, HistorySummary } from "@/engine/edit/session";
 import type { FixId, FixOptions } from "@/engine/fix/fixes";
+import type { ValidationResult } from "@/engine/validate/validate";
 
 /** What a tool panel (e.g. the Error Detector) can use from the shared workspace. */
 export interface ToolApi {
@@ -22,8 +23,12 @@ export interface ToolApi {
   /** True when the active sheet's cells are loaded and can be checked. */
   sheetReady: boolean;
   headerRow: boolean;
+  /** Change "First row contains column names" (the table below follows). */
+  setHeaderRow(headerRow: boolean): void;
   scan(options: ScanOptions, onProgress?: (p: ProgressEvent) => void): Promise<ScanResult>;
   abortScans(): void;
+  /** Stage 5: check the CSV file's structure (stop with abortScans). */
+  validate(options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ValidationResult>;
   /** Filter the preview to an issue's affected rows (null shows all rows). */
   viewIssue(issue: ScanIssue | null): void;
   activeIssueId: string | null;

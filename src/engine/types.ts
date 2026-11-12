@@ -125,6 +125,10 @@ export interface CsvMeta {
   formulaLikeCells: number;
   /** The file ends with a line break (Stage 5 validation). */
   finalLineBreak?: boolean;
+  /** Stage 5: what detection chose, whether the user chose the encoding, and whether the start of the file is valid UTF-8 with non-ASCII bytes. */
+  detectedEncoding?: string;
+  encodingChosen?: boolean;
+  looksUtf8?: boolean;
   /** First row (0-based) ending with each line-ending type, outside quoted values (Stage 5). */
   lineEndingRows?: { crlf?: number; lf?: number; cr?: number };
 }
@@ -148,6 +152,11 @@ export interface WorkbookSummary {
   sheetError: { code: string; message: string } | null;
   /** Whether the first row looks like column headers. */
   headerGuess: boolean;
+  /**
+   * CSV Validator: the first row holds names unless it looks like data (numbers,
+   * dates, emails). Unlike headerGuess, empty or duplicate names still count as names.
+   */
+  namesGuess?: boolean;
   timings: { totalMs: number };
 }
 

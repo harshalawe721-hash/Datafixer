@@ -61,6 +61,8 @@ export interface ScanIssue {
   unit: "rows" | "cells" | "groups" | "columns";
   explanation: string;
   howToFix: string;
+  /** False for file-level problems with no particular rows (no "View affected data"). */
+  viewable?: boolean;
   /** Per-column breakdown, where relevant. */
   columns?: { index: number; name: string; count: number }[];
   /** A few concrete examples (row is the zero-based sheet row). */

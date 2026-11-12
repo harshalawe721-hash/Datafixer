@@ -22,6 +22,8 @@ export interface ValidationOptions {
   maxBytes: number;
   /** Accepted files larger than this get a performance advisory. */
   warnAboveBytes?: number;
+  /** CSV Validator: accept text files with a few NUL bytes (they are reported as a problem). */
+  allowNulBytes?: boolean;
 }
 
 /** "150 MB" for 157,286,400 bytes (binary megabytes, as Windows/Excel show them). */
@@ -50,12 +52,14 @@ function startsWith(bytes: Uint8Array, signature: number[]): boolean {
  * Heuristic text check for CSV: rejects binary content. UTF-16 files (BOM FF FE
  * or FE FF) legitimately contain NUL bytes, so they are allowed through.
  */
-export function looksLikeText(bytes: Uint8Array): boolean {
+export function looksLikeText(bytes: Uint8Array, options: { allowNulBytes?: boolean } = {}): boolean {
   if (bytes.length === 0) return true;
   if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) return true;
   let control = 0;
   for (const b of bytes) {
-    if (b === 0x00) return false;
+    // CSV Validator: a few stray NUL bytes are counted like other control characters
+    // (so they can be reported); everywhere else any NUL means binary.
+    if (b === 0x00 && !options.allowNulBytes) return false;
     // Control characters other than tab, LF, CR, form feed.
     if (b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d && b !== 0x0c) control++;
   }
@@ -136,7 +140,7 @@ function checkSpreadsheet(
       error: `“${file.name}” is actually an Excel workbook with a .csv name. Rename it to .xlsx (or .xls), or use the Excel to CSV converter.`,
     };
   }
-  if (!looksLikeText(head)) {
+  if (!looksLikeText(head, { allowNulBytes: options.allowNulBytes })) {
     return { ok: false, error: `“${file.name}” contains binary data and does not look like a CSV text file.` };
   }
   return { ok: true, format: "csv" };

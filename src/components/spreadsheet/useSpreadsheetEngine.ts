@@ -7,6 +7,7 @@ import type { OpenOptions } from "@/engine/protocol";
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
+import type { ValidationResult } from "@/engine/validate/validate";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { FixId, FixOptions } from "@/engine/fix/fixes";
 
@@ -95,6 +96,12 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
+  /** Stage 5: CSV Validator. */
+  const validate = useCallback(
+    (sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ValidationResult> => client().validate(sheet, options, onProgress),
+    [client],
+  );
+
   /** Stop running scans without unloading the file. */
   const abortScans = useCallback(() => void clientRef.current?.abortScans().catch(() => {}), []);
 
@@ -123,5 +130,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }
