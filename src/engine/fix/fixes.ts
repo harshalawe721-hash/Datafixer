@@ -25,23 +25,8 @@ import type { ChangeRequest } from "../edit/session.ts";
 import { invalidPhones } from "../scan/checks/contacts.ts";
 import { planCase, planDates, planPhones } from "./choice-fixes.ts";
 
-/** Fixes that need no choice (Step 2). */
-export const SAFE_FIX_IDS = ["extra-spaces", "duplicate-rows", "empty-rows", "empty-columns", "numbers-as-text"] as const;
-/** Fixes that may need the user's choice (Step 3). */
-export const CHOICE_FIX_IDS = ["inconsistent-case", "inconsistent-dates", "phone-formats"] as const;
-export const FIX_IDS = [...SAFE_FIX_IDS, ...CHOICE_FIX_IDS] as const;
-export type FixId = (typeof FIX_IDS)[number];
-
-export const FIX_LABELS: Record<FixId, string> = {
-  "extra-spaces": "Remove extra spaces",
-  "duplicate-rows": "Remove duplicate rows",
-  "empty-rows": "Remove empty rows",
-  "empty-columns": "Remove empty columns",
-  "numbers-as-text": "Convert numbers stored as text",
-  "inconsistent-case": "Fix capitalization",
-  "inconsistent-dates": "Make date formats consistent",
-  "phone-formats": "Make phone number layouts consistent",
-};
+export { SAFE_FIX_IDS, CHOICE_FIX_IDS, FIX_IDS, FIX_LABELS, type FixId } from "./fix-ids.ts";
+import { FIX_LABELS, type FixId } from "./fix-ids.ts";
 
 /** Target formats for the date fix: text formats (CSV) or real Excel dates with a display format (Excel). */
 export type DateTarget = "iso" | "dmy-slash" | "mdy-slash" | "dmy-dot" | "d-mon-y" | "mon-d-y" | "excel-iso" | "excel-dmy" | "excel-mdy" | "excel-d-mon-y";

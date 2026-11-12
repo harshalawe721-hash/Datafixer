@@ -12,6 +12,18 @@ import { FileSummary } from "./FileSummary";
 import { SpreadsheetPreview } from "./SpreadsheetPreview";
 import type { ToolApi } from "./tool-api";
 import type { ScanIssue } from "@/engine/scan/scan";
+import type { EditResult } from "@/engine/core";
+import type { EditStats } from "@/engine/edit/session";
+
+const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
+
+/** Ask before an action that would discard the user's changes (they live only in this tab). */
+function confirmDiscard(edits: EditStats, action: string): boolean {
+  if (edits.changesApplied === 0) return true;
+  return window.confirm(
+    `You have ${edits.changesApplied} unsaved ${edits.changesApplied === 1 ? "change" : "changes"} to this sheet. ${action} will discard them. Your original file is not affected. Continue?`,
+  );
+}
 
 /**
  * Upload → progress (with Cancel) → file summary + preview. Shared by the tools;
@@ -25,7 +37,10 @@ export function SpreadsheetWorkspace({
   accept?: readonly string[];
   renderTool?: (api: ToolApi) => React.ReactNode;
 }) {
-  const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = useSpreadsheetEngine();
+  const engine = useSpreadsheetEngine();
+  const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = engine;
+  /** Changes to the current sheet (Stage 4), tied to the view they were made in. */
+  const [editState, setEditState] = useState<{ key: string; stats: EditStats }>({ key: "", stats: NO_EDITS });
   /** Column-names setting and the issue being viewed, reset for each file/sheet/separator. */
   const [view, setView] = useState<{ key: string; headerRow: boolean; issue: ScanIssue | null }>({ key: "", headerRow: false, issue: null });
   const { peekPending, clearPending } = useFileHandoff();
@@ -57,8 +72,11 @@ export function SpreadsheetWorkspace({
       <span>{advisory}</span>
     </p>
   );
+  const currentEdits = state.status === "ready" ? editState : { key: "", stats: NO_EDITS };
   const resetAll = () => {
+    if (state.status === "ready" && !confirmDiscard(currentEdits.stats, "Opening another file")) return;
     setAdvisory(null);
+    setEditState({ key: "", stats: NO_EDITS });
     reset();
   };
 
@@ -110,6 +128,13 @@ export function SpreadsheetWorkspace({
   // A different file, sheet or separator: start from the guessed header setting, no filter.
   const current = view.key === viewKey ? view : { key: viewKey, headerRow: summary.headerGuess, issue: null };
   if (current !== view) setView(current);
+  // Changes belong to one file/sheet view; a new view starts with none.
+  const edits = editState.key === viewKey ? editState.stats : NO_EDITS;
+  const track = (r: EditResult) => {
+    setEditState({ key: viewKey, stats: r.stats });
+    return r;
+  };
+  const sheetName = summary.activeSheet;
 
   const api: ToolApi = {
     summary,
@@ -123,6 +148,15 @@ export function SpreadsheetWorkspace({
       if (issue) requestAnimationFrame(() => document.getElementById("data-preview")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     },
     activeIssueId: current.issue?.id ?? null,
+    format,
+    edits,
+    previewFix: (fixId, options, onProgress) => engine.previewFix(sheetName, fixId, { ...options, headerRow: current.headerRow }, onProgress),
+    previewFixAll: (onProgress) => engine.previewFixAll(sheetName, { headerRow: current.headerRow }, onProgress),
+    applyFix: (token) => engine.applyFix(sheetName, token).then(track),
+    undo: () => engine.undo(sheetName).then(track),
+    redo: () => engine.redo(sheetName).then(track),
+    history: () => engine.history(sheetName),
+    historyDetails: (entry, offset, limit) => engine.historyDetails(sheetName, entry, offset, limit),
   };
 
   return (
@@ -130,8 +164,11 @@ export function SpreadsheetWorkspace({
       {advisoryNote}
       <FileSummary
         summary={summary}
-        onSelectSheet={(name) => void selectSheet(name)}
-        onChangeDelimiter={format === "csv" ? (d) => void open(file, format, { delimiter: d }) : undefined}
+        onSelectSheet={(name) => {
+          // Only one Excel sheet is kept in memory: switching discards this sheet's changes.
+          if (confirmDiscard(edits, "Switching to another sheet")) void selectSheet(name);
+        }}
+        onChangeDelimiter={format === "csv" ? (d) => confirmDiscard(edits, "Changing the separator") && void open(file, format, { delimiter: d }) : undefined}
         onReset={resetAll}
       />
       {summary.sheetError ? (
@@ -152,6 +189,7 @@ export function SpreadsheetWorkspace({
             onHeaderRowChange={(headerRow) => setView((v) => ({ ...v, headerRow, issue: null }))}
             issue={current.issue}
             onClearIssue={() => setView((v) => ({ ...v, issue: null }))}
+            dataVersion={edits.version}
           />
         </div>
       ) : null}

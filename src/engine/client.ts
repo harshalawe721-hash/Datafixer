@@ -14,6 +14,9 @@ import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
+import type { EditResult, FixAllPreview, FixPreviewResult } from "./core";
+import type { FixId, FixOptions } from "./fix/fixes";
+import type { HistoryItem, HistorySummary } from "./edit/session";
 
 type Pending = {
   resolve: (v: unknown) => void;
@@ -92,6 +95,36 @@ export class EngineClient {
   /** Stop running scans; the opened file stays loaded (unlike cancel()). */
   abortScans(): Promise<null> {
     return this.request<"abortScans">({ type: "abortScans" });
+  }
+
+  // ---- Stage 4: fixing and editing (all on this device, in the worker)
+
+  previewFix(sheet: string, fixId: FixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult> {
+    return this.request<"previewFix">({ type: "previewFix", sheet, fixId, options }, onProgress);
+  }
+
+  previewFixAll(sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<FixAllPreview> {
+    return this.request<"previewFixAll">({ type: "previewFixAll", sheet, options }, onProgress);
+  }
+
+  applyFix(sheet: string, token: string): Promise<EditResult> {
+    return this.request<"applyFix">({ type: "applyFix", sheet, token });
+  }
+
+  undo(sheet: string): Promise<EditResult> {
+    return this.request<"undo">({ type: "undo", sheet });
+  }
+
+  redo(sheet: string): Promise<EditResult> {
+    return this.request<"redo">({ type: "redo", sheet });
+  }
+
+  history(sheet: string): Promise<HistorySummary[]> {
+    return this.request<"history">({ type: "history", sheet });
+  }
+
+  historyDetails(sheet: string, entry: number, offset: number, limit: number): Promise<{ total: number; items: HistoryItem[] }> {
+    return this.request<"historyDetails">({ type: "historyDetails", sheet, entry, offset, limit });
   }
 
   getRows(sheet: string, query: RowQuery): Promise<RowPage> {

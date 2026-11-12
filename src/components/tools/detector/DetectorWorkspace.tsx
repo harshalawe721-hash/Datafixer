@@ -5,8 +5,9 @@ import { SpreadsheetWorkspace } from "@/components/spreadsheet/SpreadsheetWorksp
 import { ScanPanel } from "./ScanPanel";
 
 /**
- * Error Detector: open a file, it is checked automatically on this device, and
- * each problem is explained with guidance on how to fix it. Read-only.
+ * Error Detector: open a file, it is checked automatically on this device, each
+ * problem is explained, and many can be fixed after a preview (Stage 4).
+ * The original file is never changed.
  */
 export function DetectorWorkspace() {
   return (
@@ -14,8 +15,8 @@ export function DetectorWorkspace() {
       <p className="flex items-start gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
         <span>
-          DataFixer checks your spreadsheet for common problems and explains how to fix each one. Everything happens on
-          your device, and your file is never changed.
+          DataFixer checks your spreadsheet for common problems, explains each one, and can fix many of them for you after
+          showing a preview. Everything happens on your device, and your original file is never changed.
         </span>
       </p>
       <SpreadsheetWorkspace renderTool={(api) => <ScanPanel api={api} />} />

@@ -429,6 +429,17 @@ export class EditSession {
     return this.summaryOf(e);
   }
 
+  /** Take back the last `count` applied changes completely (they leave no history), e.g. when a multi-step fix fails halfway. */
+  rollback(count: number): void {
+    for (let i = 0; i < count && this.cursor > 0; i++) {
+      const e = this.chain[--this.cursor]!;
+      this.backward(e);
+      this.chain.splice(this.cursor, 1);
+      this.bytes -= e.bytes;
+      this.versionNo++;
+    }
+  }
+
   private ensureBudget(extra: number, items: number): void {
     if (!this.budget) return;
     if (this.base.grid.approxBytes + this.bytes + extra > this.budget) {

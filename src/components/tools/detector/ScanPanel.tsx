@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ListChecks, RotateCcw } from "lucide-react";
+import { CheckCircle2, ListChecks, RotateCcw, Wand2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ProcessingProgress } from "@/components/spreadsheet/ProcessingProgress";
@@ -10,6 +10,16 @@ import type { ProgressEvent } from "@/engine/types";
 import type { ScanResult } from "@/engine/scan/scan";
 import { EngineError } from "@/engine/errors";
 import { IssueCard } from "./IssueCard";
+import { FixDialog, type FixRequest } from "@/components/tools/fix/FixDialog";
+import { EditBar } from "@/components/tools/fix/EditBar";
+import { FIX_IDS, FIX_LABELS, type FixId } from "@/engine/fix/fix-ids";
+
+/** Fixes included in "Fix all safe problems" (no decisions needed). */
+const FIX_ALL = new Set<string>(["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows", "empty-columns"]);
+/** Fixes that remove rows or columns: not offered for Excel files until the workbook reference check exists (Stage 4, Step 7). */
+const REMOVES_ROWS_OR_COLUMNS = new Set<string>(["duplicate-rows", "empty-rows", "empty-columns"]);
+const EXCEL_REMOVAL_NOTE =
+  "For Excel files, removing rows and columns will be added once DataFixer can first check the workbook's formulas and charts, so nothing that refers to these rows breaks.";
 
 type ScanState =
   | { status: "scanning"; progress: ProgressEvent | null }
@@ -34,12 +44,14 @@ const CHECKS = [
 
 /**
  * Error Detector results. Scans automatically when a sheet is shown, and again
- * when the sheet or the column-names setting changes. Read-only: nothing in the
- * file is changed, and there are no fix buttons (guidance only).
+ * when the sheet, the column-names setting or the data (a fix, undo or redo)
+ * changes. Fixes are previewed first and applied only on request; the original
+ * file is never changed.
  */
 export function ScanPanel({ api }: { api: ToolApi }) {
   const [rescan, setRescan] = useState(0);
-  const scanKey = `${api.viewKey}:${api.headerRow}:${rescan}`;
+  const [fixRequest, setFixRequest] = useState<FixRequest | null>(null);
+  const scanKey = `${api.viewKey}:${api.headerRow}:${rescan}:${api.edits.version}`;
   const [state, setState] = useState<ScanState>({ status: "scanning", progress: null });
   const [startedKey, setStartedKey] = useState("");
   const seq = useRef(0);
@@ -76,17 +88,22 @@ export function ScanPanel({ api }: { api: ToolApi }) {
 
   if (state.status === "scanning") {
     return (
-      <ProcessingProgress
-        fileName="Checking for problems"
-        progress={state.progress}
-        key={startedKey}
-        onCancel={() => apiRef.current.abortScans()}
-      />
+      <div className="space-y-4">
+        <EditBar api={api} />
+        <ProcessingProgress
+          fileName={api.edits.changesApplied ? "Checking again after your changes" : "Checking for problems"}
+          progress={state.progress}
+          key={startedKey}
+          onCancel={() => apiRef.current.abortScans()}
+        />
+      </div>
     );
   }
 
   if (state.status === "cancelled" || state.status === "error") {
     return (
+      <div className="space-y-4">
+      <EditBar api={api} />
       <Card className={state.status === "error" ? "border-danger/40" : ""}>
         <h2 className="font-semibold">{state.status === "cancelled" ? "Check cancelled" : "This sheet couldn't be checked"}</h2>
         <p role={state.status === "error" ? "alert" : "status"} className="mt-1 text-sm text-muted">
@@ -96,14 +113,21 @@ export function ScanPanel({ api }: { api: ToolApi }) {
           <RotateCcw className="size-4" aria-hidden="true" /> Check again
         </Button>
       </Card>
+      </div>
     );
   }
 
   const { result } = state;
   const problems = result.issues.filter((i) => i.severity !== "note");
   const notes = result.issues.length - problems.length;
+  const excel = api.format !== "csv";
+  const offered = (id: string) => (FIX_IDS as readonly string[]).includes(id) && !(excel && REMOVES_ROWS_OR_COLUMNS.has(id));
+  const canFixAll = result.issues.some((i) => FIX_ALL.has(i.id) && offered(i.id));
+  const columnName = (i: number) => result.profiles[i]?.name ?? `Column ${result.profiles[i]?.letter ?? i + 1}`;
+  const changed = api.edits.changesApplied > 0;
   return (
     <section aria-labelledby="scan-results-heading" className="space-y-4">
+      <EditBar api={api} />
       <Card>
         <div className="flex items-start gap-3">
           {result.issues.length === 0 ? (
@@ -117,7 +141,8 @@ export function ScanPanel({ api }: { api: ToolApi }) {
             </h2>
             <p className="text-sm text-muted" aria-live="polite">
               Checked {result.rows.toLocaleString("en-US")} {result.rows === 1 ? "row" : "rows"} and {result.columns.toLocaleString("en-US")}{" "}
-              {result.columns === 1 ? "column" : "columns"} on this device in {(result.timings.totalMs / 1000).toFixed(1)}s. Nothing was changed.
+              {result.columns === 1 ? "column" : "columns"} on this device in {(result.timings.totalMs / 1000).toFixed(1)}s.{" "}
+              {changed ? "These results include your changes. Your original file is unchanged." : "Nothing was changed."}
             </p>
           </div>
         </div>
@@ -139,6 +164,16 @@ export function ScanPanel({ api }: { api: ToolApi }) {
             <dd className="font-semibold tabular-nums">{notes}</dd>
           </div>
         </dl>
+        {canFixAll && (
+          <div className="mt-4 flex flex-col gap-2 rounded-xl bg-success-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <strong>Fix the simple problems in one go.</strong> You&apos;ll see every change before anything is applied.
+            </p>
+            <Button className="h-11 shrink-0" onClick={() => setFixRequest({ kind: "all" })}>
+              <Wand2 className="size-4" aria-hidden="true" /> Fix all safe problems
+            </Button>
+          </div>
+        )}
         {result.issues.length === 0 ? (
           <div className="mt-4 text-sm text-muted">
             <p>DataFixer checked for:</p>
@@ -166,8 +201,22 @@ export function ScanPanel({ api }: { api: ToolApi }) {
       </Card>
 
       {result.issues.map((issue) => (
-        <IssueCard key={issue.id} issue={issue} profiles={result.profiles} active={api.activeIssueId === issue.id} onView={api.viewIssue} />
+        <IssueCard
+          key={issue.id}
+          issue={issue}
+          profiles={result.profiles}
+          active={api.activeIssueId === issue.id}
+          onView={api.viewIssue}
+          fix={
+            offered(issue.id)
+              ? { label: FIX_LABELS[issue.id as FixId], onFix: () => setFixRequest({ kind: "one", fixId: issue.id as FixId }) }
+              : (FIX_IDS as readonly string[]).includes(issue.id)
+                ? { unavailable: EXCEL_REMOVAL_NOTE }
+                : undefined
+          }
+        />
       ))}
+      {fixRequest && <FixDialog api={api} request={fixRequest} columnName={columnName} onClose={() => setFixRequest(null)} />}
     </section>
   );
 }

@@ -75,6 +75,22 @@ export interface FixPreviewResult extends FixPreview {
   deletesFromExcel: boolean;
 }
 
+/** "Fix all safe problems": every safe fix, planned one after another, applied as one step each. */
+export interface FixAllPreview {
+  token: string;
+  /** Fixes that would change something, in the order they are applied. */
+  steps: FixPreview[];
+  cellsChanged: number;
+  rowsRemoved: number;
+  columnsRemoved: number;
+  /** What "Fix all" leaves for the user, with the reason. */
+  notes: string[];
+}
+
+/** Order matters: spaces first (so " Ann" and "Ann" become duplicates), removals last. */
+const FIX_ALL_ORDER: FixId[] = ["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows", "empty-columns"];
+const ROW_OR_COLUMN_FIXES = new Set<FixId>(["duplicate-rows", "empty-rows", "empty-columns"]);
+
 const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
 export function featureWarnings(f: FeatureInventory | null): string[] {
@@ -126,7 +142,7 @@ export class EngineCore {
   private scanSeq = 0;
   private fixSeq = 0;
   /** The latest fix preview; applying it requires the data to be unchanged since. */
-  private pendingFix: { token: string; sheet: string; version: number; request: ChangeRequest | null } | null = null;
+  private pendingFix: { token: string; sheet: string; version: number; requests: ChangeRequest[] } | null = null;
 
   close(): void {
     this.state = null;
@@ -406,11 +422,61 @@ export class EngineCore {
       originalRow: (r) => session.grid().baseRow(r),
     });
     const token = `fix-${++this.fixSeq}`;
-    this.pendingFix = { token, sheet: sheetName, version: session.version, request: plan.request };
+    this.pendingFix = { token, sheet: sheetName, version: session.version, requests: plan.request ? [plan.request] : [] };
     return { ...plan.preview, token, deletesFromExcel: st.format !== "csv" && (plan.preview.rowsRemoved > 0 || plan.preview.columnsRemoved > 0) };
   }
 
-  /** Apply exactly the previewed fix. Refused if anything changed since the preview. */
+  /**
+   * Preview "Fix all safe problems": spaces, capitalization (clear cases only;
+   * ties are left for the user), numbers stored as text, then duplicate rows,
+   * empty rows and unnamed empty columns. Each fix is planned on a scratch copy
+   * that already includes the previous fixes, so the preview is exact. Excel
+   * files: no rows or columns are removed (the workbook reference check comes first).
+   */
+  async previewFixAll(sheetName: string, options: { headerRow: boolean }, onProgress: Progress, cancel?: CancelToken): Promise<FixAllPreview> {
+    const st = this.requireState();
+    const session = this.session(sheetName);
+    const excel = st.format !== "csv";
+    const scratch = new EditSession(session.view(), { memoryBudgetBytes: st.memoryBudgetBytes });
+    const steps: FixPreview[] = [];
+    const requests: ChangeRequest[] = [];
+    const notes: string[] = [];
+    const order = FIX_ALL_ORDER.filter((id) => !(excel && ROW_OR_COLUMN_FIXES.has(id)));
+    for (let i = 0; i < order.length; i++) {
+      const fixId = order[i]!;
+      let keepColumns: number[] | undefined;
+      if (fixId === "empty-columns") {
+        // Named empty columns are kept here; "Remove empty columns" lets the user decide.
+        const probe = await planFix(scratch.view(), fixId, { headerRow: options.headerRow, textOnly: !excel }, { cancel, memoryBudgetBytes: st.memoryBudgetBytes });
+        keepColumns = probe.preview.columns.filter((c) => c.name).map((c) => c.index);
+        if (keepColumns.length) notes.push(`${keepColumns.length === 1 ? "1 empty column has" : `${keepColumns.length} empty columns have`} a name, so ${keepColumns.length === 1 ? "it was" : "they were"} kept. Use “Remove empty columns” to decide.`);
+      }
+      const plan = await planFix(scratch.view(), fixId, { headerRow: options.headerRow, textOnly: !excel, keepColumns }, {
+        cancel,
+        memoryBudgetBytes: st.memoryBudgetBytes,
+        onProgress: (done, total) => onProgress({ phase: "scanning", loaded: i * total + done, total: order.length * total }),
+        originalRow: (r) => session.grid().baseRow(scratch.grid().baseRow(r)),
+      });
+      for (const s of plan.preview.skipped) if (!notes.includes(`${plan.preview.label}: ${s.reason}`) && !(fixId === "empty-columns" && s.reason === "Columns you chose to keep.")) notes.push(`${plan.preview.label}: ${s.reason} (${s.count.toLocaleString("en-US")})`);
+      if (!plan.request) continue;
+      scratch.apply(plan.request);
+      steps.push(plan.preview);
+      requests.push(plan.request);
+    }
+    if (excel) notes.push("Excel file: duplicate and empty rows and columns are not removed yet, because removing rows can break formulas and charts that refer to them.");
+    const token = `fix-${++this.fixSeq}`;
+    this.pendingFix = { token, sheet: sheetName, version: session.version, requests };
+    return {
+      token,
+      steps,
+      cellsChanged: steps.reduce((n, s) => n + s.cellsChanged, 0),
+      rowsRemoved: steps.reduce((n, s) => n + s.rowsRemoved, 0),
+      columnsRemoved: steps.reduce((n, s) => n + s.columnsRemoved, 0),
+      notes,
+    };
+  }
+
+  /** Apply exactly the previewed fix (or fixes). Refused if anything changed since the preview. */
   applyFix(sheetName: string, token: string): EditResult {
     const p = this.pendingFix;
     const session = this.session(sheetName);
@@ -418,8 +484,23 @@ export class EngineCore {
       throw new EngineError("stale-preview", "The data changed after this preview, so it was not applied. Nothing was changed. Please preview the fix again.");
     }
     this.pendingFix = null;
-    if (!p.request) return { entry: null, stats: session.stats() };
-    return this.applyChange(sheetName, p.request);
+    let entry: HistorySummary | null = null;
+    let applied = 0;
+    try {
+      // Positions in each request match the view after the previous requests (planned that way).
+      for (const req of p.requests) {
+        const e = session.apply(req);
+        if (e) {
+          entry = e;
+          applied++;
+        }
+      }
+    } catch (err) {
+      // All or nothing: roll back the steps already applied (e.g. memory ran out halfway).
+      session.rollback(applied);
+      throw err;
+    }
+    return this.changed(sheetName, entry);
   }
 
   undo(sheetName: string): EditResult {

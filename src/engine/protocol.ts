@@ -4,6 +4,9 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
+import type { EditResult, FixAllPreview, FixPreviewResult } from "./core.ts";
+import type { FixId, FixOptions } from "./fix/fixes.ts";
+import type { HistoryItem, HistorySummary } from "./edit/session.ts";
 
 export interface OpenOptions {
   delimiter?: string;
@@ -19,6 +22,15 @@ export type EngineRequest =
   | { id: number; type: "scan"; sheet: string; options: ScanOptions }
   /** Stop running scans (cooperatively, between batches); the open file is kept. */
   | { id: number; type: "abortScans" }
+  /** Stage 4: work out what a fix would change (cancellable with abortScans). */
+  | { id: number; type: "previewFix"; sheet: string; fixId: FixId; options: FixOptions }
+  | { id: number; type: "previewFixAll"; sheet: string; options: { headerRow: boolean } }
+  /** Apply exactly the previewed fix(es). */
+  | { id: number; type: "applyFix"; sheet: string; token: string }
+  | { id: number; type: "undo"; sheet: string }
+  | { id: number; type: "redo"; sheet: string }
+  | { id: number; type: "history"; sheet: string }
+  | { id: number; type: "historyDetails"; sheet: string; entry: number; offset: number; limit: number }
   | { id: number; type: "close" };
 
 export interface EngineResults {
@@ -27,6 +39,13 @@ export interface EngineResults {
   getRows: RowPage;
   scan: ScanResult;
   abortScans: null;
+  previewFix: FixPreviewResult;
+  previewFixAll: FixAllPreview;
+  applyFix: EditResult;
+  undo: EditResult;
+  redo: EditResult;
+  history: HistorySummary[];
+  historyDetails: { total: number; items: HistoryItem[] };
   close: null;
 }
 

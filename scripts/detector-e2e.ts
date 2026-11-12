@@ -54,7 +54,9 @@ for (const [title, n] of [["Duplicate rows", "3"], ["Empty rows", "2"], ["Empty 
 }
 check((await page.locator("article").count()) === 5, "exactly 5 issue cards");
 check(await visible(card("Duplicate rows").getByText("Warning")), "severity shown in words");
-check((await page.getByRole("button", { name: /fix/i }).count()) === 0, "no fix buttons anywhere");
+// Stage 4: fixes are offered on fixable problems only (guidance-only problems have no fix button).
+check(await visible(card("Duplicate rows").getByRole("button", { name: "Remove duplicate rows" })), "fix button on a fixable problem");
+check((await card("Missing cells").getByRole("button", { name: /^(Remove |Convert |Fix capitalization|Make )/ }).count()) === 0, "no fix button on a guidance-only problem");
 await card("Duplicate rows").getByText("How to fix").click();
 check(await visible(card("Duplicate rows").getByText(/Remove Duplicates/)), "How to fix guidance expands");
 

@@ -22,7 +22,7 @@ import { CaseCollector } from "../scan/checks/text.ts";
 import { FAMILY_LABEL, ORDER_FAMILIES, familyOf, orderParts, type Family } from "../scan/checks/dates.ts";
 import { EXTENSION, phoneProblem } from "../scan/checks/contacts.ts";
 import type { FixChoice, FixOptions, FixPlan, FixPreview, DateTarget } from "./fixes.ts";
-import { FIX_LABELS } from "./fixes.ts";
+import { FIX_LABELS } from "./fix-ids.ts";
 
 const MAX_EXAMPLES = 20;
 const MAX_CHOICES = 200;

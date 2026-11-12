@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, ChevronDown, Info, Table2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronDown, Info, Table2, Wand2, X } from "lucide-react";
 import type { ColumnProfile, ScanIssue, Severity } from "@/engine/scan/scan";
 import { cn } from "@/lib/cn";
 
@@ -22,11 +22,14 @@ export function IssueCard({
   profiles,
   active,
   onView,
+  fix,
 }: {
   issue: ScanIssue;
   profiles: ColumnProfile[];
   active: boolean;
   onView: (issue: ScanIssue | null) => void;
+  /** Stage 4: a working fix for this problem, or the reason there isn't one yet. */
+  fix?: { label: string; onFix: () => void } | { unavailable: string };
 }) {
   const s = SEVERITY[issue.severity];
   const Icon = s.icon;
@@ -90,7 +93,12 @@ export function IssueCard({
         <p className="mt-2 text-sm leading-relaxed text-muted">{issue.howToFix}</p>
       </details>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap gap-2">
+        {fix && "onFix" in fix && (
+          <button type="button" onClick={fix.onFix} className="inline-flex h-10 items-center gap-2 rounded-xl bg-success px-4 text-sm font-semibold text-white hover:opacity-90 dark:text-black">
+            <Wand2 className="size-4" aria-hidden="true" /> {fix.label}
+          </button>
+        )}
         {active ? (
           <button type="button" onClick={() => onView(null)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-line-strong px-4 text-sm font-semibold hover:bg-surface-muted">
             <X className="size-4" aria-hidden="true" /> Show all rows
@@ -101,6 +109,7 @@ export function IssueCard({
           </button>
         )}
       </div>
+      {fix && "unavailable" in fix && <p className="mt-2 text-xs text-muted">{fix.unavailable}</p>}
     </article>
   );
 }

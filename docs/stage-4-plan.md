@@ -209,7 +209,8 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 1 | ✅ Done: change layer, edited view, Undo/Redo, history data. 21 new unit tests. Stages 1–3 tests still pass | `src/engine/edit/`, `EngineCore` editing methods |
 | 2 | ✅ Done: five safe fixes with preview (spaces, duplicates, empty rows, empty columns, numbers stored as text). Formula cells skipped. 24 new unit tests. On the 25 MB and 50 MB test-pack files every preview count matched the detector exactly (439/3,950 and 873/7,850) | `src/engine/fix/fixes.ts`, `EngineCore.previewFix` / `applyFix` |
 | 3 | ✅ Done: capitalization (ties → user chooses), date formats (user chooses; ambiguous order → user chooses; Excel → real dates), phone layouts (user chooses; same digits only). 15 new unit tests. Capitalization on the 25 MB and 50 MB files: 565 and 1,122 cells, exactly the detector's counts | `src/engine/fix/choice-fixes.ts` |
-| 4–8 | Not started | — |
+| 4 | ✅ Done: Fix buttons on cards, “Fix all safe problems”, preview dialog with choices, Undo/Redo, change history panel, automatic re-check, changed cells highlighted, confirmation before discarding changes. Phone, tablet and desktop layouts. 4 new unit tests, 57-check browser test (`npm run test:fix`) | `components/tools/fix/`, worker messages |
+| 5–8 | Not started | — |
 
 ### Decisions made while building (for owner review)
 
@@ -221,6 +222,10 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 - **Dates, Step 3:** a format must always be chosen for each date column (the preview suggests one). Day/month order comes from the column's own values (31/01 proves day-first). Only when the column can't tell is the user asked. Two-digit years (’24), dates with time zones, impossible dates and values that aren't dates are never converted. A date with a time keeps it only in formats that can hold it (2024-01-31 14:30 or real Excel dates). Otherwise it is left as it is. Converting a column to a new format also rewrites dates that were already consistent, and the preview shows the full count.
 - **Excel dates:** text dates become real Excel dates with the chosen display format. Real dates already in the file are not changed. Step 7 must write the new number format into the workbook styles for those cells.
 - **Phone layouts:** a number is only re-laid-out when it has exactly as many digits as the chosen layout, and a "+" country code on both or neither. A country code is never added or removed. Numbers with an extension are left as they are.
+
+- **Step 4, Fix all:** includes spaces, capitalization (clear cases only), numbers stored as text, duplicate rows, empty rows and *unnamed* empty columns. Named empty columns are kept, and the user decides with “Remove empty columns”. Each fix becomes its own history entry, so Undo goes back one fix at a time. Applying is all-or-nothing: if one step fails (for example, memory), the earlier steps are rolled back.
+- **Step 4, Excel files:** duplicate rows, empty rows and empty columns show an explanation instead of a Fix button, until the reference check (Step 7) exists.
+- **Step 4, no download yet:** the changes panel says plainly that downloading the corrected file isn't available yet (Step 6). Changes live only in the open tab. Switching sheets, changing the separator or opening another file asks for confirmation first.
 
 ## Testing
 

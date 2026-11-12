@@ -15,7 +15,8 @@
     "test:large": "node scripts/large-file-test.mjs",
     "test:engine": "node scripts/engine-e2e.ts",
     "test:perf": "node scripts/perf-test.ts",
-    "test:detector": "node scripts/detector-e2e.ts"
+    "test:detector": "node scripts/detector-e2e.ts",
+    "test:fix": "node scripts/fix-e2e.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",

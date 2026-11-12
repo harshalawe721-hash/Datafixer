@@ -273,3 +273,57 @@ test("Excel: converted values become real numbers", async () => {
   const ex = p.examples[0]!;
   assert.equal(typeof core.getSheet(sheet)!.grid.get(ex.row, ex.col), "number");
 });
+
+// ---------------------------------------------------------------- Fix all safe problems (Step 4)
+
+test("Fix all (CSV): exact combined preview, applied as one history entry per fix; named empty columns are kept", async () => {
+  const { core, sheet } = await openPack("1-problems.csv");
+  const p = await core.previewFixAll(sheet, { headerRow: true }, noop);
+  assert.deepEqual(p.steps.map((s) => [s.fixId, s.cellsChanged + s.rowsRemoved + s.columnsRemoved]), [
+    ["extra-spaces", 2],
+    ["inconsistent-case", 1],
+    ["numbers-as-text", 1],
+    ["duplicate-rows", 2],
+    ["empty-rows", 1],
+  ]);
+  assert.equal(p.columnsRemoved, 0, "the empty “notes” column has a name, so it is kept");
+  assert.ok(p.notes.some((n) => /have a name|has a name/.test(n)));
+  assert.equal(core.editStats(sheet).changesApplied, 0, "preview changes nothing");
+  const r = core.applyFix(sheet, p.token);
+  assert.equal(r.stats.changesApplied, 5);
+  const after = await core.scan(sheet, { headerRow: true }, noop);
+  for (const id of ["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows"]) assert.equal(after.issues.find((i) => i.id === id), undefined, id);
+  assert.ok(after.issues.find((i) => i.id === "empty-columns"), "named empty column left for the user");
+  for (let i = 0; i < 5; i++) core.undo(sheet);
+  const back = await core.scan(sheet, { headerRow: true }, noop);
+  assert.equal(back.issues.find((i) => i.id === "duplicate-rows")!.count, 2);
+});
+
+test("Fix all (Excel): no rows or columns are removed (reference check comes first)", async () => {
+  const { core, sheet } = await openPack("2-problems.xlsx");
+  const p = await core.previewFixAll(sheet, { headerRow: true }, noop);
+  assert.deepEqual(p.steps.map((s) => s.fixId), ["extra-spaces", "inconsistent-case", "numbers-as-text"]);
+  assert.equal(p.rowsRemoved + p.columnsRemoved, 0);
+  assert.ok(p.notes.some((n) => /Excel file/.test(n)));
+});
+
+test("Fix all positions stay correct when an earlier step changes what a later step finds", async () => {
+  // " Ann" and "Ann" become duplicates only after spaces are removed.
+  const core = new EngineCore();
+  const csv = "name,city\nAnn,Paris\n Ann,Paris\nBob,Rome\n\nCy,Oslo\n";
+  const s = await core.open(new File([csv], "t.csv"), "csv", {}, noop);
+  const p = await core.previewFixAll(s.activeSheet, { headerRow: true }, noop);
+  assert.deepEqual(p.steps.map((x) => x.fixId), ["extra-spaces", "duplicate-rows", "empty-rows"]);
+  core.applyFix(s.activeSheet, p.token);
+  const rows = core.getRows(s.activeSheet, { offset: 0, limit: 10, headerRow: true }).rows.map((r) => r.cells);
+  assert.deepEqual(rows, [["Ann", "Paris"], ["Bob", "Rome"], ["Cy", "Oslo"]]);
+});
+
+test("applying several fixes is all-or-nothing: a failure part-way rolls back the earlier steps", async () => {
+  const s = new EditSession(sheetOf([["a"], [" x"], [" y"]]));
+  s.apply({ operation: "a", label: "A", cells: [{ row: 1, col: 0, value: "x" }] });
+  s.apply({ operation: "b", label: "B", cells: [{ row: 2, col: 0, value: "y" }] });
+  s.rollback(2);
+  assert.deepEqual(s.stats(), { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 4 });
+  assert.equal(s.history().length, 0, "rolled-back steps leave no history");
+});

@@ -17,6 +17,8 @@ export interface SpreadsheetPreviewProps {
   /** Error Detector issue being viewed: rows are filtered and its cells highlighted. */
   issue?: ScanIssue | null;
   onClearIssue?: () => void;
+  /** Changes whenever the data changes (Stage 4 fixes, undo, redo): the page is fetched again. */
+  dataVersion?: number;
 }
 
 const PAGE_SIZES = [50, 100, 250, 500] as const;
@@ -33,7 +35,7 @@ const flagClass: Record<Severity, string> = {
  * Reusable spreadsheet table. Rows are paged and columns are windowed, so the
  * DOM stays small for any file size; sorting and searching run in the worker.
  */
-export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChange, issue = null, onClearIssue }: SpreadsheetPreviewProps) {
+export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChange, issue = null, onClearIssue, dataVersion = 0 }: SpreadsheetPreviewProps) {
   const id = useId();
   const issueId = issue?.id;
   const [pageSize, setPageSize] = useState<number>(100);
@@ -92,7 +94,7 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
       active = false;
       clearTimeout(t);
     };
-  }, [getRows, sheet, query]);
+  }, [getRows, sheet, query, dataVersion]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
@@ -247,12 +249,15 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                       const flagged = issue && row.flaggedColumns?.includes(col);
                       const isError = row.errorColumns?.includes(col);
                       const isFormula = row.formulaColumns?.includes(col);
+                      const isEdited = row.editedColumns?.includes(col);
                       return (
                         <td
                           key={col}
-                          title={value.length > 40 ? value : undefined}
+                          title={isEdited ? `Changed: ${value}` : value.length > 40 ? value : undefined}
+                          data-edited={isEdited || undefined}
                           className={cn(
                             "max-w-64 truncate border-r border-b border-line px-3 py-1.5 whitespace-pre group-hover:bg-surface-muted/60",
+                            isEdited && !flagged && "bg-success-soft",
                             flagged && flagClass[issue.severity],
                             isError && "font-medium text-danger",
                           )}

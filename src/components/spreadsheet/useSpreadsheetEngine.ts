@@ -8,6 +8,7 @@ import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
+import type { FixId, FixOptions } from "@/engine/fix/fixes";
 
 export type EngineState =
   | { status: "idle" }
@@ -97,5 +98,23 @@ export function useSpreadsheetEngine() {
   /** Stop running scans without unloading the file. */
   const abortScans = useCallback(() => void clientRef.current?.abortScans().catch(() => {}), []);
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans };
+  // ---- Stage 4: fixing and editing (in the worker, on this device)
+  const previewFix = useCallback(
+    (sheet: string, fixId: FixId, options: FixOptions, onProgress?: (p: ProgressEvent) => void) => client().previewFix(sheet, fixId, options, onProgress),
+    [client],
+  );
+  const previewFixAll = useCallback(
+    (sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void) => client().previewFixAll(sheet, options, onProgress),
+    [client],
+  );
+  const applyFix = useCallback((sheet: string, token: string) => client().applyFix(sheet, token), [client]);
+  const undo = useCallback((sheet: string) => client().undo(sheet), [client]);
+  const redo = useCallback((sheet: string) => client().redo(sheet), [client]);
+  const history = useCallback((sheet: string) => client().history(sheet), [client]);
+  const historyDetails = useCallback(
+    (sheet: string, entry: number, offset: number, limit: number) => client().historyDetails(sheet, entry, offset, limit),
+    [client],
+  );
+
+  return { state, open, selectSheet, cancel, reset, getRows, scan, abortScans, previewFix, previewFixAll, applyFix, undo, redo, history, historyDetails };
 }

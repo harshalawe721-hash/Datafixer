@@ -52,6 +52,36 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "previewFix":
+      case "previewFixAll": {
+        // Previews read the whole sheet: cancellable like a scan, without losing the open file.
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result =
+            req.type === "previewFix"
+              ? await core.previewFix(req.sheet, req.fixId, req.options, onProgress, t)
+              : await core.previewFixAll(req.sheet, req.options, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
+      case "applyFix":
+        result = core.applyFix(req.sheet, req.token);
+        break;
+      case "undo":
+        result = core.undo(req.sheet);
+        break;
+      case "redo":
+        result = core.redo(req.sheet);
+        break;
+      case "history":
+        result = core.history(req.sheet);
+        break;
+      case "historyDetails":
+        result = core.historyDetails(req.sheet, req.entry, req.offset, req.limit);
+        break;
       case "abortScans":
         for (const t of scanTokens) t.cancelled = true;
         result = null;
