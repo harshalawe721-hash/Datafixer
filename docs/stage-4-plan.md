@@ -88,9 +88,10 @@ If verification fails, there is **no** success message and **no** download. The 
 
 - The original uploaded file is never changed.
 - The editing history is kept if an export fails or is cancelled. The user can retry straight away.
+- *(Added in the completion audit)* Changes live only in the open tab, so leaving the page with changes that weren't downloaded asks first: reloading or closing triggers the browser's own warning, and links to other pages show a confirmation. After a download, no warning is shown until the next change.
 - **No partial or corrupted downloads:** the download is only offered after the complete file has been built and verified. An unfinished file is never handed to the browser.
-- Memory is checked against the **existing memory budget** before an export starts and while it runs. If there isn't enough, the export stops with a clear message instead of crashing the tab.
-- **Safer retry options:** for example, exporting as CSV instead of Excel, or exporting without in-memory verification steps that need extra memory, which then switch to a slower, lower-memory chunked check. A file is never reported as verified without a check.
+- Memory is checked against the **existing memory budget** before an export starts. If there isn't enough, the export stops with a clear message instead of crashing the tab. *(As built: the check happens before starting. Browsers don't let a worker measure its own memory while running, so the CSV export instead streams in small, bounded pieces: about 2 MB of text at a time, verified 4 MB at a time.)*
+- **Safer retry options:** when an Excel download fails (for example, not enough memory to re-read it for checking), the error offers **“Download as CSV instead”** next to “Try again”. A file is never reported as verified without a check. *(As built: the Excel check always re-reads the whole new workbook. A slower, lower-memory Excel check was not built. CSV is the lower-memory option, and its check already streams.)*
 - Exports can be cancelled at any time without losing edits.
 
 ### S5. Complete change history

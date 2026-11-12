@@ -40,6 +40,8 @@ export interface ToolApi {
   exportCsv(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
   /** Create the corrected Excel file and check it cell by cell (Step 7). */
   exportXlsx(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
+  /** A verified download of this version was offered (no "unsaved changes" warning until the next change). */
+  markDownloaded(version: number): void;
   undo(): Promise<EditResult>;
   redo(): Promise<EditResult>;
   history(): Promise<HistorySummary[]>;

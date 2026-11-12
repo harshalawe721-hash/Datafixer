@@ -207,3 +207,17 @@ test("memory: an export that wouldn't fit the device's budget is refused before 
   await assert.rejects(core.exportCsv(s.activeSheet, noop), (e: unknown) => e instanceof EngineError && e.code === "out-of-memory" && /changes are kept/.test(e.message));
   assert.equal(core.editStats(s.activeSheet).cellsEdited, 1);
 });
+
+test("tab-separated files: tabs, quotes, separators and line breaks inside values survive (DataFixer and Python)", async () => {
+  const tsv = 'name\tnote\tcity\r\n"Ann\twith tab"\t"say ""hi"", ok"\tParis\r\n Bob\t"two\nlines"\tRome; Italy\r\nCy\t=1+1\t"Zürich, CH"\r\n';
+  const { core, sheet } = await openFile("t.tsv", tsv);
+  core.applyFix(sheet, (await core.previewFix(sheet, "extra-spaces", { headerRow: true }, noop)).token);
+  const { blob, summary } = await core.exportCsv(sheet, noop);
+  assert.equal(summary.verification.rows, 4);
+  const view = core.getSheet(sheet)!;
+  assert.equal(view.grid.get(1, 0), "Ann\twith tab");
+  assertPythonMatches(await pythonRows(blob, "\t"), view, false);
+  const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(await blob.arrayBuffer());
+  assert.ok(text.startsWith("﻿name\tnote\tcity\r\n"), "tab separator and CRLF kept");
+  assert.ok(text.includes('"Ann\twith tab"') && text.includes('"say ""hi"", ok"') && text.includes("Bob\t"), text);
+});

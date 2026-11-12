@@ -143,6 +143,14 @@ export interface FixPreviewResult extends FixPreview {
   excelCheck: { affected: string[]; clearing: boolean } | null;
 }
 
+/** S3: tell the user when rows/columns were cleared instead of removed (they remain as empty rows/columns). */
+function clearedWarning(applied: HistorySummary[]): string | null {
+  const cleared = applied.filter((e) => e.label.endsWith("(cells cleared, positions kept)"));
+  if (!cleared.length) return null;
+  const cells = cleared.reduce((n, e) => n + e.cells, 0);
+  return `${cells.toLocaleString("en-US")} cell${cells === 1 ? " was" : "s were"} cleared instead of removing rows or columns (to protect formulas, charts or other parts that refer to them), so those rows or columns remain in the file as empty rows or columns.`;
+}
+
 /** Turn row/column removals into clearing their cells (positions stay; nothing that refers to them breaks). */
 function removalsToClears(view: SheetModel, req: ChangeRequest): ChangeRequest | null {
   const keys: number[] = [];
@@ -730,6 +738,8 @@ export class EngineCore {
         if (st.csv && st.csv.encoding !== "utf-8") warnings.push(`The original file used ${st.csv.encoding}; the new file is UTF-8, which Excel and Google Sheets read correctly.`);
         if (st.csv && st.csv.lineEnding !== "\n" && st.csv.lineEnding !== "\r\n") warnings.push("Line endings were made consistent (Windows style).");
       }
+      const clearedNote = clearedWarning(applied);
+      if (clearedNote) warnings.push(clearedNote);
       if (formulaLike) {
         warnings.push(
           `${formulaLike.toLocaleString("en-US")} cell${formulaLike > 1 ? "s" : ""} start with =, +, - or @. Spreadsheet apps may treat these as formulas when the file is opened. They were saved exactly as they are.`,
@@ -865,6 +875,8 @@ export class EngineCore {
     if (plan.edits.size) warnings.push("Formulas will recalculate when the file is opened in Excel, so totals that use changed cells are up to date.");
     if (replacedFormulas) warnings.push(`${replacedFormulas} formula${replacedFormulas > 1 ? "s were" : " was"} replaced by the value${replacedFormulas > 1 ? "s" : ""} you typed (you confirmed this).`);
     warnings.push(`Only these parts of the workbook were changed: ${[...changedParts, ...removedParts.map((p) => `${p} (removed; Excel rebuilds it)`)].join(", ")}. Everything else is exactly as in your original file.`);
+    const clearedNote = clearedWarning(applied);
+    if (clearedNote) warnings.push(clearedNote);
     warnings.push(...referenceNotes);
     const baseName = st.fileName.replace(/\.[^.]+$/, "") || "workbook";
     return {
@@ -928,7 +940,11 @@ export class EngineCore {
         automaticCorrections: auto.reduce((n, e) => n + e.cells, 0),
         manualEdits: applied.length - auto.length,
         notPreserved: [...XLS_REBUILD_LOSSES],
-        warnings: ["The old .xls format was converted to the newer .xlsx format, which every current spreadsheet app opens.", "Your original .xls file is unchanged."],
+        warnings: [
+          "The old .xls format was converted to the newer .xlsx format, which every current spreadsheet app opens.",
+          "Your original .xls file is unchanged.",
+          ...(clearedWarning(applied) ? [clearedWarning(applied)!] : []),
+        ],
         verification: { reader: "DataFixer's Excel reader", rows: verification.rows, cells: verification.cells },
         version: stats.version,
       },

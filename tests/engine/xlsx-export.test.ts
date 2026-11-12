@@ -361,3 +361,14 @@ test("a blocked removal previews no changes (no Apply), until clearing is chosen
   const blocked = await core.previewFix(sheet, "duplicate-rows", { headerRow: true }, noop);
   assert.deepEqual([blocked.cellsChanged, blocked.rowsRemoved, blocked.columnsRemoved, blocked.rows.length], [0, 0, 0, 0]);
 });
+
+test("S3: after clearing instead of removing, the download summary says the rows remain as empty rows", async () => {
+  const p = makeWorkbook("refs3.xlsx", true);
+  const { core, sheet } = await open("refs3.xlsx", new Uint8Array(readFileSync(p)));
+  const clear = await core.previewFix(sheet, "duplicate-rows", { headerRow: true, clearInsteadOfRemove: true }, noop);
+  core.applyFix(sheet, clear.token);
+  const x = await core.exportXlsx(sheet, noop);
+  assert.ok(x.summary.warnings.some((w) => /cleared instead of removing rows or columns/.test(w) && /remain in the file as empty rows/.test(w)), JSON.stringify(x.summary.warnings));
+  const c = await core.exportCsv(sheet, noop);
+  assert.ok(c.summary.warnings.some((w) => /cleared instead of removing/.test(w)));
+});

@@ -62,6 +62,7 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
           if (mySeq !== seq.current) return;
           setState({ status: "done", result });
           saveBlob(result.blob, result.summary.downloadName);
+          apiRef.current.markDownloaded(result.summary.version);
         },
         (err: unknown) => {
           if (mySeq !== seq.current) return;
@@ -172,6 +173,12 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
           <Button variant="outline" onClick={close}>
             {state.status === "done" ? "Close" : "Cancel"}
           </Button>
+          {state.status === "error" && !state.cancelled && state.kind === "xlsx" && (
+            // S4: the safer option when an Excel download fails (e.g. not enough memory to check it).
+            <Button variant="outline" onClick={() => start("csv")}>
+              <Download className="size-4" aria-hidden="true" /> Download as CSV instead
+            </Button>
+          )}
           {state.status === "error" && (
             <Button onClick={() => start(state.kind)}>
               {state.cancelled ? "Start again" : "Try again"}

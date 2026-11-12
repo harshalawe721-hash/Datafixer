@@ -22,7 +22,7 @@ const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0,
 function confirmDiscard(edits: EditStats, action: string): boolean {
   if (edits.changesApplied === 0) return true;
   return window.confirm(
-    `You have ${edits.changesApplied} unsaved ${edits.changesApplied === 1 ? "change" : "changes"} to this sheet. ${action} will discard them. Your original file is not affected. Continue?`,
+    `You have ${edits.changesApplied} ${edits.changesApplied === 1 ? "change" : "changes"} to this sheet that haven't been downloaded. ${action} will discard them. Your original file is not affected. Continue?`,
   );
 }
 
@@ -45,6 +45,36 @@ export function SpreadsheetWorkspace({
   const { state, open, selectSheet, cancel, reset, getRows, scan, abortScans } = engine;
   /** Changes to the current sheet (Stage 4), tied to the view they were made in. */
   const [editState, setEditState] = useState<{ key: string; stats: EditStats; last: LastChange | null }>({ key: "", stats: NO_EDITS, last: null });
+  /** Edit version last downloaded, per view: changes after it are "unsaved". */
+  const [downloaded, setDownloaded] = useState<{ key: string; version: number }>({ key: "", version: -1 });
+  const unsaved =
+    state.status === "ready" &&
+    editState.stats.changesApplied > 0 &&
+    !(downloaded.key === editState.key && downloaded.version === editState.stats.version);
+  // Changes live only in this tab: ask before leaving the page with changes that weren't downloaded.
+  useEffect(() => {
+    if (!unsaved) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // the browser shows its own "Leave site?" message
+    };
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.hasAttribute("download") || (a.target && a.target !== "_self") || e.defaultPrevented) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin === window.location.origin && url.pathname === window.location.pathname) return; // same page (e.g. #issue links)
+      if (!window.confirm("You have changes that haven't been downloaded. Leaving this page will discard them. Your original file is not affected. Leave anyway?")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [unsaved]);
   /** Cell open in the cell editor (view position). */
   const [editing, setEditing] = useState<{ row: number; col: number; label: string } | null>(null);
   /** Column-names setting and the issue being viewed, reset for each file/sheet/separator. */
@@ -80,7 +110,7 @@ export function SpreadsheetWorkspace({
   );
   const currentEdits = state.status === "ready" ? editState : { key: "", stats: NO_EDITS, last: null };
   const resetAll = () => {
-    if (state.status === "ready" && !confirmDiscard(currentEdits.stats, "Opening another file")) return;
+    if (state.status === "ready" && unsaved && !confirmDiscard(currentEdits.stats, "Opening another file")) return;
     setAdvisory(null);
     setEditState({ key: "", stats: NO_EDITS, last: null });
     reset();
@@ -167,6 +197,7 @@ export function SpreadsheetWorkspace({
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
     exportCsv: (onProgress) => engine.exportCsv(sheetName, onProgress),
     exportXlsx: (onProgress) => engine.exportXlsx(sheetName, onProgress),
+    markDownloaded: (version) => setDownloaded({ key: viewKey, version }),
     undo: () => engine.undo(sheetName).then(track("undone")),
     redo: () => engine.redo(sheetName).then(track("redone")),
     history: () => engine.history(sheetName),
@@ -180,9 +211,9 @@ export function SpreadsheetWorkspace({
         summary={summary}
         onSelectSheet={(name) => {
           // Only one Excel sheet is kept in memory: switching discards this sheet's changes.
-          if (confirmDiscard(edits, "Switching to another sheet")) void selectSheet(name);
+          if (!unsaved || confirmDiscard(edits, "Switching to another sheet")) void selectSheet(name);
         }}
-        onChangeDelimiter={format === "csv" ? (d) => confirmDiscard(edits, "Changing the separator") && void open(file, format, { delimiter: d }) : undefined}
+        onChangeDelimiter={format === "csv" ? (d) => (!unsaved || confirmDiscard(edits, "Changing the separator")) && void open(file, format, { delimiter: d }) : undefined}
         onReset={resetAll}
       />
       {summary.sheetError ? (

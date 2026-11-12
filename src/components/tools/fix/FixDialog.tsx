@@ -324,7 +324,10 @@ function ExcelCheck({ check, onChoose }: { check: NonNullable<FixPreviewResult["
           <li key={a}>{a}</li>
         ))}
       </ul>
-      <p className="mt-2">So DataFixer won&apos;t remove them. You can clear their cells instead: the rows stay in place, so nothing that refers to them breaks.</p>
+      <p className="mt-2">
+        So DataFixer won&apos;t remove them. You can clear their cells instead: the rows stay in place, so nothing that refers to them breaks. Or keep them here and
+        download the sheet as a CSV file (values only), where removing rows can&apos;t break anything.
+      </p>
       <label className="mt-2 inline-flex min-h-10 cursor-pointer items-center gap-2 font-medium">
         <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={check.clearing} onChange={(e) => onChoose({ clearInsteadOfRemove: e.target.checked })} />
         Clear the cells instead (rows stay in place)

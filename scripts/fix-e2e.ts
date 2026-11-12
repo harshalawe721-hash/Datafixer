@@ -129,8 +129,42 @@ const settled = async (page: Page) => {
     void d.dismiss();
   });
   await page.getByRole("button", { name: /Open another file/ }).click();
-  check(/unsaved change/.test(asked), "confirmation before discarding changes");
+  check(/haven't been downloaded/.test(asked), "confirmation before discarding changes");
   check(await visible(page.getByText("Your changes")), "changes kept after choosing Cancel");
+
+  console.log("\nCSV: leaving the page with changes that weren't downloaded asks first");
+  asked = "";
+  page.once("dialog", (d: { message(): string; dismiss(): Promise<void> }) => {
+    asked = d.message();
+    void d.dismiss();
+  });
+  await page.locator("footer").getByRole("link", { name: "About Us" }).click();
+  check(/haven't been downloaded/.test(asked), "tapping a link to another page asks first");
+  check(page.url().endsWith("/spreadsheet-error-detector") && (await visible(page.getByText("Your changes"))), "staying on the page keeps the changes");
+  let unloadPrompt = false;
+  page.once("dialog", (d: { type(): string; dismiss(): Promise<void> }) => {
+    unloadPrompt = d.type() === "beforeunload";
+    void d.dismiss();
+  });
+  await page.reload({ waitUntil: "commit", timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  check(unloadPrompt, "reloading or closing the tab triggers the browser's “Leave site?” warning");
+  check(await visible(page.getByText("Your changes")), "changes still there after choosing to stay");
+
+  console.log("\nCSV: after downloading, no warning");
+  const dl0 = page.waitForEvent("download", { timeout: 30000 });
+  await page.getByRole("button", { name: "Download corrected CSV" }).click();
+  await dl0;
+  await dialog(page).getByRole("button", { name: "Close" }).last().click();
+  let askedAfter = false;
+  page.once("dialog", (d: { dismiss(): Promise<void> }) => {
+    askedAfter = true;
+    void d.dismiss();
+  });
+  await page.getByRole("button", { name: /Open another file/ }).click();
+  await page.waitForTimeout(300);
+  check(!askedAfter, "no warning once the changes were downloaded");
+  check(await visible(page.locator("input[type=file]")), "back to the upload screen");
   await page.close();
 }
 
@@ -368,6 +402,60 @@ const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
   await dialog(page).getByRole("button", { name: /^Apply fix/ }).click();
   check(await gone(dialog(page)), "applied");
   check(await visible(page.getByText(/cells cleared, positions kept/)), "Done message says the cells were cleared");
+  await page.getByRole("button", { name: "Download corrected file" }).click();
+  const dlc = page.waitForEvent("download", { timeout: 30000 });
+  await dialog(page).getByRole("button", { name: "Download Excel file" }).click();
+  await dlc;
+  check(await visible(dialog(page).getByText(/remain in the file as empty rows/)), "summary warns that cleared rows remain as empty rows (S3)");
+  await page.close();
+}
+{
+  console.log("\nExcel download that can't be done: the safer CSV option is offered (S4)");
+  // A shared formula's first cell can't be replaced on its own in an Excel download.
+  const src = path.join(FIXTURES, "2-problems.xlsx");
+  const shared = path.join(DL, "shared.xlsx");
+  const mk = spawnSync(
+    "python3",
+    [
+      "-I",
+      "-c",
+      [
+        "import zipfile, sys, re",
+        "zin = zipfile.ZipFile(sys.argv[1]); zout = zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED)",
+        "for i in zin.infolist():",
+        "    data = zin.read(i.filename)",
+        "    if i.filename == 'xl/worksheets/sheet1.xml':",
+        "        t = data.decode()",
+        "        t = re.sub(r'<c r=\"F2\"[^>]*?(/>|>.*?</c>)', '<c r=\"F2\"><f t=\"shared\" ref=\"F2:F3\" si=\"0\">A2*113</f><v>113</v></c>', t, count=1)",
+        "        t = re.sub(r'<c r=\"F3\"[^>]*?(/>|>.*?</c>)', '<c r=\"F3\"><f t=\"shared\" si=\"0\"/><v>226</v></c>', t, count=1)",
+        "        data = t.encode()",
+        "    zout.writestr(i, data)",
+        "zout.close()",
+      ].join("\n"),
+      src,
+      shared,
+    ],
+    { encoding: "utf8" },
+  );
+  check(mk.status === 0, `test workbook with a shared formula created ${mk.stderr ?? ""}`);
+  const page = await setup({ width: 800, height: 1280 });
+  await page.goto(URL, { waitUntil: "networkidle" });
+  await page.locator("input[type=file]").setInputFiles(shared);
+  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  await page.getByRole("cell", { name: /^fx\s*113$/ }).first().click();
+  await dialog(page).getByLabel("Replace the formula with my value").check();
+  await dialog(page).getByLabel("New value").fill("5");
+  await dialog(page).getByRole("button", { name: "Save" }).click();
+  await gone(dialog(page));
+  await page.getByRole("button", { name: "Download corrected file" }).click();
+  await dialog(page).getByRole("button", { name: "Download Excel file" }).click();
+  check(await visible(dialog(page).getByText(/shares with other cells/)), "clear error: why the Excel download isn't possible");
+  check(await visible(dialog(page).getByText("Your changes are kept", { exact: false })) || (await visible(dialog(page).getByText(/Download as CSV instead/))), "changes kept");
+  const dlcsv = page.waitForEvent("download", { timeout: 30000 });
+  await dialog(page).getByRole("button", { name: "Download as CSV instead" }).click();
+  const fallback = await dlcsv;
+  check(/\.csv$/.test(fallback.suggestedFilename()), `CSV fallback downloaded: ${fallback.suggestedFilename()}`);
+  check(await visible(dialog(page).getByRole("heading", { name: "Export successful" })), "CSV fallback verified and successful");
   await page.close();
 }
 {
