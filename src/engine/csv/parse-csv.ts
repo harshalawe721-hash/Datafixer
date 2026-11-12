@@ -271,6 +271,7 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     replacementChars,
     formulaLikeCells,
     finalLineBreak: lastChar === "\n" || lastChar === "\r",
+    lineEndingRows: { ...endings.firstRow },
   };
   return { sheet, meta };
 }

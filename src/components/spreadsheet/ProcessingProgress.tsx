@@ -15,6 +15,7 @@ const PHASE_LABEL: Record<ProgressEvent["phase"], string> = {
   scanning: "Checking for problems",
   exporting: "Creating the corrected file",
   verifying: "Checking the new file cell by cell",
+  locating: "Finding the example lines in the file",
 };
 
 /** Progress bar with a Cancel button. Indeterminate when a step can't report a fraction. */

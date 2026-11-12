@@ -103,6 +103,16 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - Test pack: `tests/fixtures/validate/` (13 files, made by `scripts/fixtures/make_validate_pack.py`). The expected results in `expected.json` are written from what was planted, and the reader is compared with Python's `csv` module on 8 of the files.
 - Tests: `tests/engine/validate.test.ts`, 34 tests. Validating 100 MB (1.14 M rows) takes 1.0 s in Node.
 
+### Step 2 — Raw lines and row positions (done, 12 November 2026)
+
+- Examples of quote, row-length, hidden-character, line-ending, separator and column-name problems now carry the **row as written in the file** and the **line number** where it starts. Line numbers count line breaks inside quoted values, so they match what a text editor shows (in `3-quotes.csv`, row 17 is on line 19).
+- `src/engine/csv/raw-lines.ts` re-reads the original file with the same encoding and quote rules, keeps at most 300 characters per row, and **stops as soon as the wanted rows are found**. A quote that never closes shows the start of the swallowed text, marked as cut.
+- `visibleRaw()` makes invisible characters visible for the page: line break ↵, tab ⇥, NUL ␀ (and the other control characters as their Unicode symbols).
+- Mixed line endings: the examples name the first row ending each way (“First line ending with LF”).
+- Raw lines are shown only while the data is unchanged. After a change, row numbers no longer match the file, so examples show cell values (`rawLines: "changed"`); undoing every change brings the raw lines back.
+- **Cost:** none when the examples are near the top. Worst case measured: examples spread through a 100 MB file → validation 1.0 s → 5.9 s (Node), with progress shown (“Finding the example lines in the file”) and Cancel working.
+- Tests: 11 more (45 in `validate.test.ts`), including reading with chunks of 1–11 bytes, BOM and UTF-16 files, and proof that a 20 MB file is only read up to its first 4 MB chunk when the examples are near the top.
+
 ## Testing
 
 - Unit tests per check with exact counts, including false-alarm guards: quoted separators, quoted line breaks, and ragged rows that are legitimate when there is no header.

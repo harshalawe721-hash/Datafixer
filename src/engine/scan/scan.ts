@@ -64,7 +64,14 @@ export interface ScanIssue {
   /** Per-column breakdown, where relevant. */
   columns?: { index: number; name: string; count: number }[];
   /** A few concrete examples (row is the zero-based sheet row). */
-  examples?: { row: number; col: number; value: string; note?: string }[];
+  examples?: {
+    row: number;
+    col: number;
+    value: string;
+    note?: string;
+    /** CSV Validator: the row as written in the original file (line = 1-based line where it starts). */
+    raw?: { line: number; text: string; truncated: boolean };
+  }[];
 }
 
 export interface ScanResult {

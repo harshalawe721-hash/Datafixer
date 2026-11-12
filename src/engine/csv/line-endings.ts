@@ -23,7 +23,19 @@ export class LineEndingNormaliser {
   cr = 0;
   /** Rows (0-based) with a quote inside an unquoted value; each row once. */
   readonly strayQuoteRows: number[] = [];
-  private row = 0;
+  /** First row (0-based) that ends with each line-ending type. */
+  readonly firstRow: { crlf?: number; lf?: number; cr?: number } = {};
+  /** Line breaks inside quoted values so far (a row then covers several lines of the file). */
+  quotedBreaks = 0;
+  /**
+   * Optional: called at every row end with the row, the absolute text offset of
+   * its line break and the offset just after it (offsets count the text pushed so far).
+   */
+  onRowEnd: ((row: number, breakAt: number, nextRowAt: number) => void) | null = null;
+  private consumed = 0;
+  private quotedCR = false;
+  /** The current row (0-based): the number of row ends seen so far. */
+  row = 0;
   private inQuoted = false;
   private fieldStart = true;
   private unquotedQuote = false;
@@ -49,9 +61,18 @@ export class LineEndingNormaliser {
       const ch = text.charCodeAt(i);
       if (this.inQuoted) {
         if (ch !== 0x22) {
+          // Line breaks inside the value: CRLF counts once.
+          if (ch === 0x0d) {
+            this.quotedBreaks++;
+            this.quotedCR = true;
+          } else {
+            if (ch === 0x0a && !this.quotedCR) this.quotedBreaks++;
+            this.quotedCR = false;
+          }
           i++;
           continue;
         }
+        this.quotedCR = false;
         // A quote inside a quoted value: escaped, closing or literal?
         if (i + 1 >= n && !final) break; // need the next character
         if (text.charCodeAt(i + 1) === 0x22) {
@@ -70,22 +91,24 @@ export class LineEndingNormaliser {
         continue;
       }
       if (ch === 0x0a || ch === 0x0d) {
+        const at = i;
         if (ch === 0x0d) {
           if (i + 1 >= n && !final) break; // is it CRLF? decide with more text
           if (text.charCodeAt(i + 1) === 0x0a) {
-            this.crlf++;
+            if (this.crlf++ === 0) this.firstRow.crlf = this.row;
             out.push(text.slice(seg, i), "\n");
             i += 2;
           } else {
-            this.cr++;
+            if (this.cr++ === 0) this.firstRow.cr = this.row;
             out.push(text.slice(seg, i), "\n");
             i++;
           }
           seg = i;
         } else {
-          this.lf++;
+          if (this.lf++ === 0) this.firstRow.lf = this.row;
           i++;
         }
+        if (this.onRowEnd) this.onRowEnd(this.row, this.consumed + at, this.consumed + i);
         this.row++;
         this.fieldStart = true;
         this.unquotedQuote = false;
@@ -97,7 +120,10 @@ export class LineEndingNormaliser {
         continue;
       }
       if (ch === 0x22) {
-        if (this.fieldStart) this.inQuoted = true;
+        if (this.fieldStart) {
+          this.inQuoted = true;
+          this.quotedCR = false;
+        }
         else if (!this.unquotedQuote) {
           this.unquotedQuote = true;
           this.strayQuoteRows.push(this.row);
@@ -107,6 +133,7 @@ export class LineEndingNormaliser {
       i++;
     }
     if (i < n) this.carry = text.slice(i);
+    this.consumed += i;
     out.push(text.slice(seg, i));
     return out.join("");
   }

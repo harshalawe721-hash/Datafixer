@@ -16,6 +16,7 @@ import { CellList, RowList } from "../scan/hits.ts";
 import { isFormulaLike } from "../csv/parse-csv.ts";
 import { DELIMITER_CANDIDATES } from "../csv/delimiter.ts";
 import type { Finding, ScanIssue, Severity } from "../scan/scan.ts";
+import { readRawLines } from "../csv/raw-lines.ts";
 
 export const EXCEL_MAX_ROWS = 1_048_576;
 export const EXCEL_MAX_COLUMNS = 16_384;
@@ -57,6 +58,11 @@ export interface ValidationResult {
   issues: ScanIssue[];
   checks: ValidationCheck[];
   verdict: { valid: boolean; errors: number; warnings: number; notes: number; importReady: string };
+  /**
+   * Whether examples show the line as written in the file: "shown", or
+   * "changed" (the data was changed, so row numbers no longer match the file).
+   */
+  rawLines?: "shown" | "changed";
   file: { encoding: string; hadBom: boolean; delimiter: string; lineEnding: CsvMeta["lineEnding"]; finalLineBreak: boolean };
   timings: { totalMs: number };
 }
@@ -175,6 +181,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
   const tooLongEx: ScanIssue["examples"] = [];
   let trailingEmpty = 0;
   let rowsAtWidth = 0;
+  const firstRowsAtWidth: number[] = [];
   // A value swallowed by a quote that never closes is reported as that error, not as line breaks.
   const unclosedRows = new Set(sheet.issues.filter((i) => i.code === "unclosed-quote" && i.row !== null).map((i) => i.row!));
   const SPECIAL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f�\n\r]/;
@@ -194,6 +201,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       }
     }
     if (len === expectedFields && len > 1 && !blankRow) {
+      if (firstRowsAtWidth.length < 2) firstRowsAtWidth.push(r);
       rowsAtWidth++;
       if (cellText(sheet, r, len - 1) === "") trailingEmpty++;
     }
@@ -472,6 +480,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       count: 1,
       explanation: "Lines end in different ways in this file (Windows-style CRLF on some lines, Unix-style LF or old Mac-style CR on others). Most programs cope, but some import tools and scripts count rows wrongly or add blank rows.",
       howToFix: "Download the file from DataFixer: every line then ends the same way.",
+      examples: lineEndingExamples(meta),
     });
   } else if (meta.lineEnding === "\r") {
     add({
@@ -480,6 +489,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       title: "Old Mac line endings",
       count: 1,
       explanation: "Lines end with a single CR character (old Mac OS style). Many current programs don't recognise this and read the whole file as one line.",
+      examples: lineEndingExamples(meta),
       howToFix: "Download the file from DataFixer: lines then end with Windows-style CRLF, which every program reads.",
     });
   }
@@ -594,6 +604,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
         explanation: `Every line ends with a ${sepName(delimiter)}, which creates an empty column ${columnLetter(expectedFields - 1)} at the end${headerRow ? " (without a name)" : ""}. Usually harmless, but some programs add an unnamed empty column.`,
         howToFix: "Remove the empty last column before importing, or remove the separator at the end of each line in the program that created the file.",
         columns: [{ index: expectedFields - 1, name: `Column ${columnLetter(expectedFields - 1)}`, count: 0 }],
+        examples: firstRowsAtWidth.map((row) => ({ row, col: expectedFields - 1, value: "", note: "Ends with a separator" })),
       }, { columns: [expectedFields - 1] });
     }
   }
@@ -651,4 +662,56 @@ export function namesLookLikeData(names: string[]): boolean {
   if (nonEmpty.length === 0) return false;
   const dataLike = nonEmpty.filter((n) => DATA_LIKE.some((re) => re.test(n))).length;
   return dataLike >= Math.max(1, Math.ceil(nonEmpty.length / 2));
+}
+
+const ENDING_NAMES = { crlf: "CRLF (Windows)", lf: "LF (Unix, Mac)", cr: "CR (old Mac)" } as const;
+
+/** One example per line-ending type: the first row that ends that way. */
+function lineEndingExamples(meta: CsvMeta): NonNullable<ScanIssue["examples"]> {
+  const rows = meta.lineEndingRows ?? {};
+  return (Object.keys(ENDING_NAMES) as (keyof typeof ENDING_NAMES)[])
+    .filter((k) => rows[k] !== undefined)
+    .map((k) => ({ row: rows[k]!, col: 0, value: "", note: `First line ending with ${ENDING_NAMES[k]}` }))
+    .sort((a, b) => a.row - b.row);
+}
+
+/** Problems whose examples show the line as written in the file. */
+export const RAW_LINE_ISSUES = new Set([
+  "uneven-rows",
+  "unclosed-quote",
+  "stray-quotes",
+  "line-breaks-in-cells",
+  "control-characters",
+  "trailing-separators",
+  "sep-line",
+  "mixed-line-endings",
+  "old-mac-line-endings",
+  "header-spaces",
+  "empty-header",
+  "duplicate-header",
+]);
+
+/**
+ * Add the raw line from the original file to the examples of RAW_LINE_ISSUES
+ * (Stage 5 Step 2). Only valid while the data is unchanged: after a change, row
+ * numbers no longer match the file, so callers skip this.
+ */
+export async function attachRawLines(
+  issues: ScanIssue[],
+  file: Blob,
+  meta: CsvMeta,
+  cancel?: CancelToken,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<void> {
+  const rows = new Set<number>();
+  for (const i of issues) if (RAW_LINE_ISSUES.has(i.id)) for (const e of i.examples ?? []) rows.add(e.row);
+  if (rows.size === 0) return;
+  const raw = await readRawLines(file, meta, rows, { cancel, onProgress });
+  for (const i of issues) {
+    if (!RAW_LINE_ISSUES.has(i.id)) continue;
+    for (const e of i.examples ?? []) {
+      const r = raw.get(e.row);
+      if (r) e.raw = r;
+    }
+  }
 }

@@ -8,7 +8,7 @@
  */
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { EngineError, isOutOfMemory } from "./errors.ts";
-import { validateCsv, type ValidationResult } from "./validate/validate.ts";
+import { attachRawLines, validateCsv, type ValidationResult } from "./validate/validate.ts";
 import { cellKey } from "./types.ts";
 import { throwIfCancelled, type CancelToken } from "./cancel.ts";
 import { parseCsv } from "./csv/parse-csv.ts";
@@ -446,6 +446,13 @@ export class EngineCore {
       cancel,
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
     });
+    // Raw lines from the file: only while the data is unchanged (row numbers then match the file).
+    const entry = st.loaded.get(sheetName);
+    const unchanged = !entry?.session || entry.session.appliedEntries().length === 0;
+    if (unchanged) {
+      await attachRawLines(result.issues, st.file, st.csv, cancel, (loaded, total) => onProgress({ phase: "locating", loaded, total }));
+      result.rawLines = "shown";
+    } else result.rawLines = "changed";
     st.lastScan = { sheet: sheetName, headerRow: options.headerRow, rowCount: sheet.grid.rowCount, startRow: result.firstDataRow, findings, seq: ++this.scanSeq };
     return result;
   }

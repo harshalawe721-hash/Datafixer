@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { EngineCore } from "../../src/engine/core.ts";
 import { parseCsv } from "../../src/engine/csv/parse-csv.ts";
 import { LineEndingNormaliser } from "../../src/engine/csv/line-endings.ts";
+import { readRawLines, visibleRaw, MAX_RAW } from "../../src/engine/csv/raw-lines.ts";
 import { namesLookLikeData, validateCsv, EXCEL_MAX_ROWS, EXCEL_MAX_COLUMNS } from "../../src/engine/validate/validate.ts";
 import type { SheetModel } from "../../src/engine/types.ts";
 
@@ -240,4 +241,161 @@ test("reader records whether the file ends with a line break", async () => {
   assert.equal((await parseCsv(new Blob(["a,b\n1,2\n"]), "t")).meta.finalLineBreak, true);
   assert.equal((await parseCsv(new Blob(["a,b\n1,2"]), "t")).meta.finalLineBreak, false);
   assert.equal((await parseCsv(new Blob(["a,b\r1,2\r"]), "t")).meta.finalLineBreak, true);
+});
+
+// ---------------------------------------------------------------- Step 2: raw lines and row positions
+
+
+const rawOf = (r: Awaited<ReturnType<EngineCore["validate"]>>, id: string) =>
+  r.issues.find((i) => i.id === id)!.examples!.map((e) => [e.row, e.raw?.line, e.raw?.text, e.raw?.truncated]);
+
+test("raw lines: uneven rows show the line as written, with its line number", async () => {
+  const { core, sheet } = await openFile("1-uneven.csv");
+  const r = await core.validate(sheet, { headerRow: true }, noop);
+  assert.equal(r.rawLines, "shown");
+  assert.deepEqual(rawOf(r, "uneven-rows").slice(3), [
+    [26, 27, "1025,Fatima,fatima25@example.com", false],
+    [32, 33, "1031,Ben,Smith, J,x@example.com,Rome", false],
+  ]);
+});
+
+test("raw lines: line numbers count line breaks inside quoted values", async () => {
+  const { core, sheet } = await openFile("3-quotes.csv");
+  const r = await core.validate(sheet, { headerRow: true }, noop);
+  assert.deepEqual(rawOf(r, "stray-quotes"), [
+    [5, 6, '1004,Ana "the boss" Ruiz,eli4@example.com,Lima', false],
+    [16, 19, '1015,Fatima,fatima15@example.com,Paris 5"', false],
+  ]);
+  assert.deepEqual(rawOf(r, "line-breaks-in-cells").map((x) => x.slice(0, 3)), [
+    [8, 9, '1007,Hana,hana7@example.com,"Flat 7\nMain Street"'],
+    [9, 11, '1008,Ivan,ivan8@example.com,"Flat 8\nMain Street"'],
+    [21, 24, '1020,Asha,asha20@example.com,"Flat 20\nMain Street"'],
+  ]);
+});
+
+test("raw lines: an unclosed quote shows the start of the swallowed text, cut at MAX_RAW", async () => {
+  const { core, sheet } = await openFile("3b-unclosed.csv");
+  const [row, line, text, truncated] = (rawOf(await core.validate(sheet, { headerRow: true }, noop), "unclosed-quote") as [number, number, string, boolean][])[0]!;
+  assert.deepEqual([row, line, truncated, (text as string).length], [10, 11, true, MAX_RAW]);
+  assert.ok((text as string).startsWith('1009,Jo,jo9@example.com,"Lima\r\n1010,Asha'));
+});
+
+test("raw lines: hidden characters, line endings, trailing separators and sep= examples", async () => {
+  const c = await openFile("6-control.csv");
+  const ctl = rawOf(await c.core.validate(c.sheet, { headerRow: true }, noop), "control-characters");
+  assert.deepEqual(ctl.map(([row, line, text]) => [row, line, visibleRaw(text as string)]), [
+    [3, 4, "1002,Ben␀,chen2@example.com,Lyon"],
+    [8, 9, "1007,Hana,hana7@example.com,Le␀eds"],
+    [12, 13, "1011,Gus␇,ben11@example.com,Leeds"],
+  ]);
+  const m = await openFile("5-line-endings.csv");
+  const mixed = (await m.core.validate(m.sheet, { headerRow: true }, noop)).issues.find((i) => i.id === "mixed-line-endings")!;
+  assert.deepEqual(mixed.examples!.map((e) => [e.row, e.note, e.raw?.line]), [
+    [0, "First line ending with LF (Unix, Mac)", 1],
+    [1, "First line ending with CRLF (Windows)", 2],
+  ]);
+  const t = await openFile("7-trailing.csv");
+  assert.deepEqual(rawOf(await t.core.validate(t.sheet, { headerRow: true }, noop), "trailing-separators").map((x) => x[2]), ["id,name,email,city,", "1000,Asha,asha0@example.com,Pune,"]);
+  const s = await openFile("8-sep.csv");
+  assert.deepEqual(rawOf(await s.core.validate(s.sheet, { headerRow: true }, noop), "sep-line"), [[0, 1, "sep=;", false]]);
+});
+
+test("raw lines: not shown after the data was changed (row numbers no longer match the file)", async () => {
+  const { core, sheet } = await openFile("1-uneven.csv");
+  core.editCell(sheet, 2, 1, "Changed");
+  const r = await core.validate(sheet, { headerRow: true }, noop);
+  assert.equal(r.rawLines, "changed");
+  assert.ok(r.issues[0]!.examples!.every((e) => e.raw === undefined));
+  // Undoing every change makes the data match the file again.
+  core.undo(sheet);
+  assert.equal((await core.validate(sheet, { headerRow: true }, noop)).rawLines, "shown");
+});
+
+test("raw lines: identical results with tiny chunks (CR, CRLF, quotes and multi-byte characters split anywhere)", async () => {
+  const text = 'h1,h2\r\n"é ""q""\r\nb" ,x\ry,"z"\np,"€",\r\n\r\n"end"  \r\nlast,"open\r\nmore';
+  const blob = new Blob([text]);
+  const meta = { encoding: "utf-8", hadBom: false, delimiter: "," };
+  const rows = [0, 1, 2, 3, 4, 5, 6, 7];
+  const whole = await readRawLines(blob, meta, rows);
+  assert.deepEqual([...whole.entries()].map(([r, x]) => [r, x.line, x.text]), [
+    [0, 1, "h1,h2"],
+    [1, 2, '"é ""q""\r\nb" ,x'],
+    [2, 4, 'y,"z"'],
+    [3, 5, 'p,"€",'],
+    [4, 6, ""],
+    [5, 7, '"end"  '],
+    [6, 8, 'last,"open\r\nmore'],
+  ]);
+  for (const chunkBytes of [1, 2, 3, 5, 7, 11]) {
+    const small = await readRawLines(blob, meta, rows, { chunkBytes });
+    assert.deepEqual([...small.entries()], [...whole.entries()], `chunkBytes ${chunkBytes}`);
+  }
+});
+
+test("raw lines: a BOM is not part of the first line; UTF-16 files work", async () => {
+  const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode("a,b\r\n1,2\r\n")]);
+  const r = await readRawLines(new Blob([bom]), { encoding: "utf-8", hadBom: true, delimiter: "," }, [0, 1]);
+  assert.deepEqual([r.get(0)!.text, r.get(1)!.text], ["a,b", "1,2"]);
+  const s = "x;y\r\n3;4\r\n";
+  const u16 = new Uint8Array(2 + s.length * 2);
+  u16.set([0xff, 0xfe]);
+  for (let i = 0; i < s.length; i++) u16[2 + i * 2] = s.charCodeAt(i);
+  const core = new EngineCore();
+  const o = await core.open(new File([u16], "t.csv"), "csv", {}, noop);
+  const v = await core.validate(o.activeSheet, { headerRow: true }, noop);
+  assert.equal(v.file.encoding, "utf-16le");
+  const u = await readRawLines(new Blob([u16]), { encoding: "utf-16le", hadBom: true, delimiter: ";" }, [1]);
+  assert.equal(u.get(1)!.text, "3;4");
+});
+
+/** A Blob wrapper that counts how many bytes were read. */
+function countingBlob(blob: Blob) {
+  const counter = { read: 0 };
+  const wrapped = {
+    size: blob.size,
+    slice: (start: number, end: number) => {
+      counter.read += end - start;
+      return blob.slice(start, end);
+    },
+  } as unknown as Blob;
+  return { wrapped, counter };
+}
+
+test("raw lines: reading stops once the wanted rows are found (large files)", async () => {
+  const big = new Blob(["a,b\n", "1,2\n".repeat(5_000_000)]); // 20 MB
+  const { wrapped, counter } = countingBlob(big);
+  const r = await readRawLines(wrapped, { encoding: "utf-8", hadBom: false, delimiter: "," }, [3, 10]);
+  assert.equal(r.get(10)!.text, "1,2");
+  assert.ok(counter.read <= 4 * 1024 * 1024, `read ${counter.read} bytes`);
+  // A quote that never closes near the top: only the start is kept and reading stops.
+  const open = new Blob(['a,b\n1,"never closed\n', "x,y\n".repeat(5_000_000)]);
+  const c2 = countingBlob(open);
+  const r2 = await readRawLines(c2.wrapped, { encoding: "utf-8", hadBom: false, delimiter: "," }, [1]);
+  assert.deepEqual([r2.get(1)!.truncated, r2.get(1)!.text.length, r2.get(1)!.line], [true, MAX_RAW, 2]);
+  assert.ok(c2.counter.read <= 4 * 1024 * 1024, `read ${c2.counter.read} bytes`);
+});
+
+test("raw lines: rows past the end of the file are simply not found; the last row without a line break is", async () => {
+  const r = await readRawLines(new Blob(["a,b\n1,2"]), { encoding: "utf-8", hadBom: false, delimiter: "," }, [1, 5]);
+  assert.deepEqual([...r.keys()], [1]);
+  assert.equal(r.get(1)!.text, "1,2");
+});
+
+test("visibleRaw shows every invisible character", () => {
+  assert.equal(visibleRaw("a\tb\r\nc\nd\re\u0000f\u001fg\u007f"), "a⇥b↵c↵d␍e␀f␟g␡");
+});
+
+test("normaliser: line breaks inside quotes are counted once (CRLF) wherever chunks split; first row per ending type", () => {
+  const text = 'a,"x\r\ny\nz\rw"\r\nb,c\nd,e\rf,g';
+  const whole = new LineEndingNormaliser(",");
+  whole.push(text, true);
+  assert.equal(whole.quotedBreaks, 3);
+  assert.deepEqual(whole.firstRow, { crlf: 0, lf: 1, cr: 2 });
+  for (let cut = 0; cut <= text.length; cut++) {
+    const n = new LineEndingNormaliser(",");
+    n.push(text.slice(0, cut));
+    n.push(text.slice(cut), true);
+    assert.equal(n.quotedBreaks, 3, `cut ${cut}`);
+    assert.deepEqual(n.firstRow, whole.firstRow);
+  }
 });

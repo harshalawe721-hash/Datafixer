@@ -125,6 +125,8 @@ export interface CsvMeta {
   formulaLikeCells: number;
   /** The file ends with a line break (Stage 5 validation). */
   finalLineBreak?: boolean;
+  /** First row (0-based) ending with each line-ending type, outside quoted values (Stage 5). */
+  lineEndingRows?: { crlf?: number; lf?: number; cr?: number };
 }
 
 /** Summary sent to the UI after a file is opened (never contains cell data). */
@@ -150,7 +152,7 @@ export interface WorkbookSummary {
 }
 
 export interface ProgressEvent {
-  phase: "reading" | "inspecting" | "parsing" | "indexing" | "scanning" | "exporting" | "verifying";
+  phase: "reading" | "inspecting" | "parsing" | "indexing" | "scanning" | "exporting" | "verifying" | "locating";
   /** Bytes or rows processed; null when the step cannot report a fraction. */
   loaded: number | null;
   total: number | null;
