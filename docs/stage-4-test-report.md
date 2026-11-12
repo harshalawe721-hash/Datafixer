@@ -2,7 +2,7 @@
 
 **Date:** 12 November 2026
 
-**Status:** implemented; **not yet complete.** All automated tests pass. Waiting for real-device (Android tablet) testing with the Stage 4 test pack, and for the project owner's approval.
+**Status:** implemented; all automated tests pass, and all Stage 4 tablet tests (A–E) passed on the owner's Android tablet. **Waiting for the project owner's approval** before Stage 4 is marked complete.
 
 ## Scope
 
@@ -104,7 +104,7 @@ The project owner tested on their Android tablet (Chrome) with the Stage 4 test 
 |---|---|---|---|
 | A: 1-problems.csv: Fix all, download CSV | Fix all: spaces 2, capitalization 1, numbers 1, duplicates 2, empty rows 1 | Downloaded file checked: UTF-8 BOM, 25 rows × 8 columns (28 → 25), all five fixes present, everything else unchanged. The optional manual edit was not done | ✅ PASSED |
 | B: 2-problems.xlsx: Fix all, download Excel | 4 cells changed, 3 rows removed, 5 fixes; only the worksheet and workbook.xml change | Screen: “4 cells changed · 3 rows removed (5 fixes applied)”, 5 history entries “Applied”, re-check 24 rows. Downloaded file checked: valid, only `xl/worksheets/sheet1.xml` and `xl/workbook.xml` differ from the original (all other parts byte-identical), fixes present, formula `=1/0` and real dates kept | ✅ PASSED |
-| C: 6-excel-references.xlsx: reference protection | Fix all fixes 2 cells and skips duplicate removal, naming the chart and the Summary formula | Screen: “2 cells will change” and “Remove duplicate rows: not done here, because removing them would break Chart (chart1.xml); Formulas or rules on sheet “Summary””. Downloaded file checked: only the Sales worksheet changed; duplicates kept; `=SUM(Sales!D2:D11)`, the chart, the bold/filled header and column width unchanged | ✅ PASSED (Fix all). “Clear the cells instead” not yet tested on the device |
+| C: 6-excel-references.xlsx: reference protection | Fix all fixes 2 cells and skips duplicate removal, naming the chart and the Summary formula | Screen: “2 cells will change” and “Remove duplicate rows: not done here, because removing them would break Chart (chart1.xml); Formulas or rules on sheet “Summary””. Downloaded file checked: only the Sales worksheet changed; duplicates kept; `=SUM(Sales!D2:D11)`, the chart, the bold/filled header and column width unchanged | ✅ PASSED. Also “Remove duplicate rows” on its own: the warning named the chart and the Summary formula with no Apply button; “Clear the cells instead” → “8 cells will change” (rows 10 and 11, copies of rows 5 and 7); rows 10–11 shown empty and green in place; Excel download: Cells edited 8, Rows removed 0, Features not kept: None, only `xl/worksheets/sheet1.xml` changed, 36 cells verified |
 | D: 5-large-problems-50mb.csv (785,000 rows) | Fix all: spaces 873, capitalization 1,122, duplicates 7,850; then 1,995 cells changed, 7,850 rows removed, 777,150 rows | **Exact match.** Opened in 5.5 s, checked in 10.4 s, re-checked (777,150 rows) in 11.5 s; emails 3,140, missing 1,963 and unusual 78 remain as expected | ✅ PASSED. Download confirmed: the owner shared the downloaded file's contents (first ~2,160 rows); UTF-8 BOM present, the duplicate copies are gone (e.g. 99 → 101, 199 → 201), trailing spaces removed (“Customer 33”), “paris” → “Paris” (ids 21, 721, 1421, 2121), invalid emails and empty amounts unchanged |
 | E: Spreadsheet Cleaner page | Each tool shows “N found · Preview” or “Nothing to fix” | “Cleaning tools” with “1 found · Preview” and “2 found · Preview” | ✅ PASSED |
 
@@ -126,5 +126,5 @@ Note: the tablet renames repeated downloads of the test files (for example “1-
 
 | Item | Who |
 |---|---|
-| Android tablet: “Clear the cells instead” (test C); tests A, B, D, E and the rest of C passed | Project owner |
+| Android tablet testing (tests A–E) | ✅ Done, all passed |
 | Owner review and approval | Project owner |
