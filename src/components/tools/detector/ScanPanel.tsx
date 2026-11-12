@@ -45,7 +45,7 @@ const CHECKS = [
  * changes. Fixes are previewed first and applied only on request; the original
  * file is never changed.
  */
-export function ScanPanel({ api }: { api: ToolApi }) {
+export function ScanPanel({ api, variant = "detector" }: { api: ToolApi; variant?: "detector" | "cleaner" }) {
   const [rescan, setRescan] = useState(0);
   const [fixRequest, setFixRequest] = useState<FixRequest | null>(null);
   const scanKey = `${api.viewKey}:${api.headerRow}:${rescan}:${api.edits.version}`;
@@ -197,6 +197,11 @@ export function ScanPanel({ api }: { api: ToolApi }) {
         )}
       </Card>
 
+      {variant === "cleaner" && <CleaningTools result={result} onFix={(fixId) => setFixRequest({ kind: "one", fixId })} />}
+
+      {variant === "cleaner" && result.issues.length > 0 && (
+        <h2 className="pt-2 text-lg font-semibold">Problems found, with how to fix each one</h2>
+      )}
       {result.issues.map((issue) => (
         <IssueCard
           key={issue.id}
@@ -211,5 +216,48 @@ export function ScanPanel({ api }: { api: ToolApi }) {
       ))}
       {fixRequest && <FixDialog api={api} request={fixRequest} columnName={columnName} onClose={() => setFixRequest(null)} />}
     </section>
+  );
+}
+
+/** Cleaner: every cleaning tool with what it would fix in this sheet. */
+const TOOL_HINTS: Record<FixId, string> = {
+  "extra-spaces": "Spaces, tabs and invisible spaces at the start or end of cells",
+  "duplicate-rows": "Exact copies of earlier rows (the first copy is kept)",
+  "empty-rows": "Rows with no data",
+  "empty-columns": "Columns with no data (you choose which to keep)",
+  "numbers-as-text": "Numbers saved as text, such as “1,250” or “'45”",
+  "inconsistent-case": "The same value written as “Paris”, “paris” or “PARIS”",
+  "inconsistent-dates": "Dates in mixed formats (you choose the format)",
+  "phone-formats": "Phone numbers in mixed layouts (you choose the layout)",
+};
+
+function CleaningTools({ result, onFix }: { result: ScanResult; onFix: (fixId: FixId) => void }) {
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold">Cleaning tools</h2>
+      <p className="text-sm text-muted">Each tool shows a preview first. Cells DataFixer can&apos;t fix on its own (such as a wrong email address) can be edited by tapping them in the table below.</p>
+      <ul className="mt-3 divide-y divide-line">
+        {(FIX_IDS as readonly FixId[]).map((id) => {
+          const n = result.issues.find((i) => i.id === id)?.count ?? 0;
+          return (
+            <li key={id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium">{FIX_LABELS[id]}</p>
+                <p className="text-sm text-muted">{TOOL_HINTS[id]}</p>
+              </div>
+              {n > 0 ? (
+                <Button size="sm" className="h-10 shrink-0" onClick={() => onFix(id)} aria-label={`${FIX_LABELS[id]}: ${n.toLocaleString("en-US")} found`}>
+                  <Wand2 className="size-4" aria-hidden="true" /> {n.toLocaleString("en-US")} found · Preview
+                </Button>
+              ) : (
+                <span className="flex shrink-0 items-center gap-1.5 text-sm text-success">
+                  <CheckCircle2 className="size-4" aria-hidden="true" /> Nothing to fix
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }

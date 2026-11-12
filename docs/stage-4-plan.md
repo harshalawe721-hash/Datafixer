@@ -1,7 +1,7 @@
 # Stage 4 development plan: automatic fixing, editing and clean downloads
 
 **Status:** plan **approved** by the project owner on 11 November 2026, together with the four owner decisions and five additional safeguards.
-**Implementation: authorized** by the owner ("Start Stage 4", 11 November 2026). Progress is tracked in the table below. Each step is reported to the owner before the next one starts.
+**Implementation: all 8 steps done** (authorized 11 November 2026). Awaiting Android tablet testing and owner approval. See `docs/stage-4-test-report.md`.
 
 Stages 1–3 are complete (see `README.md`, `docs/stage-2-test-report.md`, `docs/stage-3-test-report.md`).
 
@@ -213,7 +213,7 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 | 5 | ✅ Done: tap a cell to edit it (formula warning with explicit confirmation; dates typed into Excel date cells stay real dates; Undo), plus a “Done / Undone / Redone” message after every change naming each fix and its counts. 4 new unit tests; browser test now 75 checks | `CellEditor.tsx`, `EngineCore.cellInfo` / `editCell` |
 | 6 | ✅ Done: Download corrected CSV (UTF-8 with BOM, original separator and line endings). Built in chunks, then read back from its own bytes with DataFixer's reader and compared cell by cell before “Export successful” is shown (V1, V2). Summary (S3) and recoverable export (S4: cancel, failure and low memory download nothing and keep all changes; memory checked before starting). Excel sheets can be downloaded as CSV (values only) after a warning that lists what CSV can't keep. 11 new unit tests verified independently with Python's csv module (V3); browser test now 94 checks. Measured (Node, desktop): 50 MB export+verify 2.4 s; generated 150 MB (1.78M rows, 14.2M cells) 8.8 s, also within a 512 MB heap cap | `export/csv-export.ts`, `EngineCore.exportCsv`, `DownloadDialog.tsx` |
 | 7 | ✅ Done: workbook reference check (S2) before any row/column removal in Excel files, with “Clear the cells instead” when something refers to them. Excel download that patches the original package: only the edited worksheet (and, when needed, workbook.xml for the recalculate flag, styles.xml for new date formats, calcChain.xml removal) changes, and everything else is copied byte for byte. Verified by re-reading with DataFixer's Excel reader (V1, V2) and in tests with openpyxl (V4–V6). Old .xls files are rebuilt as .xlsx, with the measured losses listed. 10 new unit tests; browser test now 106 checks. Measured: 200,000-row workbook, 32,572 fixes, export+verify 10.4 s | `xlsx/zip.ts`, `xlsx/references.ts`, `xlsx/patch.ts`, `export/xls-export.ts`, `EngineCore.exportXlsx` |
-| 8 | Not started | — |
+| 8 | ✅ Done: Spreadsheet Cleaner page (tools-first layout on the same engine), large-file test through the website at 50/100/150 MB (normal and 512 MB heap), Stage 4 test pack with expected results (`tests/fixtures/fix/`, checked by `fix-pack.test.ts`), Stage 4 test report | `components/tools/cleaner/`, `scripts/export-perf.ts`, `docs/stage-4-test-report.md` |
 
 ### Decisions made while building (for owner review)
 

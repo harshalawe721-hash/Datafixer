@@ -43,7 +43,7 @@ export const tools: readonly ToolDefinition[] = [
     name: "Spreadsheet Cleaner",
     shortName: "Cleaner",
     href: "/spreadsheet-cleaner",
-    summary: "Remove duplicates, trim spaces, fix capitalization, split or merge columns, with undo.",
+    summary: "Remove duplicates, trim spaces, fix capitalization and dates, edit cells, with undo and download.",
     icon: Sparkles,
     accepts: [".xlsx", ".xls", ".csv"],
     featured: true,

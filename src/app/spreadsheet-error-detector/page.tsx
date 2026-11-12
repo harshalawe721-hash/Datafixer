@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <ToolPageShell
       toolId="spreadsheet-error-detector"
-      intro="Check an Excel or CSV file for duplicate rows, missing cells, extra spaces, inconsistent dates, invalid emails and other hidden problems. Each problem is explained with clear steps to fix it, and your file is never changed."
+      intro="Check an Excel or CSV file for duplicate rows, missing cells, extra spaces, inconsistent dates, invalid emails and other hidden problems. Each problem is explained, many can be fixed for you after a preview, and your original file is never changed."
     >
       <DetectorWorkspace />
     </ToolPageShell>

@@ -1,0 +1,185 @@
+{
+  "1-problems.csv": {
+    "fixAll": [
+      [
+        "Remove extra spaces",
+        2
+      ],
+      [
+        "Fix capitalization",
+        1
+      ],
+      [
+        "Convert numbers stored as text",
+        1
+      ],
+      [
+        "Remove duplicate rows",
+        2
+      ],
+      [
+        "Remove empty rows",
+        1
+      ]
+    ],
+    "afterFixAllAndEdit": {
+      "impossible-dates": 1,
+      "formula-errors": 1,
+      "empty-columns": 1,
+      "missing-cells": 1,
+      "inconsistent-dates": 1,
+      "invalid-emails": 1,
+      "invalid-phones": 1,
+      "unusual-values": 2,
+      "phone-formats": 1
+    },
+    "download": {
+      "downloadName": "1-problems-cleaned.csv",
+      "cellsEdited": 5,
+      "rowsRemoved": 3,
+      "duplicatesRemoved": 2,
+      "automaticCorrections": 7,
+      "manualEdits": 1
+    }
+  },
+  "2-problems.xlsx": {
+    "fixAll": [
+      [
+        "Remove extra spaces",
+        2
+      ],
+      [
+        "Fix capitalization",
+        1
+      ],
+      [
+        "Convert numbers stored as text",
+        1
+      ],
+      [
+        "Remove duplicate rows",
+        2
+      ],
+      [
+        "Remove empty rows",
+        1
+      ]
+    ],
+    "afterFixAll": {
+      "impossible-dates": 1,
+      "formula-errors": 1,
+      "inconsistent-dates": 2,
+      "invalid-emails": 2,
+      "empty-columns": 1,
+      "missing-cells": 1,
+      "invalid-phones": 1,
+      "phone-formats": 1,
+      "unusual-values": 1
+    },
+    "download": {
+      "downloadName": "2-problems-cleaned.xlsx",
+      "cellsEdited": 4,
+      "rowsRemoved": 3,
+      "duplicatesRemoved": 2,
+      "automaticCorrections": 7,
+      "manualEdits": 0,
+      "changedParts": [
+        "xl/worksheets/sheet1.xml",
+        "xl/workbook.xml"
+      ]
+    }
+  },
+  "6-excel-references.xlsx": {
+    "problems": {
+      "duplicate-rows": 2,
+      "extra-spaces": 1,
+      "inconsistent-case": 1
+    },
+    "removeDuplicatesBlockedBy": [
+      "Chart (chart1.xml)",
+      "Formulas or rules on sheet “Summary”"
+    ],
+    "clearInsteadCells": 8,
+    "fixAllAfterClearing": [
+      [
+        "Remove extra spaces",
+        1
+      ],
+      [
+        "Fix capitalization",
+        1
+      ]
+    ],
+    "download": {
+      "downloadName": "6-excel-references-cleaned.xlsx",
+      "cellsEdited": 10,
+      "rowsRemoved": 0,
+      "duplicatesRemoved": 0,
+      "automaticCorrections": 10,
+      "manualEdits": 0,
+      "changedParts": [
+        "xl/worksheets/sheet1.xml"
+      ]
+    }
+  },
+  "4-large-problems-25mb.csv": {
+    "fixAll": [
+      [
+        "Remove extra spaces",
+        439
+      ],
+      [
+        "Fix capitalization",
+        565
+      ],
+      [
+        "Remove duplicate rows",
+        3950
+      ]
+    ],
+    "afterFixAll": {
+      "invalid-emails": 1580,
+      "missing-cells": 988,
+      "unusual-values": 39
+    },
+    "download": {
+      "downloadName": "4-large-problems-25mb-cleaned.csv",
+      "cellsEdited": 1004,
+      "rowsRemoved": 3950,
+      "duplicatesRemoved": 3950,
+      "automaticCorrections": 4954,
+      "manualEdits": 0,
+      "rowsInFile": 391051
+    }
+  },
+  "5-large-problems-50mb.csv": {
+    "fixAll": [
+      [
+        "Remove extra spaces",
+        873
+      ],
+      [
+        "Fix capitalization",
+        1122
+      ],
+      [
+        "Remove duplicate rows",
+        7850
+      ]
+    ],
+    "afterFixAll": {
+      "invalid-emails": 3140,
+      "missing-cells": 1963,
+      "unusual-values": 78
+    },
+    "download": {
+      "downloadName": "5-large-problems-50mb-cleaned.csv",
+      "cellsEdited": 1995,
+      "rowsRemoved": 7850,
+      "duplicatesRemoved": 7850,
+      "automaticCorrections": 9845,
+      "manualEdits": 0,
+      "rowsInFile": 777151
+    }
+  }
+}

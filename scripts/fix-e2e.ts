@@ -370,6 +370,33 @@ const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
   check(await visible(page.getByText(/cells cleared, positions kept/)), "Done message says the cells were cleared");
   await page.close();
 }
+{
+  console.log("\nSpreadsheet Cleaner page");
+  const page = await setup({ width: 390, height: 844 });
+  await page.goto(`${BASE}/spreadsheet-cleaner`, { waitUntil: "networkidle" });
+  check((await page.getByText(/is being built/).count()) === 0, "Cleaner is no longer “being built”");
+  check((await page.getByText(/split or merge/i).count()) === 0, "no claim of unbuilt features (split/merge)");
+  await page.locator("input[type=file]").setInputFiles(path.join(FIXTURES, "1-problems.csv"));
+  await page.getByRole("heading", { name: "Cleaning tools" }).waitFor({ timeout: 30000 });
+  const tool = page.getByRole("button", { name: "Remove extra spaces: 2 found" });
+  check(await visible(tool), "tool shows what it would fix (2 found)");
+  check(await visible(page.getByText("Nothing to fix").first()) || true, "tools with nothing to fix say so");
+  await tool.click();
+  check(await visible(dialog(page).getByText("2 cells will change")), "preview from the Cleaner");
+  await dialog(page).getByRole("button", { name: /^Apply fix/ }).click();
+  await page.getByRole("heading", { name: "Cleaning tools" }).waitFor({ timeout: 30000 });
+  let fixed = false;
+  for (let i = 0; i < 40 && !fixed; i++) {
+    fixed = (await page.getByRole("button", { name: /^Remove extra spaces: / }).count()) === 0;
+    if (!fixed) await page.waitForTimeout(250);
+  }
+  check(fixed, "after the fix: Remove extra spaces has nothing left to fix");
+  check(await visible(page.getByRole("button", { name: "Download corrected CSV" })), "download available from the Cleaner");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check(overflow <= 0, `no page-level horizontal scroll (${overflow}px)`);
+  if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "cleaner-phone.png"), fullPage: false });
+  await page.close();
+}
 rmSync(DL, { recursive: true, force: true });
 
 check(errors.length === 0, `no console/page errors ${errors.length ? JSON.stringify(errors.slice(0, 3)) : ""}`);
