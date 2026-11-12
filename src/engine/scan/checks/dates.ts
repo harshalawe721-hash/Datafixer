@@ -20,7 +20,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
 const colName = (p: ColumnProfile) => p.name ?? `Column ${p.letter}`;
 
 /** Format families: variants that read the same are one family. */
-type Family = "excel" | "iso" | "ymd-slash" | "dm-slash" | "dm-dash" | "dmy-dot" | "dm-short" | "d-mon-y" | "mon-d-y";
+export type Family = "excel" | "iso" | "ymd-slash" | "dm-slash" | "dm-dash" | "dmy-dot" | "dm-short" | "d-mon-y" | "mon-d-y";
 
 const FAMILY_OF: Record<DatePatternId, Family> = {
   iso: "iso",
@@ -47,7 +47,7 @@ export const FAMILY_LABEL: Record<Family, string> = {
 };
 
 /** Families whose first two numbers may be day/month in either order. */
-const ORDER_FAMILIES = new Set<Family>(["dm-slash", "dm-dash", "dm-short"]);
+export const ORDER_FAMILIES = new Set<Family>(["dm-slash", "dm-dash", "dm-short"]);
 
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
@@ -59,7 +59,7 @@ function validYmd(y: number, m: number, d: number): boolean {
   return y >= 1000 && y <= 9999 && m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m);
 }
 
-function familyOf(cat: number): Family | null {
+export function familyOf(cat: number): Family | null {
   if (cat === Cat.Date) return "excel";
   if (cat < Cat.DateTextBase) return null;
   const id = DATE_PATTERNS[cat - Cat.DateTextBase]?.id;
@@ -67,7 +67,7 @@ function familyOf(cat: number): Family | null {
 }
 
 /** First two numbers of a d/m-or-m/d value, and the year. */
-function orderParts(s: string): { a: number; b: number; y: number } | null {
+export function orderParts(s: string): { a: number; b: number; y: number } | null {
   const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(s);
   if (!m) return null;
   let y = Number(m[3]);

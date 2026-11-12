@@ -112,7 +112,7 @@ export const invalidEmails: CheckFactory = (ctx) => {
 const PHONE_HEADER = /(^|[^a-z])(phone|phones|mobile|mob|tel|telephone|fax|whatsapp|cellphone|contact ?(no|number))([^a-z]|$)/i;
 /** Looks like a phone number (for content-based column detection). */
 const PHONE_LIKE = /^\+?[\d\s().\-/]{7,}$/;
-const EXTENSION = /\s*(ext\.?|extension|x|#)\s*\d{1,6}$/i;
+export const EXTENSION = /\s*(ext\.?|extension|x|#)\s*\d{1,6}$/i;
 
 function digits(s: string): number {
   let n = 0;

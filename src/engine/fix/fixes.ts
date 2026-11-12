@@ -22,8 +22,14 @@ import { numbersAsText } from "../scan/checks/text.ts";
 import { duplicateGroups, emptyColumnProfiles, rowFingerprints } from "../scan/checks/structure.ts";
 import { columnLetter } from "../query/query.ts";
 import type { ChangeRequest } from "../edit/session.ts";
+import { invalidPhones } from "../scan/checks/contacts.ts";
+import { planCase, planDates, planPhones } from "./choice-fixes.ts";
 
-export const FIX_IDS = ["extra-spaces", "duplicate-rows", "empty-rows", "empty-columns", "numbers-as-text"] as const;
+/** Fixes that need no choice (Step 2). */
+export const SAFE_FIX_IDS = ["extra-spaces", "duplicate-rows", "empty-rows", "empty-columns", "numbers-as-text"] as const;
+/** Fixes that may need the user's choice (Step 3). */
+export const CHOICE_FIX_IDS = ["inconsistent-case", "inconsistent-dates", "phone-formats"] as const;
+export const FIX_IDS = [...SAFE_FIX_IDS, ...CHOICE_FIX_IDS] as const;
 export type FixId = (typeof FIX_IDS)[number];
 
 export const FIX_LABELS: Record<FixId, string> = {
@@ -32,7 +38,47 @@ export const FIX_LABELS: Record<FixId, string> = {
   "empty-rows": "Remove empty rows",
   "empty-columns": "Remove empty columns",
   "numbers-as-text": "Convert numbers stored as text",
+  "inconsistent-case": "Fix capitalization",
+  "inconsistent-dates": "Make date formats consistent",
+  "phone-formats": "Make phone number layouts consistent",
 };
+
+/** Target formats for the date fix: text formats (CSV) or real Excel dates with a display format (Excel). */
+export type DateTarget = "iso" | "dmy-slash" | "mdy-slash" | "dmy-dot" | "d-mon-y" | "mon-d-y" | "excel-iso" | "excel-dmy" | "excel-mdy" | "excel-d-mon-y";
+
+/** A decision the user must make (or can change) before a fix converts these values. */
+export type FixChoice =
+  | {
+      kind: "spelling";
+      column: number;
+      columnName: string;
+      /** Pass back in options.caseChoices[key]. */
+      key: string;
+      options: { value: string; count: number }[];
+      chosen: string | null;
+    }
+  | {
+      kind: "date-format";
+      column: number;
+      columnName: string;
+      formats: { label: string; count: number }[];
+      notDates: number;
+      /** Day/month order proven by the column's own values. */
+      evidence: "dmy" | "mdy" | "unknown" | "mixed";
+      /** Some values could be day-first or month-first: the user must choose the order to convert them. */
+      needsOrder: boolean;
+      targets: { id: DateTarget; label: string }[];
+      suggested: DateTarget;
+      chosen: { target: DateTarget; order: "dmy" | "mdy" | null } | null;
+    }
+  | {
+      kind: "phone-layout";
+      column: number;
+      columnName: string;
+      layouts: { template: string; example: string; count: number }[];
+      suggested: string;
+      chosen: string | null;
+    };
 
 export interface FixOptions {
   /** Treat the first row as column names (never changed or removed by fixes). */
@@ -44,6 +90,12 @@ export interface FixOptions {
    * text ("1250") so the column stays consistent. Excel files get real numbers.
    */
   textOnly?: boolean;
+  /** Capitalization ties: choice key → spelling to use. */
+  caseChoices?: Record<string, string>;
+  /** Date columns (view index) → target format, and the day/month order when the column can't tell. */
+  dateChoices?: Record<number, { target: DateTarget; order?: "dmy" | "mdy" }>;
+  /** Phone columns (view index) → layout template (from the preview's choices). */
+  phoneChoices?: Record<number, string>;
 }
 
 /** What a fix would do, shown to the user before anything changes. Positions are view positions. */
@@ -62,6 +114,8 @@ export interface FixPreview {
   columns: { index: number; letter: string; name: string | null }[];
   /** Things deliberately left alone, with the reason. */
   skipped: { reason: string; count: number }[];
+  /** Decisions for the user (Step 3 fixes); empty for the safe fixes. */
+  choices: FixChoice[];
 }
 
 export interface FixPlan {
@@ -101,7 +155,7 @@ function formulaRowsAndCols(sheet: SheetModel): { rows: Set<number>; cols: Set<n
 }
 
 function emptyPlan(fixId: FixId, description: string): FixPreview {
-  return { fixId, label: FIX_LABELS[fixId], description, cellsChanged: 0, rowsRemoved: 0, columnsRemoved: 0, examples: [], rows: [], columns: [], skipped: [] };
+  return { fixId, label: FIX_LABELS[fixId], description, cellsChanged: 0, rowsRemoved: 0, columnsRemoved: 0, examples: [], rows: [], columns: [], skipped: [], choices: [] };
 }
 
 function addSkip(skipped: FixPreview["skipped"], reason: string, count: number) {
@@ -158,7 +212,7 @@ export async function planFix(sheet: SheetModel, fixId: FixId, options: FixOptio
     cancel: pc.cancel,
     memoryBudgetBytes: pc.memoryBudgetBytes,
     onProgress: pc.onProgress,
-    checks: fixId === "numbers-as-text" ? [numbersAsText] : [],
+    checks: fixId === "numbers-as-text" ? [numbersAsText] : fixId === "phone-formats" ? [invalidPhones] : [],
   });
   const originalRow = pc.originalRow ?? ((r: number) => r);
   switch (fixId) {
@@ -170,6 +224,12 @@ export async function planFix(sheet: SheetModel, fixId: FixId, options: FixOptio
       return planEmptyRows(ctx);
     case "empty-columns":
       return planEmptyColumns(ctx, options.keepColumns ?? []);
+    case "inconsistent-case":
+      return planCase(ctx, options);
+    case "inconsistent-dates":
+      return planDates(ctx, options, !options.textOnly && typeof sheet.grid.formatNumber === "function");
+    case "phone-formats":
+      return planPhones(ctx, options, findings.find((f) => f.issue.id === "phone-formats"));
     case "numbers-as-text":
       return planNumbers(ctx, findings.find((f) => f.issue.id === "numbers-as-text")?.cells ?? null, findings.find((f) => f.issue.id === "numbers-as-text")?.issue.count ?? 0, options.textOnly ?? false);
     default:

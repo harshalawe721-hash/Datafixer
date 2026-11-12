@@ -80,33 +80,46 @@ export const extraSpaces: CheckFactory = (ctx) => {
 export const CASE_MAX_DISTINCT_PER_COLUMN = 20_000;
 const CASE_MAX_DISTINCT_TOTAL = 200_000;
 
+/**
+ * Counts the spellings of each value per column (lower-case key → exact
+ * spelling → count). Shared by the capitalization check and the fix, so both
+ * see exactly the same groups. Cells must be added in row-major order.
+ */
+export class CaseCollector {
+  readonly maps: (Map<string, Map<string, number>> | null)[];
+  readonly skipped = new Set<number>();
+  private tracked = 0;
+  constructor(profiles: ColumnProfile[]) {
+    this.maps = profiles.map((p) => (p.kind === "text" || p.kind === "mixed" ? new Map() : null));
+  }
+  add(c: number, cat: number, v: unknown): void {
+    if (cat !== Cat.Text) return;
+    const map = this.maps[c];
+    if (!map) return;
+    const s = (v as string).trim();
+    if (s.length < 2 || s.length > 200) return; // single letters can be meaningful codes
+    const key = s.toLowerCase();
+    let variants = map.get(key);
+    if (!variants) {
+      if (map.size >= CASE_MAX_DISTINCT_PER_COLUMN || this.tracked >= CASE_MAX_DISTINCT_TOTAL) {
+        this.maps[c] = null; // too many different values: stop tracking this column
+        this.skipped.add(c);
+        return;
+      }
+      variants = new Map();
+      map.set(key, variants);
+      this.tracked++;
+    }
+    variants.set(s, (variants.get(s) ?? 0) + 1);
+  }
+}
+
 export const inconsistentCase: CheckFactory = (ctx) => {
-  // lower-case key → (exact spelling → count), per column
-  const maps: (Map<string, Map<string, number>> | null)[] = ctx.profiles.map((p) =>
-    p.kind === "text" || p.kind === "mixed" ? new Map() : null,
-  );
-  const skipped = new Set<number>();
-  let tracked = 0;
+  const collector = new CaseCollector(ctx.profiles);
+  const { maps, skipped } = collector;
   return {
     cell(_r, c, cat, v) {
-      if (cat !== Cat.Text) return;
-      const map = maps[c];
-      if (!map) return;
-      const s = (v as string).trim();
-      if (s.length < 2 || s.length > 200) return; // single letters can be meaningful codes
-      const key = s.toLowerCase();
-      let variants = map.get(key);
-      if (!variants) {
-        if (map.size >= CASE_MAX_DISTINCT_PER_COLUMN || tracked >= CASE_MAX_DISTINCT_TOTAL) {
-          maps[c] = null; // too many different values: stop tracking this column
-          skipped.add(c);
-          return;
-        }
-        variants = new Map();
-        map.set(key, variants);
-        tracked++;
-      }
-      variants.set(s, (variants.get(s) ?? 0) + 1);
+      collector.add(c, cat, v);
     },
     finish(): Finding[] {
       // For each inconsistent group, the most common spelling is the reference.

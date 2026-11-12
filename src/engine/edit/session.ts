@@ -21,10 +21,13 @@ export interface ChangeRequest {
   operation: string;
   /** Label shown in the history, e.g. "Remove extra spaces". */
   label: string;
-  cells?: { row: number; col: number; value: CellValue }[];
+  /** `format`: Excel number format for the new value (e.g. a date format for a converted date). */
+  cells?: { row: number; col: number; value: CellValue; format?: string }[];
   /** Compact form for large changes: view cell keys (cellKey(row, col)) and their new values. */
   cellKeys?: Float64Array;
   cellValues?: CellValue[];
+  /** Optional number formats aligned with cellKeys (null = none). */
+  cellFormats?: (string | null)[];
   deleteRows?: { row: number; reason: string }[];
   deleteColumns?: { col: number; reason: string }[];
 }
@@ -73,6 +76,9 @@ interface Entry {
   keys: Float64Array;
   values: CellValue[];
   prev: (CellValue | undefined)[];
+  /** Number formats given with the new values, and the formats just before (sparse; usually empty). */
+  formats: (string | undefined)[] | null;
+  prevFormats: (string | undefined)[] | null;
   /** Original rows/columns deleted, with an index into `reasons`. */
   rows: Uint32Array;
   rowReason: Uint16Array;
@@ -119,7 +125,7 @@ export class EditSession {
   constructor(base: SheetModel, options: EditSessionOptions = {}) {
     this.base = base;
     this.budget = options.memoryBudgetBytes;
-    this.layer = { edits: new Map(), editedRows: new Uint16Array(base.grid.rowCount), extent: new Map() };
+    this.layer = { edits: new Map(), editedRows: new Uint16Array(base.grid.rowCount), extent: new Map(), formats: new Map() };
     this.rowDeleted = new Uint8Array(base.grid.rowCount);
     this.colDeleted = new Uint8Array(base.columnCount);
   }
@@ -267,7 +273,7 @@ export class EditSession {
       columnCount: baseCols - this.colsRemoved,
       formulas: remap(base.formulas, true),
       errors: remap(base.errors, true),
-      numberFormats: remap(base.numberFormats, false),
+      numberFormats: this.withFormatOverrides(remap(base.numberFormats, false), mapKey),
       hyperlinks: remap(base.hyperlinks, false),
       merges,
       hiddenRows: baseToViewRow ? remapSet(base.hiddenRows, remapRow) : base.hiddenRows,
@@ -278,6 +284,17 @@ export class EditSession {
     };
     this.cachedView = { version: this.versionNo, sheet, grid, baseToViewRow, baseToViewCol };
     return this.cachedView;
+  }
+
+  /** Number formats of the view, including formats given to edited cells. */
+  private withFormatOverrides(m: Map<number, string>, mapKey: (key: number) => number): Map<number, string> {
+    if (this.layer.formats.size === 0) return m;
+    const out = new Map(m);
+    for (const [key, fmt] of this.layer.formats) {
+      const nk = mapKey(key);
+      if (nk >= 0) out.set(nk, fmt);
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------ changes
@@ -291,33 +308,45 @@ export class EditSession {
     const g = this.grid();
 
     // Cells (last value wins if a cell is listed twice).
-    const byKey = new Map<number, CellValue>();
-    const add = (vr: number, vc: number, value: CellValue) => {
+    const byKey = new Map<number, { value: CellValue; format: string | undefined }>();
+    const add = (vr: number, vc: number, value: CellValue, format: string | undefined) => {
       if (!Number.isInteger(vr) || !Number.isInteger(vc) || vc < 0 || vc >= view.columnCount) {
         throw new EngineError("invalid-edit", `Cell ${columnLetter(Math.max(0, vc))}${vr + 1} doesn't exist.`);
       }
       const { row, col } = this.toBase(vr, vc);
-      byKey.set(cellKey(row, col), value);
+      byKey.set(cellKey(row, col), { value, format });
     };
-    for (const cell of req.cells ?? []) add(cell.row, cell.col, cell.value);
+    for (const cell of req.cells ?? []) add(cell.row, cell.col, cell.value, cell.format);
     if (req.cellKeys) {
       if (!req.cellValues || req.cellValues.length !== req.cellKeys.length) throw new EngineError("internal", "Change has mismatched cells and values.");
       for (let i = 0; i < req.cellKeys.length; i++) {
         const { row, col } = splitCellKey(req.cellKeys[i]!);
-        add(row, col, req.cellValues[i]!);
+        add(row, col, req.cellValues[i]!, req.cellFormats?.[i] ?? undefined);
       }
     }
     const keys: number[] = [];
     const values: CellValue[] = [];
     const prev: (CellValue | undefined)[] = [];
+    let formats: (string | undefined)[] | null = null;
+    let prevFormats: (string | undefined)[] | null = null;
     let addBytes = 0;
-    for (const [key, value] of byKey) {
+    for (const [key, { value, format }] of byKey) {
       const { row, col } = splitCellKey(key);
-      const current = this.layer.edits.has(key) ? this.layer.edits.get(key)! : this.base.grid.get(row, col);
-      if (current === value) continue;
+      const edited = this.layer.edits.has(key);
+      const current = edited ? this.layer.edits.get(key)! : this.base.grid.get(row, col);
+      const currentFormat = this.layer.formats.get(key);
+      if (current === value && currentFormat === format) continue;
+      if ((format !== undefined || currentFormat !== undefined) && !formats) {
+        formats = new Array(keys.length).fill(undefined);
+        prevFormats = new Array(keys.length).fill(undefined);
+      }
       keys.push(key);
       values.push(value);
-      prev.push(this.layer.edits.has(key) ? this.layer.edits.get(key) : undefined);
+      prev.push(edited ? this.layer.edits.get(key) : undefined);
+      if (formats) {
+        formats.push(format);
+        prevFormats!.push(currentFormat);
+      }
       addBytes += cellBytes(value) + (typeof current === "string" ? current.length * 2 : 0);
     }
 
@@ -359,6 +388,8 @@ export class EditSession {
       keys: Float64Array.from(keys),
       values,
       prev,
+      formats,
+      prevFormats,
       rows,
       rowReason: Uint16Array.from(rows, (r) => rowSet.get(r)!),
       cols,
@@ -409,11 +440,13 @@ export class EditSession {
     }
   }
 
-  private setCell(key: number, value: CellValue | undefined): void {
+  private setCell(key: number, value: CellValue | undefined, format?: string): void {
     const edits = this.layer.edits;
     const { row, col } = splitCellKey(key);
-    // Back to the original value: drop the edit, so "cells edited" stays exact.
-    const remove = value === undefined || value === this.base.grid.get(row, col);
+    if (format === undefined || value === undefined) this.layer.formats.delete(key);
+    else this.layer.formats.set(key, format);
+    // Back to the original value (and no new format): drop the edit, so "cells edited" stays exact.
+    const remove = value === undefined || (value === this.base.grid.get(row, col) && format === undefined);
     const had = edits.has(key);
     if (remove) {
       if (!had) return;
@@ -439,7 +472,7 @@ export class EditSession {
   }
 
   private forward(e: Entry): void {
-    for (let i = 0; i < e.keys.length; i++) this.setCell(e.keys[i]!, e.values[i]!);
+    for (let i = 0; i < e.keys.length; i++) this.setCell(e.keys[i]!, e.values[i]!, e.formats?.[i]);
     for (const r of e.rows) {
       this.rowDeleted[r] = 1;
       this.rowsRemoved++;
@@ -459,7 +492,7 @@ export class EditSession {
       this.rowDeleted[r] = 0;
       this.rowsRemoved--;
     }
-    for (let i = e.keys.length - 1; i >= 0; i--) this.setCell(e.keys[i]!, e.prev[i]);
+    for (let i = e.keys.length - 1; i >= 0; i--) this.setCell(e.keys[i]!, e.prev[i], e.prevFormats?.[i]);
   }
 
   // ------------------------------------------------------------------ history

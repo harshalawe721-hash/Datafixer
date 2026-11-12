@@ -29,6 +29,10 @@ export interface CellGrid {
   display?(r: number, c: number): string;
   /** True when a numeric cell is formatted as a date/time (Excel). */
   isDate?(r: number, c: number): boolean;
+  /** Format a number with an Excel number format (Excel grids; used for edited cells). */
+  formatNumber?(format: string, value: number): string;
+  /** Is this Excel number format a date/time format? */
+  isDateFormat?(format: string): boolean;
   /** Approximate bytes used, for memory budgeting. */
   readonly approxBytes: number;
 }
@@ -212,6 +216,24 @@ export class WorkbookGrid implements CellGrid {
     this.approxBytes = approxBytes;
     this.dateTester = dateTester;
     this.dateCache = new Uint8Array(formats.length);
+  }
+
+  formatNumber(format: string, value: number): string {
+    if (!this.formatter) return String(value);
+    try {
+      return this.formatter(format, value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  isDateFormat(format: string): boolean {
+    if (!this.dateTester) return false;
+    try {
+      return this.dateTester(format);
+    } catch {
+      return false;
+    }
   }
 
   isDate(r: number, c: number): boolean {

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { EngineCore } from "../../src/engine/core.ts";
 import { EngineError } from "../../src/engine/errors.ts";
 import { EditSession } from "../../src/engine/edit/session.ts";
-import { FIX_IDS, planFix, textToNumber, type FixId } from "../../src/engine/fix/fixes.ts";
+import { SAFE_FIX_IDS as FIX_IDS, planFix, textToNumber, type FixId } from "../../src/engine/fix/fixes.ts";
 import { ArrayGrid } from "../../src/engine/grid.ts";
 import { cellKey, createSheet, type CellValue, type SheetModel } from "../../src/engine/types.ts";
 

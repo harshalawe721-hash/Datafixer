@@ -315,6 +315,7 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
   }
 
   const SSF = XLSX.SSF;
+  sheet.date1904 = date1904;
   sheet.grid = new WorkbookGrid(
     rows,
     formatIds,

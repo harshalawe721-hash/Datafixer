@@ -59,6 +59,8 @@ export interface SheetModel {
   issues: ParseIssue[];
   /** Total issues seen (issues[] is capped to keep memory bounded). */
   issueCount: number;
+  /** Excel workbook uses the 1904 date system (dates are serials counted from 1904-01-01). */
+  date1904?: boolean;
 }
 
 export function createSheet(name: string): SheetModel {

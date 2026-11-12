@@ -17,6 +17,8 @@ export interface EditLayer {
   readonly editedRows: Uint16Array;
   /** Original rows whose edits reach beyond the original row length: row → new length. */
   readonly extent: Map<number, number>;
+  /** Number format given to an edited cell (e.g. a text date converted to a real Excel date). */
+  readonly formats: Map<number, string>;
 }
 
 function text(v: CellValue): string {
@@ -35,8 +37,13 @@ export class EditedGrid implements CellGrid {
   /** keptBefore[n] = number of kept columns among original columns 0…n-1. */
   private readonly keptBefore: Uint32Array | null;
   readonly approxBytes: number;
+  /** Present only when the original grid can format numbers (Excel). */
+  readonly formatNumber?: (format: string, value: number) => string;
+  readonly isDateFormat?: (format: string) => boolean;
 
   constructor(base: CellGrid, layer: EditLayer, rowMap: Uint32Array | null, colMap: Uint32Array | null, keptBefore: Uint32Array | null, approxBytes: number) {
+    if (base.formatNumber) this.formatNumber = (f, v) => base.formatNumber!(f, v);
+    if (base.isDateFormat) this.isDateFormat = (f) => base.isDateFormat!(f);
     this.base = base;
     this.layer = layer;
     this.rowMap = rowMap;
@@ -106,16 +113,29 @@ export class EditedGrid implements CellGrid {
     if (bc < 0) return "";
     const br = this.baseRow(r);
     if (this.layer.editedRows[br]) {
-      const v = this.layer.edits.get(cellKey(br, bc));
-      if (v !== undefined) return text(v);
+      const key = cellKey(br, bc);
+      const v = this.layer.edits.get(key);
+      if (v !== undefined) {
+        const fmt = typeof v === "number" ? this.layer.formats.get(key) : undefined;
+        return fmt && this.base.formatNumber ? this.base.formatNumber(fmt, v as number) : text(v);
+      }
     }
     return this.base.display ? this.base.display(br, bc) : text(this.base.get(br, bc));
   }
 
   isDate(r: number, c: number): boolean {
-    if (!this.base.isDate || this.isEdited(r, c)) return false;
+    if (r < 0 || r >= this.rowCount || c < 0) return false;
     const bc = this.baseCol(c);
-    if (bc < 0 || r < 0 || r >= this.rowCount) return false;
-    return this.base.isDate(this.baseRow(r), bc);
+    if (bc < 0) return false;
+    const br = this.baseRow(r);
+    if (this.layer.editedRows[br]) {
+      const key = cellKey(br, bc);
+      const v = this.layer.edits.get(key);
+      if (v !== undefined) {
+        const fmt = this.layer.formats.get(key);
+        return typeof v === "number" && !!fmt && !!this.base.isDateFormat?.(fmt);
+      }
+    }
+    return this.base.isDate ? this.base.isDate(br, bc) : false;
   }
 }

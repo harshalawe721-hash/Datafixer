@@ -208,7 +208,8 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 |---|---|---|
 | 1 | ✅ Done: change layer, edited view, Undo/Redo, history data. 21 new unit tests. Stages 1–3 tests still pass | `src/engine/edit/`, `EngineCore` editing methods |
 | 2 | ✅ Done: five safe fixes with preview (spaces, duplicates, empty rows, empty columns, numbers stored as text). Formula cells skipped. 24 new unit tests. On the 25 MB and 50 MB test-pack files every preview count matched the detector exactly (439/3,950 and 873/7,850) | `src/engine/fix/fixes.ts`, `EngineCore.previewFix` / `applyFix` |
-| 3–8 | Not started | — |
+| 3 | ✅ Done: capitalization (ties → user chooses), date formats (user chooses; ambiguous order → user chooses; Excel → real dates), phone layouts (user chooses; same digits only). 15 new unit tests. Capitalization on the 25 MB and 50 MB files: 565 and 1,122 cells, exactly the detector's counts | `src/engine/fix/choice-fixes.ts` |
+| 4–8 | Not started | — |
 
 ### Decisions made while building (for owner review)
 
@@ -216,6 +217,10 @@ Each step is tested, committed and reported before the next one starts (rule 10)
 - **CSV files have no cell types,** so converted values are written as plain number text (`1250`). Excel files get real numbers and keep each cell's style.
 - **Converting a text number can reveal a new "unusual value".** For example, "1,250" in the test pack was hidden as text and is far above its column's usual range. This is correct, and the re-check shows it.
 - **Rows or columns in Excel files:** a preview that removes rows or columns from an Excel file is marked `deletesFromExcel`. The workbook reference check (S2) is built in Step 7. Until then, the website (Step 4) will not offer row or column removal for Excel files, so no Excel reference can be broken.
+
+- **Dates, Step 3:** a format must always be chosen for each date column (the preview suggests one). Day/month order comes from the column's own values (31/01 proves day-first). Only when the column can't tell is the user asked. Two-digit years (’24), dates with time zones, impossible dates and values that aren't dates are never converted. A date with a time keeps it only in formats that can hold it (2024-01-31 14:30 or real Excel dates). Otherwise it is left as it is. Converting a column to a new format also rewrites dates that were already consistent, and the preview shows the full count.
+- **Excel dates:** text dates become real Excel dates with the chosen display format. Real dates already in the file are not changed. Step 7 must write the new number format into the workbook styles for those cells.
+- **Phone layouts:** a number is only re-laid-out when it has exactly as many digits as the chosen layout, and a "+" country code on both or neither. A country code is never added or removed. Numbers with an extension are left as they are.
 
 ## Testing
 
