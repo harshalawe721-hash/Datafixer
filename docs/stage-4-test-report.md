@@ -110,6 +110,17 @@ The project owner tested on their Android tablet (Chrome) with the Stage 4 test 
 
 Note: the tablet renames repeated downloads of the test files (for example “1-problems_1.csv”), so the downloaded names include that suffix (“1-problems_1-cleaned.csv”). This is expected.
 
+## Completion audit (12 November 2026)
+
+A full audit was run after approval, on the owner's request: requirements checked against the code, every test suite re-run, and gaps fixed. Five gaps were found and fixed (commit `c509ecf`):
+- the CSV fallback when an Excel download fails;
+- the “cleared rows remain as empty rows” warning;
+- the CSV alternative mentioned in the blocked-removal warning;
+- a warning before leaving the page with undownloaded changes;
+- corrected plan wording.
+
+After the fixes, all suites pass: 288 unit tests, 126 fixing browser checks, 33 detector, 62 engine, 114 smoke and 64 large-limit checks, plus the large-file workflow at normal and low memory. See `docs/stage-4-audit.md` for the full report.
+
 ## Known limitations
 
 - **"Fix all" on very large files is the slowest step** (about 37 s at 150 MB on a desktop), because each fix re-reads the sheet in turn. The page stays responsive and Cancel works.
