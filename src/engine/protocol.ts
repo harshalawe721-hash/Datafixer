@@ -7,6 +7,7 @@ import type { ScanOptions, ScanResult } from "./scan/scan.ts";
 import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core.ts";
 import type { FixId, FixOptions } from "./fix/fixes.ts";
 import type { HistoryItem, HistorySummary } from "./edit/session.ts";
+import type { ValidationResult } from "./validate/validate.ts";
 
 export interface OpenOptions {
   delimiter?: string;
@@ -20,6 +21,8 @@ export type EngineRequest =
   | { id: number; type: "loadSheet"; sheet: string }
   | { id: number; type: "getRows"; sheet: string; query: RowQuery }
   | { id: number; type: "scan"; sheet: string; options: ScanOptions }
+  /** Stage 5: CSV Validator (cancellable with abortScans). */
+  | { id: number; type: "validate"; sheet: string; options: { headerRow: boolean } }
   /** Stop running scans (cooperatively, between batches); the open file is kept. */
   | { id: number; type: "abortScans" }
   /** Stage 4: work out what a fix would change (cancellable with abortScans). */
@@ -45,6 +48,7 @@ export interface EngineResults {
   loadSheet: WorkbookSummary;
   getRows: RowPage;
   scan: ScanResult;
+  validate: ValidationResult;
   abortScans: null;
   previewFix: FixPreviewResult;
   previewFixAll: FixAllPreview;

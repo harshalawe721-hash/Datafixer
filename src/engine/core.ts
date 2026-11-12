@@ -8,6 +8,7 @@
  */
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { EngineError, isOutOfMemory } from "./errors.ts";
+import { validateCsv, type ValidationResult } from "./validate/validate.ts";
 import { cellKey } from "./types.ts";
 import { throwIfCancelled, type CancelToken } from "./cancel.ts";
 import { parseCsv } from "./csv/parse-csv.ts";
@@ -16,7 +17,7 @@ import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
 import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
-import { runScan, type Finding, type ScanContext, type ScanOptions, type ScanResult } from "./scan/scan.ts";
+import { runScan, type Finding, type ScanOptions, type ScanResult } from "./scan/scan.ts";
 import { ALL_CHECKS } from "./scan/checks/index.ts";
 import { EditSession, type ChangeRequest, type EditStats, type HistoryItem, type HistorySummary } from "./edit/session.ts";
 import { columnLetter } from "./query/query.ts";
@@ -53,8 +54,9 @@ interface OpenState {
   lastScan: {
     sheet: string;
     headerRow: boolean;
-    ctx: ScanContext;
-    result: ScanResult;
+    /** Rows in the scanned sheet, and the first data row (after the header). */
+    rowCount: number;
+    startRow: number;
     findings: Finding[];
     /** Unique per scan (cache keys). */
     seq: number;
@@ -381,7 +383,7 @@ export class EngineCore {
     if (scan.view?.id !== issueId) {
       let mask: Uint8Array | undefined;
       if (f.rows) {
-        mask = new Uint8Array(scan.ctx.rowCount);
+        mask = new Uint8Array(scan.rowCount);
         for (const r of f.rows) mask[r] = 1;
       }
       scan.view = { id: issueId, mask };
@@ -403,7 +405,7 @@ export class EngineCore {
           return false;
         }
       : columns
-        ? (r: number, c: number) => r >= scan.ctx.startRow && columns.has(c)
+        ? (r: number, c: number) => r >= scan.startRow && columns.has(c)
         : f.rows
           ? () => true // row-level issue (e.g. duplicates): the whole row is affected
           : undefined;
@@ -425,7 +427,26 @@ export class EngineCore {
       checks: ALL_CHECKS,
       onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
     });
-    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, ctx, result, findings, seq: ++this.scanSeq };
+    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, rowCount: ctx.rowCount, startRow: ctx.startRow, findings, seq: ++this.scanSeq };
+    return result;
+  }
+
+  /**
+   * Stage 5: CSV Validator. Checks the file's structure on the current view
+   * (with any changes). Read-only. Findings replace the previous scan's, so
+   * "view affected rows" works the same way as in the Error Detector.
+   */
+  async validate(sheetName: string, options: { headerRow: boolean }, onProgress: Progress, cancel?: CancelToken): Promise<ValidationResult> {
+    const st = this.requireState();
+    if (st.format !== "csv" || !st.csv) throw new EngineError("unsupported-format", "The CSV Validator checks CSV files only.");
+    const { sheet } = this.current(sheetName);
+    st.lastScan = null;
+    const { result, findings } = await validateCsv(sheet, st.csv, {
+      headerRow: options.headerRow,
+      cancel,
+      onProgress: (done, total) => onProgress({ phase: "scanning", loaded: done, total }),
+    });
+    st.lastScan = { sheet: sheetName, headerRow: options.headerRow, rowCount: sheet.grid.rowCount, startRow: result.firstDataRow, findings, seq: ++this.scanSeq };
     return result;
   }
 

@@ -14,6 +14,7 @@ import type { ProgressEvent, WorkbookSummary } from "./types";
 import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
+import type { ValidationResult } from "./validate/validate";
 import type { CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
 import type { FixId, FixOptions } from "./fix/fixes";
 import type { HistoryItem, HistorySummary } from "./edit/session";
@@ -90,6 +91,11 @@ export class EngineClient {
   /** Run the Error Detector checks on a loaded sheet (read-only). */
   scan(sheet: string, options: ScanOptions, onProgress?: (p: ProgressEvent) => void): Promise<ScanResult> {
     return this.request<"scan">({ type: "scan", sheet, options }, onProgress);
+  }
+
+  /** Stage 5: check a CSV file's structure (read-only; stop with abortScans). */
+  validate(sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ValidationResult> {
+    return this.request<"validate">({ type: "validate", sheet, options }, onProgress);
   }
 
   /** Stop running scans; the opened file stays loaded (unlike cancel()). */

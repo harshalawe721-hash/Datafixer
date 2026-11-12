@@ -18,6 +18,7 @@ import { EngineError } from "../errors.ts";
 import { throwIfCancelled, yieldToEventLoop, type CancelToken } from "../cancel.ts";
 import { decodeBlobText, detectEncoding } from "./encoding.ts";
 import { detectDelimiter } from "./delimiter.ts";
+import { LineEndingNormaliser } from "./line-endings.ts";
 
 export interface CsvParseOptions {
   /** Force a delimiter; otherwise it is detected from the start of the file. */
@@ -112,10 +113,6 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   let columnCount = 0;
   let replacementChars = 0;
   let formulaLikeCells = 0;
-  let crlf = 0;
-  let lf = 0;
-  let cr = 0;
-  let prevEndedWithCR = false;
   let lastChar = "";
   let streamError: unknown = null;
   const seenErrorCodes = new Set<string>();
@@ -149,12 +146,14 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   const delimiter = guess.delimiter;
 
   const stream = new TextChunkStream();
+  const endings = new LineEndingNormaliser(delimiter);
 
   // Papa's typings don't model the stream input for browsers; the runtime supports it.
   const parseStream = Papa.parse as unknown as (input: unknown, config: Papa.ParseLocalConfig<string[], undefined>) => void;
   parseStream(stream, {
     delimiter,
-    // newline omitted: Papa detects \n, \r\n or \r from the first chunk.
+    // Line breaks outside quoted values are normalised to \n first (line-endings.ts).
+    newline: "\n",
     quoteChar: '"',
     header: false,
     dynamicTyping: false,
@@ -216,20 +215,11 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     throwIfCancelled(options.cancel);
 
     // Bookkeeping that needs the raw text (cheap single pass).
-    for (let i = 0; i < text.length; i++) {
-      const ch = text.charCodeAt(i);
-      if (ch === 0xfffd) replacementChars++;
-      else if (ch === 0x0a) {
-        if (i === 0 ? prevEndedWithCR : text.charCodeAt(i - 1) === 0x0d) {
-          crlf++;
-          cr--; // that CR was counted as lone; it is part of CRLF
-        } else lf++;
-      } else if (ch === 0x0d) cr++;
-    }
-    prevEndedWithCR = text.charCodeAt(text.length - 1) === 0x0d;
+    for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 0xfffd) replacementChars++;
     lastChar = text[text.length - 1] ?? lastChar;
 
-    stream.emit("data", text);
+    const normalised = endings.push(text);
+    if (normalised) stream.emit("data", normalised);
     if (streamError) break;
     if (options.memoryBudgetBytes) {
       const used = grid.approxBytes * GRID_OVERHEAD_FACTOR;
@@ -242,6 +232,8 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     await yieldToEventLoop();
   }
   throwIfCancelled(options.cancel);
+  const rest = streamError ? "" : endings.push("", true);
+  if (rest) stream.emit("data", rest);
   stream.emit("end");
   if (streamError) {
     if (streamError instanceof EngineError) throw streamError;
@@ -253,6 +245,13 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   const last = lastRow as string[] | null;
   if ((lastChar === "\n" || lastChar === "\r") && last && last.length === 1 && last[0] === "") grid.dropLastRow();
 
+  // Quotes in the middle of an unquoted value: Papa keeps them without reporting.
+  const reported = new Set(sheet.issues.filter((i) => i.code === "invalid-quotes").map((i) => i.row));
+  for (const row of endings.strayQuoteRows) {
+    if (reported.has(row)) continue;
+    addIssue(sheet, { row, code: "invalid-quotes", message: `Row ${row + 1} has a quote character in an unexpected place.` });
+  }
+
   if (!guess.confident) {
     addIssue(sheet, {
       row: null,
@@ -262,6 +261,7 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
   }
 
   sheet.columnCount = columnCount;
+  const { crlf, lf, cr } = endings;
   const kinds = [crlf > 0, lf > 0, cr > 0].filter(Boolean).length;
   const meta: CsvMeta = {
     encoding,
@@ -270,6 +270,7 @@ export async function parseCsv(blob: Blob, name: string, options: CsvParseOption
     lineEnding: kinds === 0 ? "none" : kinds > 1 ? "mixed" : crlf ? "\r\n" : lf ? "\n" : "\r",
     replacementChars,
     formulaLikeCells,
+    finalLineBreak: lastChar === "\n" || lastChar === "\r",
   };
   return { sheet, meta };
 }

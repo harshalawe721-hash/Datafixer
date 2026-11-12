@@ -1,6 +1,6 @@
 # Stage 5 plan: CSV Validator
 
-**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). **Implementation has not started**: the owner asked to complete the Stage 4 audit first. Building starts when the owner says “Start Stage 5”.
+**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). The owner said “Start Stage 5” on 12 November 2026. Progress is recorded under “Progress” below.
 
 Stages 1–4 are complete. Stage 5 builds on the Stage 2 CSV reader, which already detects the encoding, separator, line endings, broken quotes, undecodable characters and formula-like cells. It also builds on the Stage 4 fixing engine: preview, Undo/Redo, change history and verified downloads.
 
@@ -90,6 +90,18 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 | 4 | Repairs with preview (short rows, empty extra fields, header names, control characters), using the Stage 4 engine |
 | 5 | Download options (decision 3), verified as in Stage 4 and independently with Python's `csv` module |
 | 6 | Large-file tests (50/100/150 MB, normal and low memory), browser tests at phone/tablet sizes, test pack with expected results, Stage 5 test report |
+
+## Progress
+
+### Step 1 — Validation engine (done, 12 November 2026)
+
+- `src/engine/validate/validate.ts`: checks A–I, run in the worker on the current (edited) data (`EngineClient.validate`, cancellable like a scan). Results use the Error Detector's issue cards, so “view affected rows” works the same way. Read-only.
+- **Reader bug found and fixed:** in a file mixing line-ending types (CRLF, LF, CR), Papa Parse used only one type, so rows were merged (`"2\nc"`) or values kept a stray `\r`. This affected the Error Detector and Cleaner too (Stages 2–4). New `src/engine/csv/line-endings.ts` turns line breaks *outside* quoted values into `\n` first; line breaks inside quoted values are kept exactly. Line-ending types are now counted outside quotes only (a line break inside a value no longer makes a file “mixed”). Reading cost: +2–5% (100 MB: 7.2 → 7.4 s CRLF, 8.1 → 8.6 s LF, Node).
+- Stray quotes in the middle of unquoted values (`Ana "x" Ruiz`), which Papa accepts silently, are now reported (one per row).
+- The reader records whether the file ends with a line break.
+- “First row may be data”: the validator uses its own rule (at least half the names are numbers, dates or email addresses), because the preview's header guess also rejects real headers that have empty or duplicate names.
+- Test pack: `tests/fixtures/validate/` (13 files, made by `scripts/fixtures/make_validate_pack.py`). The expected results in `expected.json` are written from what was planted, and the reader is compared with Python's `csv` module on 8 of the files.
+- Tests: `tests/engine/validate.test.ts`, 34 tests. Validating 100 MB (1.14 M rows) takes 1.0 s in Node.
 
 ## Testing
 

@@ -123,6 +123,8 @@ export interface CsvMeta {
   replacementChars: number;
   /** Cells starting with = + - @ that spreadsheet apps may run as formulas. */
   formulaLikeCells: number;
+  /** The file ends with a line break (Stage 5 validation). */
+  finalLineBreak?: boolean;
 }
 
 /** Summary sent to the UI after a file is opened (never contains cell data). */

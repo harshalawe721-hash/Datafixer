@@ -19,7 +19,8 @@ useSpreadsheetEngine ──► EngineClient ─postMessage─► engine.worker.t
 |---|---|
 | `src/engine/types.ts` | Shared model: `SheetModel`, `WorkbookSummary`, `FeatureInventory`, cell keys |
 | `src/engine/grid.ts` | `CellGrid` interface; `CompactTextGrid` (CSV), `WorkbookGrid` (Excel: raw values + per-row number-format ids, formatted on display), `ArrayGrid` (tests) |
-| `src/engine/csv/` | Encoding detection, delimiter detection, chunked CSV parsing |
+| `src/engine/csv/` | Encoding detection, delimiter detection, chunked CSV parsing. `line-endings.ts` turns line breaks outside quoted values into `\n` before Papa Parse reads them (mixed CRLF/LF/CR files were mis-read before Stage 5) |
+| `src/engine/validate/` | Stage 5 CSV Validator: structural checks A–I (`validateCsv`), results in the Error Detector's issue format |
 | `src/engine/xlsx/inspect.ts` | Streaming ZIP inspection: limits, unsafe content, sheet list, features |
 | `src/engine/xlsx/read-workbook.ts` | Excel cell reader (official SheetJS 0.20.3 from `vendor/`), loaded on demand inside the worker |
 | `src/engine/query/query.ts` | `SheetQuery`: pages of rows, worker-side search and sort |
