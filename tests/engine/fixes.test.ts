@@ -327,3 +327,13 @@ test("applying several fixes is all-or-nothing: a failure part-way rolls back th
   assert.deepEqual(s.stats(), { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 4 });
   assert.equal(s.history().length, 0, "rolled-back steps leave no history");
 });
+
+test("Fix all notes: a reason about one named column has no stray count", async () => {
+  const rows: CellValue[][] = [["name", "city"]];
+  for (let i = 0; i < 20_050; i++) rows.push([`Name ${i}`, i % 3 ? "Paris" : "paris"]);
+  const core = new EngineCore();
+  const s = await core.open(new File([rows.map((r) => r.join(",")).join("\n")], "n.csv"), "csv", {}, noop);
+  const p = await core.previewFixAll(s.activeSheet, { headerRow: true }, noop);
+  const note = p.notes.find((n) => /too many different values/.test(n))!;
+  assert.ok(note && !/\(\d+\)$/.test(note), note);
+});

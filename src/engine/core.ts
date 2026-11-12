@@ -601,7 +601,12 @@ export class EngineCore {
         onProgress: (done, total) => onProgress({ phase: "scanning", loaded: i * total + done, total: order.length * total }),
         originalRow: (r) => session.grid().baseRow(scratch.grid().baseRow(r)),
       });
-      for (const s of plan.preview.skipped) if (!notes.includes(`${plan.preview.label}: ${s.reason}`) && !(fixId === "empty-columns" && s.reason === "Columns you chose to keep.")) notes.push(`${plan.preview.label}: ${s.reason} (${s.count.toLocaleString("en-US")})`);
+      for (const s of plan.preview.skipped) {
+        if (fixId === "empty-columns" && s.reason === "Columns you chose to keep.") continue;
+        // A reason about one named column ("name has too many different values…") needs no count.
+        const perColumn = /has too many different values/.test(s.reason);
+        notes.push(`${plan.preview.label}: ${s.reason}${perColumn ? "" : ` (${s.count.toLocaleString("en-US")})`}`);
+      }
       if (!plan.request) continue;
       if (st.format === "xlsx" && ROW_OR_COLUMN_FIXES.has(fixId)) {
         const toOriginal = (r: number) => session.grid().baseRow(scratch.grid().baseRow(r));
