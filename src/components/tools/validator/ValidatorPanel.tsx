@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCcw, Wand2, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Download, Info, RotateCcw, Wand2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ProcessingProgress } from "@/components/spreadsheet/ProcessingProgress";
@@ -15,6 +15,7 @@ import { IssueCard } from "@/components/tools/detector/IssueCard";
 import { cn } from "@/lib/cn";
 import { EditBar } from "@/components/tools/fix/EditBar";
 import { FixDialog, type FixRequest } from "@/components/tools/fix/FixDialog";
+import { DownloadDialog } from "@/components/tools/fix/DownloadDialog";
 import { REPAIR_LABELS, type RepairId } from "@/engine/fix/fix-ids";
 import type { ScanIssue } from "@/engine/scan/scan";
 
@@ -44,6 +45,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
 export function ValidatorPanel({ api }: { api: ToolApi }) {
   const [recheck, setRecheck] = useState(0);
   const [fixRequest, setFixRequest] = useState<FixRequest | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const key = `${api.viewKey}:${api.headerRow}:${recheck}:${api.edits.version}`;
   const [state, setState] = useState<State>({ status: "checking", progress: null });
   const [startedKey, setStartedKey] = useState("");
@@ -198,6 +200,15 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
           </div>
         )}
 
+        {!changed && (
+          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted">Need another separator, Unix line endings or no BOM? Download a copy in the format you choose.</p>
+            <Button variant="outline" className="h-11 shrink-0" onClick={() => setDownloading(true)}>
+              <Download className="size-4" aria-hidden="true" /> Download a copy
+            </Button>
+          </div>
+        )}
+
         <label className="mt-4 flex items-start gap-2 rounded-xl bg-surface-muted px-3 py-2.5 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={api.headerRow} onChange={(e) => api.setHeaderRow(e.target.checked)} />
           <span>
@@ -254,6 +265,7 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
           extraFixes={repairsFor(issue)}
         />
       ))}
+      {downloading && <DownloadDialog api={api} onClose={() => setDownloading(false)} />}
       {fixRequest && <FixDialog api={api} request={fixRequest} columnName={columnLabel} onClose={() => setFixRequest(null)} />}
     </section>
   );

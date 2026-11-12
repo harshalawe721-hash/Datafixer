@@ -67,7 +67,7 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         const t = { cancelled: false };
         scanTokens.add(t);
         try {
-          result = req.type === "exportCsv" ? await core.exportCsv(req.sheet, onProgress, t) : await core.exportXlsx(req.sheet, onProgress, t);
+          result = req.type === "exportCsv" ? await core.exportCsv(req.sheet, onProgress, t, req.options) : await core.exportXlsx(req.sheet, onProgress, t);
         } finally {
           scanTokens.delete(t);
         }

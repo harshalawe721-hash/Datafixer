@@ -79,6 +79,8 @@ test("1-problems.csv after all fixes and a manual edit: verified by DataFixer an
       originalName: "1-problems.csv",
       downloadName: "1-problems-cleaned.csv",
       format: "csv",
+      // Stage 5: how the file was written — the Stage 4 defaults (original separator and line endings, BOM).
+      csv: { delimiter: ",", lineEnding: "\n", bom: true },
       bytes: 0,
       rows: 25,
       columns: 8,

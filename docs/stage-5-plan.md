@@ -140,6 +140,15 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - “Column separator not certain” is now shown only while rows still disagree on the number of fields (it was a read-time guess that stayed after repairs).
 - Tests: `tests/engine/repairs.test.ts` (12, including a check that breaking the duplicate-name rule makes them fail); Validator browser test now 91 checks (repairs, Fix all, Undo, history, a real download read by Python's `csv` module, .tsv). 100 MB (1.85 M rows): validation 1.3 s; shortening every row: preview 0.7 s, apply 4.4 s; download with verification 7.0 s (Node).
 
+### Step 5 — Download options (done, 12 November 2026)
+
+- On the CSV Validator page the download dialog first offers (decision 3): **separator** comma / semicolon / tab, **line endings** CRLF (Windows) / LF (Unix, Mac), and **UTF-8 with BOM** (default, recommended for Excel) / **UTF-8 without BOM (for databases)**. Defaults: the file's own separator when it is comma, semicolon or tab, its own line endings (CRLF unless the file used LF), and the BOM.
+- **Download a copy** (when nothing was changed): convert a file to another format without repairing anything. File names: `name-cleaned.csv` after changes, `name-copy.csv` without; `.tsv` when the separator is tab.
+- Values are written exactly: values containing the chosen separator, quotes or line breaks are quoted; line breaks inside values are kept as they are. The file is still verified before it is offered: it is read back as UTF-8 with the chosen separator and compared cell by cell, and the BOM must be present or absent as chosen. Without a BOM, a first value that itself starts with an invisible U+FEFF is refused (it would look like a BOM and be removed by other programs) rather than silently changed.
+- The summary shows the file format (“Semicolon (;) · LF (Unix, Mac) · UTF-8 without BOM”) and warns when the separator was changed or the BOM left out (Excel may then show accents wrongly on double-click).
+- The Error Detector and Cleaner downloads are unchanged (Stage 4 defaults, no options step).
+- Tests: `tests/engine/download-options.test.ts` (5): all 12 combinations on values with every separator, quotes, both kinds of line break, accents, emoji, edge spaces, formula-like values and ragged rows, checked byte by byte and read back by Python's `csv` module (breaking the separator quoting makes the tests fail). Validator browser test: 100 checks, including a real semicolon / LF / no-BOM download read by Python and compared with the original values.
+
 ## Testing
 
 - Unit tests per check with exact counts, including false-alarm guards: quoted separators, quoted line breaks, and ragged rows that are legitimate when there is no header.

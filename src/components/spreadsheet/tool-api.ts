@@ -1,7 +1,7 @@
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { ScanIssue, ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "@/engine/core";
+import type { CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "@/engine/core";
 
 /** The latest change, undo or redo, for the "Done" message. */
 export interface LastChange {
@@ -44,7 +44,9 @@ export interface ToolApi {
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */
-  exportCsv(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
+  exportCsv(onProgress?: (p: ProgressEvent) => void, options?: CsvDownloadOptions): Promise<ExportResult>;
+  /** CSV Validator: the download dialog offers separator, line endings and BOM (decision 3). */
+  csvDownloadOptions: boolean;
   /** Create the corrected Excel file and check it cell by cell (Step 7). */
   exportXlsx(onProgress?: (p: ProgressEvent) => void): Promise<ExportResult>;
   /** A verified download of this version was offered (no "unsaved changes" warning until the next change). */

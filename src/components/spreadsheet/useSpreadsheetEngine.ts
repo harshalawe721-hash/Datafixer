@@ -8,6 +8,7 @@ import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { ValidationResult } from "@/engine/validate/validate";
+import type { CsvDownloadOptions } from "@/engine/core";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { FixOptions } from "@/engine/fix/fixes";
 import type { AnyFixId } from "@/engine/fix/fix-ids";
@@ -121,7 +122,10 @@ export function useSpreadsheetEngine() {
     (sheet: string, row: number, col: number, text: string, replaceFormula = false) => client().editCell(sheet, row, col, text, replaceFormula),
     [client],
   );
-  const exportCsv = useCallback((sheet: string, onProgress?: (p: ProgressEvent) => void) => client().exportCsv(sheet, onProgress), [client]);
+  const exportCsv = useCallback(
+    (sheet: string, onProgress?: (p: ProgressEvent) => void, options?: CsvDownloadOptions) => client().exportCsv(sheet, onProgress, options),
+    [client],
+  );
   const exportXlsx = useCallback((sheet: string, onProgress?: (p: ProgressEvent) => void) => client().exportXlsx(sheet, onProgress), [client]);
   const undo = useCallback((sheet: string) => client().undo(sheet), [client]);
   const redo = useCallback((sheet: string) => client().redo(sheet), [client]);
