@@ -124,6 +124,7 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - File-level problems (mixed line endings, guessed encoding, no final line break, too many rows, separator) have no particular rows, so they have no “View affected data” button.
 - Fixed a phone layout bug in the shared issue card: a very long column name made the page wider than the screen (Error Detector and Cleaner use the same card). Long names are also shortened in Validator labels.
 - Browser test: `npm run test:validator`, 65 checks (all problem types in the pack, decision 4 and 5 behaviour, separator change, refusals, Cancel/Check again on 50 MB, phone and tablet widths, no off-site requests, no console errors).
+- **Owner's Android tablet (12 November 2026, Vercel deployment of commit `7141b14`):** 0-clean valid; 1-uneven and 2-header not valid; 3-quotes and 5-line-endings valid with warnings; 6-control (NUL bytes) accepted and not valid. Unticking “First row contains column names” on 2-header gives “Valid CSV file”; “View affected data” on 1-uneven shows only rows 6, 13, 20, 27 and 33. All as expected.
 
 ## Testing
 
