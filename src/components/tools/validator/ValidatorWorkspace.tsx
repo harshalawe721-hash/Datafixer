@@ -15,7 +15,7 @@ export function ValidatorWorkspace() {
           is never changed; you download a repaired copy.
         </span>
       </p>
-      <SpreadsheetWorkspace accept={[".csv", ".tsv", ".txt"]} csvValidator allowEditing renderTool={(api) => <ValidatorPanel api={api} />} />
+      <SpreadsheetWorkspace accept={[".csv", ".tsv", ".txt"]} csvTools allowEditing renderTool={(api) => <ValidatorPanel api={api} />} />
     </div>
   );
 }

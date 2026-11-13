@@ -35,17 +35,19 @@ export function SpreadsheetWorkspace({
   accept,
   renderTool,
   allowEditing = false,
-  csvValidator = false,
+  csvTools = false,
 }: {
   accept?: readonly string[];
   renderTool?: (api: ToolApi) => React.ReactNode;
   /** Stage 4: tap a cell in the table to edit it. */
   allowEditing?: boolean;
   /**
-   * Stage 5 (CSV Validator): a "Text encoding" choice beside the separator, and
-   * CSV files with a few NUL bytes are accepted so they can be reported.
+   * CSV pages (Validator, CSV to Excel): a "Text encoding" choice beside the
+   * separator, CSV files with a few NUL bytes are accepted (so they can be
+   * reported or converted), and the column-names guess that accepts empty or
+   * duplicate names.
    */
-  csvValidator?: boolean;
+  csvTools?: boolean;
 }) {
   const engine = useSpreadsheetEngine();
   const { state, open, selectSheet, cancel, reset, getRows, scan, validate, abortScans } = engine;
@@ -100,7 +102,7 @@ export function SpreadsheetWorkspace({
     return (
       <FileDropzone
         accept={accept}
-        allowNulBytes={csvValidator}
+        allowNulBytes={csvTools}
         onFileAccepted={(file, format, warning) => {
           setAdvisory(warning ?? null);
           void open(file, format);
@@ -169,7 +171,7 @@ export function SpreadsheetWorkspace({
   const stats = summary.sheetStats[summary.activeSheet];
   const viewKey = `${file.name}:${file.size}:${file.lastModified}:${summary.activeSheet}:${summary.csv?.delimiter ?? ""}:${summary.csv?.encoding ?? ""}`;
   // A different file, sheet or separator: start from the guessed header setting, no filter.
-  const current = view.key === viewKey ? view : { key: viewKey, headerRow: csvValidator ? (summary.namesGuess ?? summary.headerGuess) : summary.headerGuess, issue: null };
+  const current = view.key === viewKey ? view : { key: viewKey, headerRow: csvTools ? (summary.namesGuess ?? summary.headerGuess) : summary.headerGuess, issue: null };
   if (current !== view) setView(current);
   // Changes belong to one file/sheet view; a new view starts with none.
   const edits = editState.key === viewKey ? editState.stats : NO_EDITS;
@@ -193,6 +195,8 @@ export function SpreadsheetWorkspace({
     scan: (options, onProgress) => scan(summary.activeSheet, options, onProgress),
     validate: (options, onProgress) => validate(summary.activeSheet, options, onProgress),
     abortScans,
+    file,
+    convertToXlsx: (onProgress) => engine.convertToXlsx(sheetName, { headerRow: current.headerRow }, onProgress),
     viewIssue: (issue) => {
       setView((v) => ({ ...v, issue }));
       if (issue) requestAnimationFrame(() => document.getElementById("data-preview")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -205,7 +209,7 @@ export function SpreadsheetWorkspace({
     lastChange,
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
     exportCsv: (onProgress, options) => engine.exportCsv(sheetName, onProgress, options),
-    csvDownloadOptions: csvValidator,
+    csvDownloadOptions: csvTools,
     exportXlsx: (onProgress) => engine.exportXlsx(sheetName, onProgress),
     markDownloaded: (version) => setDownloaded({ key: viewKey, version }),
     undo: () => engine.undo(sheetName).then(track("undone")),
@@ -228,11 +232,11 @@ export function SpreadsheetWorkspace({
             ? (d) =>
                 (!unsaved || confirmDiscard(edits, "Changing the separator")) &&
                 // Validator: an encoding the user chose is kept when the separator changes.
-                void open(file, format, { delimiter: d, encoding: csvValidator && summary.csv?.encodingChosen ? summary.csv.encoding : undefined })
+                void open(file, format, { delimiter: d, encoding: csvTools && summary.csv?.encodingChosen ? summary.csv.encoding : undefined })
             : undefined
         }
         onChangeEncoding={
-          csvValidator && format === "csv"
+          csvTools && format === "csv"
             ? (encoding) => (!unsaved || confirmDiscard(edits, "Changing the text encoding")) && void open(file, format, { encoding })
             : undefined
         }

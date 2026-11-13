@@ -102,6 +102,13 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 - Test pack `tests/fixtures/convert/` (made by `scripts/fixtures/make_convert_pack.py`, expected results written from the rules): `1-values.csv` with 34 planted values, `2-customers.csv` (a realistic file with ids, phones, ZIP codes, two date layouts, balances).
 - Tests: `tests/engine/convert.test.ts` (8): every planted value; openpyxl reads every converted value with the expected type and format; a round trip where every cell of the new workbook shows exactly the CSV's text; exact counts and reasons on the realistic file; the split at 1,048,580 rows with and without column names (read back by openpyxl); refusals. Letting leading zeros become numbers makes a test fail (and a second guard still keeps `007` as text).
 
+### Step 3 — CSV to Excel page (done, 13 November 2026)
+
+- `/csv-to-excel` now works (`src/components/tools/converter/`): open a CSV, TSV or TXT file; the Validator's verdict is shown first, and for a file with problems or warnings a **Check and repair in the CSV Validator** link opens the same file on the Validator page without choosing it again (the file stays in this tab's memory; nothing is uploaded). Settings: column names, and the separator and text encoding used to read the file (as on the Validator). An expandable list explains which values become numbers and dates and which stay text.
+- **Convert to Excel (.xlsx)** creates the workbook in the worker, checks it cell by cell, and only then downloads it as `name.xlsx`. The summary shows the sheets and rows, how many cells became numbers, dates and text, the empty cells, the values kept as text on purpose (with the reasons), and a note when the data continues on more sheets. Download again; change settings and convert again; Cancel works and creates nothing.
+- Shared changes: the workspace option for CSV pages is renamed `csvTools` (used by the Validator and the converter); the progress bar can use page-specific step names; the open file is available to tool panels (for the hand-over).
+- Browser test: `npm run test:converter`, 25 checks (realistic file: counts, file name, check message; openpyxl: bold header, frozen row, filter, types per column; column names unticked: no header formatting; hand-over to the Validator; every planted value's type in the downloaded file; 1,048,580 rows split into 2 sheets, read by openpyxl; Cancel; phone and tablet widths; no off-site requests or console errors).
+
 ## Testing
 
 - Every value rule with exact examples, including the ones that must stay text (`007`, `0044…`, 16+ digit numbers, `1,250`, `03/04/2024`, `=1+1`, `TRUE`, empty cells, line breaks, emoji).

@@ -39,7 +39,7 @@ export function describeCsv(c: NonNullable<ExportResult["summary"]["csv"]>): str
 }
 
 /** Hand the file to the browser's download (a fresh link each time, released afterwards). */
-function saveBlob(blob: Blob, name: string) {
+export function saveBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

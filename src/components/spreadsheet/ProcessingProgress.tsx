@@ -24,9 +24,12 @@ export function ProcessingProgress({
   progress,
   startedAt,
   onCancel,
+  phaseLabels,
 }: {
   fileName: string;
   progress: ProgressEvent | null;
+  /** Wording for some steps on this page (e.g. the converter's “Creating the Excel file”). */
+  phaseLabels?: Partial<Record<ProgressEvent["phase"], string>>;
   /** When the work started; defaults to when this progress bar appeared. */
   startedAt?: number;
   onCancel: () => void;
@@ -53,7 +56,7 @@ export function ProcessingProgress({
             {fileName}
           </p>
           <p className="text-sm text-muted" aria-live="polite">
-            {progress ? PHASE_LABEL[progress.phase] : "Starting"}
+            {progress ? (phaseLabels?.[progress.phase] ?? PHASE_LABEL[progress.phase]) : "Starting"}
             {pct !== null && ` · ${pct}%`}
             {progress?.loaded != null && progress.total
               ? progress.phase === "indexing" || progress.phase === "scanning" || progress.phase === "exporting"
