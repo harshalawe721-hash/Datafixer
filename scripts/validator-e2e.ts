@@ -222,6 +222,12 @@ check(await visible(dialog().getByText("Ben␀")), "preview shows where the hidd
 await dialog().getByRole("button", { name: /^Apply fix \(3 changes\)/ }).click();
 await settle();
 check((await heading().textContent()) === "Valid CSV, with 1 warning", "hidden characters removed (formula-like warning remains)");
+await card("Values that start like formulas").getByRole("button", { name: "Add apostrophes" }).click();
+check(await visible(dialog().getByText(/saved as part of each value/)), "apostrophes: preview warns the apostrophe is saved in the value");
+check(await visible(dialog().getByText("'=1+1")), "apostrophes: preview shows '=1+1");
+await dialog().getByRole("button", { name: /^Apply fix \(4 changes\)/ }).click();
+await settle();
+check((await heading().textContent()) === "Valid CSV file", "after adding apostrophes: Valid CSV file");
 const DL = mkdtempSync(path.join(tmpdir(), "validator-dl-"));
 await page.getByRole("button", { name: "Download corrected CSV" }).click();
 check(await visible(dialog().getByRole("radio", { name: /UTF-8 with BOM/ })), "download options are shown first (decision 3)");
@@ -236,7 +242,7 @@ const bytes = readFileSync(saved);
 check(!bytes.includes(0x00) && !bytes.includes(0x07), "downloaded file has no NUL or bell characters");
 const py = spawnSync("python3", ["-I", "-c", "import csv,sys,json\nwith open(sys.argv[1],newline='',encoding='utf-8-sig') as f: print(json.dumps(list(csv.reader(f, strict=True))))", saved], { encoding: "utf8" });
 const pyRows = py.status === 0 ? (JSON.parse(py.stdout) as string[][]) : [];
-check(pyRows.length === 21 && pyRows[3]![1] === "Ben" && pyRows[8]![3] === "Leeds", `Python reads the repaired download (${pyRows.length} rows)`);
+check(pyRows.length === 21 && pyRows[3]![1] === "Ben" && pyRows[8]![3] === "Leeds" && pyRows[5]![3] === "'=1+1" && pyRows[18]![3] === "-5", `Python reads the repaired download (${pyRows.length} rows)`);
 await dialog().getByRole("button", { name: "Close" }).first().click();
 rmSync(DL, { recursive: true, force: true });
 

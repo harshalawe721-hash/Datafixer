@@ -15,6 +15,8 @@
  * 2. Column names: empty → “Column C”, duplicates → “email (2)”. Every rename is
  *    shown first; cell data is never overwritten; a new name never creates another
  *    duplicate (the next free number is used).
+ * Owner request (13 November 2026): an optional “Add apostrophes” repair for values
+ * that start like formulas (=, +, -, @), never in Fix all.
  * Extra fields that contain data, unclosed quotes and unreadable characters are
  * never repaired automatically (the right result can't be known).
  */
@@ -25,6 +27,7 @@ import type { ChangeRequest } from "../edit/session.ts";
 import type { FixPlan, FixPreview, PlanContext } from "../fix/fixes.ts";
 import { REPAIR_LABELS, type RepairId } from "../fix/fix-ids.ts";
 import { cellText, isBlankLine, layoutOf, sepLine, visibleControls } from "./validate.ts";
+import { isFormulaLike } from "../csv/parse-csv.ts";
 
 export interface RepairOptions {
   headerRow: boolean;
@@ -227,6 +230,30 @@ export async function planRepair(sheet: SheetModel, id: RepairId, options: Repai
       preview.rowsRemoved = del.length;
       preview.description = del.length ? `Removes ${plural(del.length, "blank line")}. No row with data is removed.` : "There are no blank lines.";
       return { preview, request: del.length ? { operation: id, label: REPAIR_LABELS[id], deleteRows: del } : null };
+    }
+
+    case "protect-formulas": {
+      const ch = new Changes();
+      for (let r = firstData; r < rows; r++) {
+        await tick(r);
+        const len = g.rowLength(r);
+        for (let c = 0; c < len; c++) {
+          const s = cellText(sheet, r, c);
+          if (!isFormulaLike(s)) continue;
+          const after = `'${s}`;
+          ch.add(r, c, after);
+          if (preview.examples.length < MAX_EXAMPLES) preview.examples.push({ row: r, col: c, before: visibleControls(s), after: visibleControls(after) });
+        }
+      }
+      preview.cellsChanged = ch.keys.length;
+      preview.description = ch.keys.length
+        ? `Puts an apostrophe (') in front of ${plural(ch.keys.length, "value")} that start with =, +, - or @, so spreadsheet apps treat them as text and never run them as formulas. Nothing else in the value changes.`
+        : "No value starts like a formula.";
+      if (ch.keys.length) {
+        preview.warning =
+          "The apostrophe is saved as part of each value. Spreadsheet apps won't run these values as formulas, but some show the apostrophe, and databases and scripts will see it. Phone numbers such as “+44 …” also start with +, so check the examples first. Only do this if the file will be opened in a spreadsheet app.";
+      }
+      return { preview, request: ch.request(id) };
     }
 
     case "remove-control-chars": {

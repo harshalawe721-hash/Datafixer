@@ -139,6 +139,8 @@ export function ValidatorPanel({ api }: { api: ToolApi }) {
         return [repair("remove-control-chars")];
       case "blank-lines":
         return [repair("remove-blank-lines")];
+      case "formula-like":
+        return [repair("protect-formulas")];
       default:
         return [];
     }

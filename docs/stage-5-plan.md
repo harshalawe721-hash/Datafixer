@@ -156,6 +156,11 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - Phone and tablet widths: covered by the Validator browser test (8 files, no sideways scrolling).
 - `docs/stage-5-test-report.md` written. Stage 5 waits for the owner's tablet tests of Steps 4–5 and approval.
 
+### After the owner's tablet test (13 November 2026)
+
+- Step 4 confirmed on the owner's tablet (downloaded files checked; see the test report).
+- Owner approved a new optional repair, **Add apostrophes**, for values that start like formulas (preview, Undo, never in Fix all; the preview warns that the apostrophe is saved in the value).
+
 ## Testing
 
 - Unit tests per check with exact counts, including false-alarm guards: quoted separators, quoted line breaks, and ragged rows that are legitimate when there is no header.

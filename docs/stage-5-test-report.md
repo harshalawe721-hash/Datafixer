@@ -58,8 +58,8 @@ Node 22 (unit tests), Chromium headless through Playwright (browser and large-fi
 | Type check (`tsc --noEmit`) | ✅ pass |
 | Lint (`eslint`) | ✅ pass, 0 warnings |
 | Production build (`next build`) | ✅ pass |
-| Unit tests (`npm test`) | ✅ **355 / 355** (Stage 5 adds `validate.test.ts` 49, `repairs.test.ts` 13, `download-options.test.ts` 5) |
-| **CSV Validator browser test** (`npm run test:validator`) | ✅ **100 / 100** |
+| Unit tests (`npm test`) | ✅ **357 / 357** (Stage 5 adds `validate.test.ts` 49, `repairs.test.ts` 15, `download-options.test.ts` 5) |
+| **CSV Validator browser test** (`npm run test:validator`) | ✅ **103 / 103** |
 | Fixing browser test (`npm run test:fix`), Stage 4 | ✅ 126 / 126 |
 | Error Detector browser test (`npm run test:detector`), Stage 3 | ✅ 33 / 33 |
 | Engine browser test (`npm run test:engine`), Stage 2 | ✅ 62 / 62 |
@@ -120,7 +120,20 @@ No crashes. The plan's target (validation within the Stage 3 scan times) is met 
 ## Real Android device testing (owner)
 
 - **Step 3 (12 November 2026), on the owner's tablet:** 0-clean valid; 1-uneven and 2-header not valid; 3-quotes and 5-line-endings valid with warnings; 6-control (NUL bytes) accepted and not valid. Unticking “First row contains column names” on 2-header gave “Valid CSV file”; “View affected data” on 1-uneven showed only rows 6, 13, 20, 27 and 33.
-- **Steps 4 and 5 (repairs and download options): not yet tested on the tablet.** Suggested tests are listed at the end of this report.
+- **Step 4 (13 November 2026), on the owner's tablet; downloaded files checked here:**
+  - 11-extra-fields: empty extra fields and the blank line removed; the downloaded file is valid with no issues. ✅
+  - 1-uneven: rows 6, 13 and 27 got one empty cell; the 2 rows with data in the extra fields were left unchanged. ✅
+  - 2-header: header became `id,name,Column C,Email,email (2),phone,…`; every data row unchanged; valid. ✅
+  - 6-control: NUL and bell characters removed (`Ben`, `Leeds`, `Gus`); valid. ✅
+  - All downloads start with the BOM and use CRLF (the defaults).
+  - The owner also edited cells by hand to clear warnings (formula-like values in 6-control, stray quotes in 3-quotes); confirmed by the owner. DataFixer kept those edits exactly; with no edits, the same downloads keep the original values (checked here).
+- **Not yet tested on the tablet:** the download options (Step 5) and the new “Add apostrophes” repair.
+
+## Added after the owner's tablet test: “Add apostrophes” (owner approved, 13 November 2026)
+
+- An optional repair on the “Values that start like formulas” card: puts `'` in front of values starting with =, +, - or @ (not plain numbers such as -5, not column names), so spreadsheet apps treat them as text. Preview first, Undo, history; never in Fix all.
+- The preview warns that the apostrophe is saved as part of each value (some apps show it; databases and scripts see it) and that phone numbers such as “+44 …” also start with +.
+- Tests: 2 unit tests (exactly the 4 flagged cells change in 6-control; -5 and the header untouched; undo restores; not in Fix all) and 3 browser checks (warning, preview, valid afterwards; the downloaded file read by Python has `'=1+1` and `-5`).
 
 ## Known limitations
 
@@ -134,13 +147,13 @@ No crashes. The plan's target (validation within the Stage 3 scan times) is met 
 - The validator's check for “first row looks like data” is a rule of thumb (at least half the names are numbers, dates or email addresses).
 - Not tested: Android phones, iOS/Safari and Firefox; very large files on the owner's tablet.
 
-## Suggested tablet tests for Steps 4 and 5
+## Remaining tablet tests (download options and the new repair)
 
 | File | Do | Expected |
 |---|---|---|
 | 1-uneven.csv | Add empty cells → Apply | Warning about shifted data; before/after rows; then 2 rows left |
 | 2-header.csv | Fix column names → Apply, then Fix all safe problems → Apply | “Column C”, “email (2)”; then “Valid CSV file” |
-| 6-control.csv | Remove hidden characters → Apply, then Download corrected CSV → Create and download | “Ben␀ → Ben”; the summary says the file was checked |
+| 6-control.csv | Remove hidden characters → Apply, then Add apostrophes → Apply | “Ben␀ → Ben”; then “'=1+1”, warning about the apostrophe; “Valid CSV file” |
 | 11-extra-fields.csv | Fix all safe problems → Apply | “2 rows will be shortened”, 1 blank line removed; “Valid CSV file” |
 | 3-quotes.csv | Download a copy → Semicolon, LF, UTF-8 without BOM → Create and download | Summary: “Semicolon (;) · LF (Unix, Mac) · UTF-8 without BOM” |
 

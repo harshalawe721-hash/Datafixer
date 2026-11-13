@@ -217,3 +217,33 @@ test("test pack 11-extra-fields.csv: “Fix all safe problems” makes it a vali
   assert.deepEqual(r.issues.map((i) => i.id), []);
   assert.equal(r.verdict.valid, true);
 });
+
+// ---------------------------------------------------------------- owner request: apostrophes before formula-like values
+
+test("“Add apostrophes”: exactly the flagged values get a leading ' ; plain numbers, the header and everything else stay; undo restores", async () => {
+  const { core, sheet } = await open("6-control.csv");
+  const before = rows(core, sheet);
+  const p = await core.previewFix(sheet, "protect-formulas", { headerRow: true }, noop);
+  assert.deepEqual(p.examples.map((e) => [e.row, e.before, e.after]), [[5, "=1+1", "'=1+1"], [10, "+cmd", "'+cmd"], [14, "@SUM(A1)", "'@SUM(A1)"], [16, "-2+3", "'-2+3"]]);
+  assert.match(p.warning!, /saved as part of each value/);
+  assert.match(p.warning!, /Phone numbers/);
+  core.applyFix(sheet, p.token);
+  const after = rows(core, sheet);
+  let changed = 0;
+  for (let r = 0; r < before.length; r++) for (let c = 0; c < before[r]!.length; c++) if (after[r]![c] !== before[r]![c]) changed++;
+  assert.equal(changed, 4);
+  assert.equal(after[18]![3], "-5", "plain numbers are not changed");
+  assert.equal((await issues(core, sheet))["formula-like"], undefined);
+  const file = await download(core, sheet);
+  assert.equal(file[5]![3], "'=1+1");
+  core.undo(sheet);
+  assert.deepEqual(rows(core, sheet), before);
+});
+
+test("“Add apostrophes” is never part of the Validator's Fix all, and header names are left alone", async () => {
+  const { core, sheet } = await open("=total,+x\r\n=1,2\r\n,,\r\n", { file: false });
+  const all = await core.previewFixAll(sheet, { headerRow: true, set: "validator" }, noop);
+  assert.ok(!all.steps.some((s) => s.fixId === "protect-formulas"));
+  const p = await core.previewFix(sheet, "protect-formulas", { headerRow: true }, noop);
+  assert.deepEqual(p.examples.map((e) => [e.row, e.after]), [[1, "'=1"]]);
+});

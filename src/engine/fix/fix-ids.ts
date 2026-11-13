@@ -21,7 +21,7 @@ export const FIX_LABELS: Record<FixId, string> = {
 };
 
 /** Stage 5: CSV Validator repairs (CSV files only). */
-export const REPAIR_IDS = ["pad-short-rows", "trim-extra-fields", "fix-header-names", "trim-header-spaces", "remove-control-chars", "remove-blank-lines"] as const;
+export const REPAIR_IDS = ["pad-short-rows", "trim-extra-fields", "fix-header-names", "trim-header-spaces", "remove-control-chars", "remove-blank-lines", "protect-formulas"] as const;
 export type RepairId = (typeof REPAIR_IDS)[number];
 export type AnyFixId = FixId | RepairId;
 
@@ -32,6 +32,7 @@ export const REPAIR_LABELS: Record<RepairId, string> = {
   "trim-header-spaces": "Remove spaces around names",
   "remove-control-chars": "Remove hidden characters",
   "remove-blank-lines": "Remove blank lines",
+  "protect-formulas": "Add apostrophes",
 };
 
 /** “Fix all safe problems” on the CSV Validator: only repairs that lose no data and need no decision (never short rows). */
