@@ -37,6 +37,7 @@ npm run dev                  # http://localhost:3000
 | `npm run test:detector` | Browser test of the Error Detector dashboard (cards, View affected data, re-check, cancel, Excel, mobile) |
 | `npm run test:export-perf` | Large-file test of the whole fix-and-download workflow in Chromium at 50/100/150 MB (`HEAP_MB=512` imitates a low-memory device, `XLSX=1` adds an Excel case) |
 | `npm run test:validator` | Browser test of the Stage 5 CSV Validator page: verdict, checklist, cards with file lines, text encoding, separator, column names, phone and tablet layouts |
+| `npm run test:validator-perf` | Stage 5 large-file workflow on the CSV Validator (50/100/150 MB; `HEAP_MB=512` for low memory) |
 | `npm run test:fix` | Browser test of Stage 4 fixing: Fix buttons, previews with choices, Fix all, Undo/Redo, history, Excel rules, phone and tablet layouts |
 | `npm run test:engine` | Browser end-to-end test of the engine through the UI (CSV, XLSX inspection, unsafe/damaged files, cancel, handoff, privacy checks) |
 | `npm run test:perf` | Performance harness: generates 50/100/150 MB CSV and XLSX files and measures time, memory, responsiveness and cancellation (Linux; `HEAP_MB=512` imitates a low-memory device) |
@@ -85,7 +86,7 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 2 | Spreadsheet engine, upload + preview system | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-2-test-report.md` |
 | 3 | Spreadsheet Error Detector (incl. formula errors) | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-3-test-report.md` |
 | 4 | Automatic fixing and Spreadsheet Cleaner: one-tap fixes for the detected problems, cell editing, download a clean CSV/Excel file | **Complete** (approved by the project owner on 12 November 2026). See `docs/stage-4-test-report.md` |
-| 5 | CSV Validator | **In progress**: Steps 1–5 done (validation engine, file lines, the Validator page, repairs with preview, download options); large-file tests and the Stage 5 test report are next (see `docs/stage-5-plan.md`) |
+| 5 | CSV Validator | **Built, awaiting the owner's approval**: all six steps done. See `docs/stage-5-test-report.md` (see `docs/stage-5-plan.md`) |
 | 6 | Excel ↔ CSV converters | Planned |
 | 7 | SEO content, accessibility, performance, testing | Planned |
 

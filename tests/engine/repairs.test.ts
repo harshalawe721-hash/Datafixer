@@ -207,3 +207,13 @@ test("all repairs in turn make the test files valid (except problems that can't 
     assert.deepEqual(Object.keys(await issues(core, sheet)).sort(), left.sort(), f);
   }
 });
+
+test("test pack 11-extra-fields.csv: “Fix all safe problems” makes it a valid CSV file", async () => {
+  const { core, sheet } = await open("11-extra-fields.csv");
+  const all = await core.previewFixAll(sheet, { headerRow: true, set: "validator" }, noop);
+  assert.deepEqual([all.rowsShortened, all.rowsRemoved, all.steps.map((s) => s.fixId)], [2, 1, ["trim-extra-fields", "remove-blank-lines"]]);
+  core.applyFix(sheet, all.token);
+  const r = await core.validate(sheet, { headerRow: true }, noop);
+  assert.deepEqual(r.issues.map((i) => i.id), []);
+  assert.equal(r.verdict.valid, true);
+});

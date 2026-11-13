@@ -204,6 +204,31 @@
      []
     ]
    }
+  },
+  "11-extra-fields.csv": {
+   "valid": false,
+   "issues": {
+    "uneven-rows": [
+     "error",
+     2,
+     [
+      1,
+      4
+     ]
+    ],
+    "blank-lines": [
+     "warning",
+     1,
+     [
+      3
+     ]
+    ],
+    "separator-uncertain": [
+     "warning",
+     1,
+     []
+    ]
+   }
   }
  },
  "python": {

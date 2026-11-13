@@ -18,7 +18,8 @@
     "test:detector": "node scripts/detector-e2e.ts",
     "test:fix": "node scripts/fix-e2e.ts",
     "test:validator": "node scripts/validator-e2e.ts",
-    "test:export-perf": "node scripts/export-perf.ts"
+    "test:export-perf": "node scripts/export-perf.ts",
+    "test:validator-perf": "node scripts/validator-perf.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",

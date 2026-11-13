@@ -1,6 +1,6 @@
 # Stage 5 plan: CSV Validator
 
-**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). The owner said “Start Stage 5” on 12 November 2026. Progress is recorded under “Progress” below.
+**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). The owner said “Start Stage 5” on 12 November 2026. Progress is recorded under “Progress” below. All six steps are built; Stage 5 awaits the owner's approval.
 
 Stages 1–4 are complete. Stage 5 builds on the Stage 2 CSV reader, which already detects the encoding, separator, line endings, broken quotes, undecodable characters and formula-like cells. It also builds on the Stage 4 fixing engine: preview, Undo/Redo, change history and verified downloads.
 
@@ -148,6 +148,13 @@ Downloads reuse the verified Stage 4 CSV export: the file is re-read and compare
 - The summary shows the file format (“Semicolon (;) · LF (Unix, Mac) · UTF-8 without BOM”) and warns when the separator was changed or the BOM left out (Excel may then show accents wrongly on double-click).
 - The Error Detector and Cleaner downloads are unchanged (Stage 4 defaults, no options step).
 - Tests: `tests/engine/download-options.test.ts` (5): all 12 combinations on values with every separator, quotes, both kinds of line break, accents, emoji, edge spaces, formula-like values and ragged rows, checked byte by byte and read back by Python's `csv` module (breaking the separator quoting makes the tests fail). Validator browser test: 100 checks, including a real semicolon / LF / no-BOM download read by Python and compared with the original values.
+
+### Step 6 — Large files, layouts, test pack, report (done, 13 November 2026)
+
+- `npm run test:validator-perf`: the whole Validator workflow at 50, 100 and 150 MB in Chromium, normal memory and a 512 MB heap. Exact counts of planted problems, correct final verdicts, downloads checked row by row by Python, originals unchanged; 150 MB at 512 MB stops safely when opening (Stage 2 limit). Results in `docs/stage-5-test-report.md`.
+- Test pack: `11-extra-fields.csv` added (the Fix all case), 14 files in all.
+- Phone and tablet widths: covered by the Validator browser test (8 files, no sideways scrolling).
+- `docs/stage-5-test-report.md` written. Stage 5 waits for the owner's tablet tests of Steps 4–5 and approval.
 
 ## Testing
 

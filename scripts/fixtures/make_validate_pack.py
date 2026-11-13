@@ -123,6 +123,9 @@ write("9-long-cells.csv", lines(rows).encode())
 # 10: semicolon file (to be opened with the separator forced to comma: one column).
 write("10-semicolon.csv", lines([HEADER] + [person(i) for i in range(12)], sep=";").encode())
 
+# 11: empty extra fields (rows 2 and 5 in the file) and a blank line (row 4): the "Fix all safe problems" case.
+write("11-extra-fields.csv", b"id,name,city\r\n1,Asha,Pune,,\r\n2,Ben,Leeds\r\n\r\n3,Chen,Lyon,\r\n4,Dara,Oslo\r\n")
+
 print("written to", OUT, "| encoding bad row (0-based):", ENCODING_BAD_ROW)
 
 # ---------------------------------------------------------------------------
@@ -150,6 +153,8 @@ expected = {
     "8-sep.csv": {"valid": True, "issues": {"sep-line": [N, 1, [0]]}},
     "9-long-cells.csv": {"valid": True, "issues": {"cell-too-long": [W, 2, [3, 7]]}},
     "10-semicolon.csv": {"open": {"delimiter": ","}, "valid": True, "issues": {"single-column": [W, 1, []]}},
+    # Only 3 of the 5 non-blank lines have 3 fields (< 80%), so separator detection is not certain while rows disagree.
+    "11-extra-fields.csv": {"valid": False, "issues": {"uneven-rows": [E, 2, [1, 4]], "blank-lines": [W, 1, [3]], "separator-uncertain": [W, 1, []]}},
 }
 
 # Independent reading by Python's csv module (it accepts mixed line endings), for
