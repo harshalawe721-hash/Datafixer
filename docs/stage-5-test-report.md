@@ -59,7 +59,7 @@ Node 22 (unit tests), Chromium headless through Playwright (browser and large-fi
 | Lint (`eslint`) | ✅ pass, 0 warnings |
 | Production build (`next build`) | ✅ pass |
 | Unit tests (`npm test`) | ✅ **357 / 357** (Stage 5 adds `validate.test.ts` 49, `repairs.test.ts` 15, `download-options.test.ts` 5) |
-| **CSV Validator browser test** (`npm run test:validator`) | ✅ **103 / 103** |
+| **CSV Validator browser test** (`npm run test:validator`) | ✅ **106 / 106** |
 | Fixing browser test (`npm run test:fix`), Stage 4 | ✅ 126 / 126 |
 | Error Detector browser test (`npm run test:detector`), Stage 3 | ✅ 33 / 33 |
 | Engine browser test (`npm run test:engine`), Stage 2 | ✅ 62 / 62 |
@@ -127,7 +127,8 @@ No crashes. The plan's target (validation within the Stage 3 scan times) is met 
   - 6-control: NUL and bell characters removed (`Ben`, `Leeds`, `Gus`); valid. ✅
   - All downloads start with the BOM and use CRLF (the defaults).
   - The owner also edited cells by hand to clear warnings (formula-like values in 6-control, stray quotes in 3-quotes); confirmed by the owner. DataFixer kept those edits exactly; with no edits, the same downloads keep the original values (checked here).
-- **Not yet tested on the tablet:** the download options (Step 5) and the new “Add apostrophes” repair.
+- **Add apostrophes (13 November 2026), tablet:** 6-control downloaded with `'=1+1`, `'+cmd`, `'@SUM(A1)`, `'-2+3`; `-5` unchanged; hidden characters removed; BOM present. ✅
+- **Download options (13 November 2026), tablet:** “UTF-8 without BOM” was applied correctly (no BOM). But the page's **Column separator** box (how the file is *read*) had been set to Semicolon, so the comma file was read as one column and the copy kept one column per line; line endings stayed CRLF. No values were lost (the copy holds exactly what was read), but the two “separator” settings were easy to confuse. **Fixed:** the page now says the separator and encoding boxes only change how the file is read, and the download dialog's groups are labelled “Separator in the new file”, “Line endings in the new file” and “Text encoding of the new file”, with a note that the page's box is different (3 browser checks). To be repeated on the tablet.
 
 ## Added after the owner's tablet test: “Add apostrophes” (owner approved, 13 November 2026)
 

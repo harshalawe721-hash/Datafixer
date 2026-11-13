@@ -92,6 +92,7 @@ export function FileSummary({
               <select
                 value={summary.csv.delimiter}
                 onChange={(e) => onChangeDelimiter(e.target.value)}
+                aria-describedby={onChangeEncoding ? "encoding-help" : undefined}
                 className="h-9 rounded-lg border border-line-strong bg-background px-2"
               >
                 {Object.entries(DELIMITER_NAMES).map(([v, label]) => (
@@ -126,6 +127,8 @@ export function FileSummary({
       )}
       {summary.csv && onChangeEncoding && (
         <p id="encoding-help" className="-mt-2 text-xs text-muted">
+          <strong className="font-semibold text-foreground">These settings only change how DataFixer reads your file.</strong> To choose the separator, line endings or
+          BOM of the file you download, use the download button: it asks before creating the file.{" "}
           The text encoding decides how the bytes in your file are turned into letters.{" "}
           {summary.csv.encodingChosen
             ? `You chose ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}; DataFixer detected ${ENCODINGS[summary.csv.detectedEncoding ?? ""] ?? summary.csv.detectedEncoding ?? "—"}.`

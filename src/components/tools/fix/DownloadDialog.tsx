@@ -325,10 +325,10 @@ const BOM_OPTIONS = [
 function CsvOptions({ value, onChange }: { value: Required<CsvDownloadOptions>; onChange: (v: Required<CsvDownloadOptions>) => void }) {
   return (
     <>
-      <p className="text-sm">Choose how the new file is written. Every value is saved exactly, including quotes, separators and line breaks inside values. Your original file is never changed.</p>
-      <OptionGroup<CsvDownloadOptions["delimiter"] & string> legend="Separator" name="dl-sep" options={SEPARATORS} current={value.delimiter} set={(delimiter) => onChange({ ...value, delimiter })} />
-      <OptionGroup<CsvDownloadOptions["lineEnding"] & string> legend="Line endings" name="dl-eol" options={LINE_ENDINGS} current={value.lineEnding} set={(lineEnding) => onChange({ ...value, lineEnding })} />
-      <OptionGroup<boolean> legend="Text encoding" name="dl-bom" options={BOM_OPTIONS} current={value.bom} set={(bom) => onChange({ ...value, bom })} />
+      <p className="text-sm">Choose how the new file is written. Every value is saved exactly, including quotes, separators and line breaks inside values. Your original file is never changed. (The “Column separator” box on the page is different: it only says how your file is read.)</p>
+      <OptionGroup<CsvDownloadOptions["delimiter"] & string> legend="Separator in the new file" name="dl-sep" options={SEPARATORS} current={value.delimiter} set={(delimiter) => onChange({ ...value, delimiter })} />
+      <OptionGroup<CsvDownloadOptions["lineEnding"] & string> legend="Line endings in the new file" name="dl-eol" options={LINE_ENDINGS} current={value.lineEnding} set={(lineEnding) => onChange({ ...value, lineEnding })} />
+      <OptionGroup<boolean> legend="Text encoding of the new file" name="dl-bom" options={BOM_OPTIONS} current={value.bom} set={(bom) => onChange({ ...value, bom })} />
     </>
   );
 }
