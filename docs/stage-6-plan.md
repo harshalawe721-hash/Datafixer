@@ -1,6 +1,6 @@
 # Stage 6 plan: Excel ↔ CSV converters
 
-**Status:** plan prepared on 13 November 2026. **Waiting for the owner's decisions (below) and approval.** Nothing is built yet; the two converter pages still show their honest “being built” notice. Building starts only when the owner says “Start Stage 6”.
+**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026.** Nothing is built yet; the two converter pages still show their honest “being built” notice. Building starts only when the owner says “Start Stage 6”.
 
 ## Goal
 
@@ -39,7 +39,7 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 3. Download with the Stage 5 options (separator, line endings, UTF-8 with or without BOM), verified before it is offered. The summary lists what a CSV can't keep: formatting, formulas (their values are saved), other sheets, charts, images, comments, merged cells (decision 5).
 4. Optionally (decision 3): all sheets at once, as a ZIP with one CSV per sheet.
 
-## Owner decisions needed
+## Owner decisions (option A chosen for all six, 13 November 2026)
 
 **1. CSV to Excel: how values become cells.** A CSV holds only text; Excel cells can be numbers, dates or text.
 - **A (recommended):** convert only values that are clearly numbers or dates, and keep everything else as text exactly as written:
