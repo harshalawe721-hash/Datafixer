@@ -25,7 +25,7 @@ const pack = JSON.parse(readFileSync(new URL("expected.json", dir), "utf8")) as 
 async function convert(source: string | Uint8Array, name: string, headerRow = true) {
   const core = new EngineCore();
   const bytes = typeof source === "string" ? new Uint8Array(readFileSync(new URL(source, dir))) : source;
-  const s = await core.open(new File([bytes], name), "csv", {}, noop);
+  const s = await core.open(new File([bytes as BlobPart], name), "csv", {}, noop);
   return core.convertCsvToXlsx(s.activeSheet, { headerRow }, noop);
 }
 

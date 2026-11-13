@@ -94,6 +94,14 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 - Note for Step 2: Excel has no negative zero, so the text “-0” must stay text.
 - Tests: `tests/engine/xlsx-writer.test.ts` (7). A full-size sheet (1,048,576 rows, 6.4 million cells) in Node: written in 18.9 s, checked in 9.3 s, 36 MB file, about 0.5 GB peak extra memory (browser figures come in Step 5).
 
+### Step 2 — Value rules and the row limit (done, 13 November 2026)
+
+- `src/engine/convert/csv-to-xlsx.ts` (decision 1, option A): plain numbers (`42`, `-3.5`, `0.25`) become numbers; decimals keep their places with a display format (`1.50` → format `0.00`); whole numbers of 12–15 digits get the `0` format (Excel's General format would show `1.23E+11`); ISO dates `yyyy-mm-dd` from 1 March 1900 become real dates shown `yyyy-mm-dd`. A value becomes a number only if Excel will show exactly the same text. Everything else stays text, with the reason counted for the summary: leading zeros, more than 15 digits, separators / signs / % / currency / exponents (including `+5` and `-0`), other date layouts, impossible or pre-March-1900 dates, values that start like formulas, numbers with spaces around them. `TRUE`/`FALSE`, date-times and all other text stay text. The header row is always text.
+- Decision 2 (option A): past 1,048,576 rows the data continues on “Name (2)”, “Name (3)”…; with column names the header row is repeated at the top of every sheet (1,048,575 data rows per sheet), without them 1,048,576 rows per sheet.
+- Engine: `convertCsvToXlsx` (worker message `convertToXlsx`, cancellable) writes the workbook with the Step 1 writer, checks it, and returns a summary: sheets and rows, cells that became numbers / dates / text, and how many look-alike values stayed text and why.
+- Test pack `tests/fixtures/convert/` (made by `scripts/fixtures/make_convert_pack.py`, expected results written from the rules): `1-values.csv` with 34 planted values, `2-customers.csv` (a realistic file with ids, phones, ZIP codes, two date layouts, balances).
+- Tests: `tests/engine/convert.test.ts` (8): every planted value; openpyxl reads every converted value with the expected type and format; a round trip where every cell of the new workbook shows exactly the CSV's text; exact counts and reasons on the realistic file; the split at 1,048,580 rows with and without column names (read back by openpyxl); refusals. Letting leading zeros become numbers makes a test fail (and a second guard still keeps `007` as text).
+
 ## Testing
 
 - Every value rule with exact examples, including the ones that must stay text (`007`, `0044…`, 16+ digit numbers, `1,250`, `03/04/2024`, `=1+1`, `TRUE`, empty cells, line breaks, emoji).
