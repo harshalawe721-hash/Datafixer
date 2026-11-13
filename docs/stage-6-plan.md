@@ -1,6 +1,6 @@
 # Stage 6 plan: Excel ↔ CSV converters
 
-**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026.** Nothing is built yet; the two converter pages still show their honest “being built” notice. Building starts only when the owner says “Start Stage 6”.
+**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026** and said “Start Stage 6” the same day. Progress is recorded under “Progress” below.
 
 ## Goal
 
@@ -81,6 +81,18 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 | 3 | CSV to Excel page: settings, structure verdict, preview, download with summary |
 | 4 | Excel to CSV page: sheet picker, values as shown or plain (decision 4), download options, all sheets as ZIP (decision 3), summary of what a CSV can't keep (decision 5) |
 | 5 | Large files (50/100/150 MB, normal and low memory) in Chromium, phone and tablet layouts, owner test pack with expected results, Stage 6 test report |
+
+## Progress
+
+### Step 1 — New XLSX writer (done, 13 November 2026)
+
+- `src/engine/export/xlsx-writer.ts`: creates a new workbook from scratch: text as inline strings (no large shared-string table in memory), numbers, dates (numbers with a date format), bold header, frozen top row and a filter (decision 6), estimated column widths, several sheets, safe unique sheet names. Rows are written one by one into the ZIP (the Stage 4 ZIP writer and fflate, no new dependency). It never writes formulas.
+- Excel's limits are checked first and refused with the reason: more than 1,048,576 rows or 16,384 columns per sheet, more than 32,767 characters in a cell. Nothing is cut off silently.
+- **The check before every download:** reading a big new workbook back with SheetJS would need about 100 bytes per cell (over 1 GB for a full sheet), so the new file is checked by a streaming check instead: it unzips the produced bytes, parses every row of every sheet's XML, and compares each cell's type, value and number format (from the written styles) with what was meant to be written. The tests show it catches a changed value, a wrong format, a number written as text, a missing row and a wrong sheet name.
+- **Two writing details found by the tests:** a CR inside a value is written as `&#13;` (XML parsers turn a literal CR LF into LF); control characters and a literal `_xHHHH_` use Excel's `_xHHHH_` escape (XML 1.0 can't hold control characters at all).
+- **Independent readers:** SheetJS (the Stage 2 reader) reads every value back exactly, except that it turns CR LF inside a cell into LF (it does this for every workbook). openpyxl reads every value, type, number format, the frozen header, the filter, bold header and widths exactly, except that it doesn't decode Excel's `_xHHHH_` escapes in inline strings (only control characters and a literal “_x0041_”-style text are affected; Excel decodes them).
+- Note for Step 2: Excel has no negative zero, so the text “-0” must stay text.
+- Tests: `tests/engine/xlsx-writer.test.ts` (7). A full-size sheet (1,048,576 rows, 6.4 million cells) in Node: written in 18.9 s, checked in 9.3 s, 36 MB file, about 0.5 GB peak extra memory (browser figures come in Step 5).
 
 ## Testing
 
