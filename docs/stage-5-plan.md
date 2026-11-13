@@ -1,6 +1,6 @@
 # Stage 5 plan: CSV Validator
 
-**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). The owner said “Start Stage 5” on 12 November 2026. Progress is recorded under “Progress” below. All six steps are built; Stage 5 awaits the owner's approval.
+**Status:** the five decisions were **approved by the project owner on 12 November 2026** (with the detailed requirements below). The owner said “Start Stage 5” on 12 November 2026. Progress is recorded under “Progress” below. All six steps are built. **Stage 5 was approved by the project owner on 13 November 2026** (see `docs/stage-5-test-report.md`).
 
 Stages 1–4 are complete. Stage 5 builds on the Stage 2 CSV reader, which already detects the encoding, separator, line endings, broken quotes, undecodable characters and formula-like cells. It also builds on the Stage 4 fixing engine: preview, Undo/Redo, change history and verified downloads.
 

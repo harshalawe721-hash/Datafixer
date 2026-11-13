@@ -2,7 +2,7 @@
 
 **Date:** 13 November 2026
 
-**Status:** ⏳ **Awaiting the owner's tablet tests and approval.** All automated tests below pass. Stage 5 is not complete until the owner approves it.
+**Status:** ✅ **COMPLETE.** Approved by the project owner on 13 November 2026. All automated tests below pass, and the owner tested every step on their Android tablet.
 
 ## Scope
 
@@ -128,7 +128,8 @@ No crashes. The plan's target (validation within the Stage 3 scan times) is met 
   - All downloads start with the BOM and use CRLF (the defaults).
   - The owner also edited cells by hand to clear warnings (formula-like values in 6-control, stray quotes in 3-quotes); confirmed by the owner. DataFixer kept those edits exactly; with no edits, the same downloads keep the original values (checked here).
 - **Add apostrophes (13 November 2026), tablet:** 6-control downloaded with `'=1+1`, `'+cmd`, `'@SUM(A1)`, `'-2+3`; `-5` unchanged; hidden characters removed; BOM present. ✅
-- **Download options (13 November 2026), tablet:** “UTF-8 without BOM” was applied correctly (no BOM). But the page's **Column separator** box (how the file is *read*) had been set to Semicolon, so the comma file was read as one column and the copy kept one column per line; line endings stayed CRLF. No values were lost (the copy holds exactly what was read), but the two “separator” settings were easy to confuse. **Fixed:** the page now says the separator and encoding boxes only change how the file is read, and the download dialog's groups are labelled “Separator in the new file”, “Line endings in the new file” and “Text encoding of the new file”, with a note that the page's box is different (3 browser checks). To be repeated on the tablet.
+- **Download options (13 November 2026), tablet:** “UTF-8 without BOM” was applied correctly (no BOM). But the page's **Column separator** box (how the file is *read*) had been set to Semicolon, so the comma file was read as one column and the copy kept one column per line; line endings stayed CRLF. No values were lost (the copy holds exactly what was read), but the two “separator” settings were easy to confuse. **Fixed:** the page now says the separator and encoding boxes only change how the file is read, and the download dialog's groups are labelled “Separator in the new file”, “Line endings in the new file” and “Text encoding of the new file”, with a note that the page's box is different (3 browser checks).
+  - Repeated after the fix: with the page's separator left on Comma, “Download a copy” gave a semicolon-separated file with LF line endings (no CR), every value identical to the original (checked with Python's `csv` module). The BOM option was left on “with BOM” in that run; “without BOM” had already been shown to work in the earlier copy. ✅
 
 ## Added after the owner's tablet test: “Add apostrophes” (owner approved, 13 November 2026)
 
@@ -160,4 +161,4 @@ No crashes. The plan's target (validation within the Stage 3 scan times) is met 
 
 ## Approval
 
-Stage 5 will be marked complete only after the owner's tablet tests and approval.
+**Stage 5 approved by the project owner on 13 November 2026.**

@@ -86,7 +86,7 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 2 | Spreadsheet engine, upload + preview system | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-2-test-report.md` |
 | 3 | Spreadsheet Error Detector (incl. formula errors) | **Complete** (approved by the project owner on 11 November 2026). See `docs/stage-3-test-report.md` |
 | 4 | Automatic fixing and Spreadsheet Cleaner: one-tap fixes for the detected problems, cell editing, download a clean CSV/Excel file | **Complete** (approved by the project owner on 12 November 2026). See `docs/stage-4-test-report.md` |
-| 5 | CSV Validator | **Built, awaiting the owner's approval**: all six steps done. See `docs/stage-5-test-report.md` (see `docs/stage-5-plan.md`) |
+| 5 | CSV Validator: structural checks, repairs with preview, download options | **Complete** (approved by the project owner on 13 November 2026). See `docs/stage-5-test-report.md` |
 | 6 | Excel ↔ CSV converters | Planned |
 | 7 | SEO content, accessibility, performance, testing | Planned |
 
