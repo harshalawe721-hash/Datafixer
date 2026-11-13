@@ -4,7 +4,7 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
-import type { CellInfo, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core.ts";
+import type { CellInfo, ConvertResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core.ts";
 import type { FixOptions } from "./fix/fixes.ts";
 import type { AnyFixId } from "./fix/fix-ids.ts";
 import type { HistoryItem, HistorySummary } from "./edit/session.ts";
@@ -36,6 +36,8 @@ export type EngineRequest =
   | { id: number; type: "editCell"; sheet: string; row: number; col: number; text: string; replaceFormula: boolean }
   /** Create and verify the corrected CSV (cancellable with abortScans). */
   | { id: number; type: "exportCsv"; sheet: string; options?: CsvDownloadOptions }
+  /** Stage 6: CSV → new Excel workbook, verified (cancellable with abortScans). */
+  | { id: number; type: "convertToXlsx"; sheet: string; options: { headerRow: boolean } }
   /** Create and verify the corrected Excel file (.xlsx patched in place; .xls rebuilt as .xlsx). */
   | { id: number; type: "exportXlsx"; sheet: string }
   | { id: number; type: "undo"; sheet: string }
@@ -58,6 +60,7 @@ export interface EngineResults {
   editCell: EditResult;
   exportCsv: ExportResult;
   exportXlsx: ExportResult;
+  convertToXlsx: ConvertResult;
   undo: EditResult;
   redo: EditResult;
   history: HistorySummary[];

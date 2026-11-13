@@ -62,6 +62,16 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "convertToXlsx": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = await core.convertCsvToXlsx(req.sheet, req.options, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "exportCsv":
       case "exportXlsx": {
         const t = { cancelled: false };

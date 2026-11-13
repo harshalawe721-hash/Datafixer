@@ -1,0 +1,214 @@
+{
+ "planted": [
+  {
+   "value": "42",
+   "kind": "number",
+   "excel": 42,
+   "format": ""
+  },
+  {
+   "value": "-3.5",
+   "kind": "number",
+   "excel": -3.5,
+   "format": "0.0"
+  },
+  {
+   "value": "0.25",
+   "kind": "number",
+   "excel": 0.25,
+   "format": "0.00"
+  },
+  {
+   "value": "1.50",
+   "kind": "number",
+   "excel": 1.5,
+   "format": "0.00"
+  },
+  {
+   "value": "0",
+   "kind": "number",
+   "excel": 0,
+   "format": ""
+  },
+  {
+   "value": "123456789012",
+   "kind": "number",
+   "excel": 123456789012,
+   "format": "0"
+  },
+  {
+   "value": "999999999999999",
+   "kind": "number",
+   "excel": 999999999999999,
+   "format": "0"
+  },
+  {
+   "value": "2024-03-15",
+   "kind": "date",
+   "excel": 45366,
+   "format": "yyyy-mm-dd"
+  },
+  {
+   "value": "1900-03-01",
+   "kind": "date",
+   "excel": 61,
+   "format": "yyyy-mm-dd"
+  },
+  {
+   "value": "9999-12-31",
+   "kind": "date",
+   "excel": 2958465,
+   "format": "yyyy-mm-dd"
+  },
+  {
+   "value": "1234567890123456",
+   "kind": "text",
+   "excel": "1234567890123456",
+   "format": ""
+  },
+  {
+   "value": "007",
+   "kind": "text",
+   "excel": "007",
+   "format": ""
+  },
+  {
+   "value": "0044 20 7946 0958",
+   "kind": "text",
+   "excel": "0044 20 7946 0958",
+   "format": ""
+  },
+  {
+   "value": "1,250",
+   "kind": "text",
+   "excel": "1,250",
+   "format": ""
+  },
+  {
+   "value": "1 250",
+   "kind": "text",
+   "excel": "1 250",
+   "format": ""
+  },
+  {
+   "value": "12%",
+   "kind": "text",
+   "excel": "12%",
+   "format": ""
+  },
+  {
+   "value": "$5",
+   "kind": "text",
+   "excel": "$5",
+   "format": ""
+  },
+  {
+   "value": "€5",
+   "kind": "text",
+   "excel": "€5",
+   "format": ""
+  },
+  {
+   "value": "1e5",
+   "kind": "text",
+   "excel": "1e5",
+   "format": ""
+  },
+  {
+   "value": "+5",
+   "kind": "text",
+   "excel": "+5",
+   "format": ""
+  },
+  {
+   "value": "-0",
+   "kind": "text",
+   "excel": "-0",
+   "format": ""
+  },
+  {
+   "value": "03/04/2024",
+   "kind": "text",
+   "excel": "03/04/2024",
+   "format": ""
+  },
+  {
+   "value": "15.03.2024",
+   "kind": "text",
+   "excel": "15.03.2024",
+   "format": ""
+  },
+  {
+   "value": "2023-02-30",
+   "kind": "text",
+   "excel": "2023-02-30",
+   "format": ""
+  },
+  {
+   "value": "1899-12-31",
+   "kind": "text",
+   "excel": "1899-12-31",
+   "format": ""
+  },
+  {
+   "value": "2024-03-15 10:30",
+   "kind": "text",
+   "excel": "2024-03-15 10:30",
+   "format": ""
+  },
+  {
+   "value": "=1+1",
+   "kind": "text",
+   "excel": "=1+1",
+   "format": ""
+  },
+  {
+   "value": "@SUM(A1)",
+   "kind": "text",
+   "excel": "@SUM(A1)",
+   "format": ""
+  },
+  {
+   "value": "TRUE",
+   "kind": "text",
+   "excel": "TRUE",
+   "format": ""
+  },
+  {
+   "value": " 42 ",
+   "kind": "text",
+   "excel": " 42 ",
+   "format": ""
+  },
+  {
+   "value": "abc",
+   "kind": "text",
+   "excel": "abc",
+   "format": ""
+  },
+  {
+   "value": "Flat 7\nMain Street",
+   "kind": "text",
+   "excel": "Flat 7\nMain Street",
+   "format": ""
+  },
+  {
+   "value": "emoji 😀 é",
+   "kind": "text",
+   "excel": "emoji 😀 é",
+   "format": ""
+  },
+  {
+   "value": "",
+   "kind": "empty",
+   "excel": null,
+   "format": ""
+  }
+ ],
+ "customers": {
+  "numbers": 80,
+  "dates": 30,
+  "text": 174,
+  "empty": 36
+ }
+}
