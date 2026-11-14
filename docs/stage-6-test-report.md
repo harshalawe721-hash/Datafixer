@@ -2,7 +2,7 @@
 
 **Date:** 14 November 2026
 
-**Status:** ⏳ **Awaiting the owner's tablet tests and approval.** All automated tests below pass. Stage 6 is not complete until the owner approves it.
+**Status:** ✅ **COMPLETE.** Approved by the project owner on 14 November 2026 (“They are working, start next stage”). All automated tests below pass.
 
 ## Scope
 
@@ -107,7 +107,7 @@ No crashes. **Found and fixed during these runs:** (1) at 512 MB a 3 × 200,000-
 ## Real Android device testing (owner)
 
 - **Step 3 (14 November 2026):** the owner opened 1-values.csv on the CSV to Excel page (verdict “Valid CSV, with 1 warning”, the formula-like values) and used **Check and repair in the CSV Validator**, which opened the file on the Validator; “Add apostrophes” there gave “Valid CSV file”. The corrected 2-customers.csv downloaded from the Validator was checked here: exactly the 13 `+44` phone numbers gained an apostrophe; every other value identical.
-- **Not yet tested on the tablet:** opening a converted `.xlsx` in Excel or Google Sheets, and the Excel to CSV page. Suggested tests are at the end of this report.
+- **Step 5 (14 November 2026):** after receiving the five test files, the owner reported that the converters work on the tablet and approved the stage. No screenshots or downloaded files were sent for this round, so the results in the table below were not checked here.
 
 ## Known limitations
 
@@ -130,4 +130,4 @@ No crashes. **Found and fixed during these runs:** (1) at 512 MB a 3 × 200,000-
 
 ## Approval
 
-Stage 6 will be marked complete only after the owner's tablet tests and approval.
+**Stage 6 approved by the project owner on 14 November 2026.**

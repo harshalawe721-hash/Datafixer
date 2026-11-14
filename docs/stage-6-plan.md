@@ -1,6 +1,6 @@
 # Stage 6 plan: Excel ↔ CSV converters
 
-**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026** and said “Start Stage 6” the same day. Progress is recorded under “Progress” below. All five steps are built; Stage 6 awaits the owner's approval.
+**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026** and said “Start Stage 6” the same day. Progress is recorded under “Progress” below. All five steps are built. **Stage 6 was approved by the project owner on 14 November 2026** (see `docs/stage-6-test-report.md`).
 
 ## Goal
 
