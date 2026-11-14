@@ -69,13 +69,13 @@ check(await visible(page.getByText("1 matching row (of 1,234)")), "search narrow
 check((await firstCell(0)) === "Person 1233", "search result correct");
 await page.getByLabel("Search in data").fill("");
 await visible(page.getByText("1,234 data rows"));
-await page.getByRole("button", { name: /Sort by amount/ }).click();
+await page.getByRole("button", { name: /Sort by column [A-Z]+ amount/ }).click();
 await page.waitForTimeout(400);
-await page.getByRole("button", { name: /Sort by amount/ }).click();
+await page.getByRole("button", { name: /Sort by column [A-Z]+ amount/ }).click();
 await page.waitForTimeout(600);
 check((await firstCell(2)) === "3699", "numeric descending sort (3699 first)");
 check((await page.locator("th[aria-sort=descending]").count()) === 1, "aria-sort reflects sort");
-await page.getByRole("button", { name: /Sort by amount/ }).click(); // back to unsorted
+await page.getByRole("button", { name: /Sort by column [A-Z]+ amount/ }).click(); // back to unsorted
 await page.waitForTimeout(400);
 await page.getByRole("button", { name: "Next" }).click();
 await page.waitForTimeout(400);

@@ -89,7 +89,7 @@ export function EditBar({ api }: { api: ToolApi }) {
           <p>
             <strong>{api.lastChange.action === "applied" ? "Done:" : api.lastChange.action === "undone" ? "Undone:" : "Redone:"}</strong>{" "}
             {api.lastChange.entries.map(describe).join("; ")}.{" "}
-            <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setShowHistory(true)}>
+            <button type="button" className="font-semibold underline underline-offset-2 hover:no-underline" onClick={() => setShowHistory(true)}>
               See every change in History
             </button>
           </p>

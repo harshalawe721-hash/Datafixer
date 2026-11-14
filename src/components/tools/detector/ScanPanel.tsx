@@ -246,8 +246,8 @@ function CleaningTools({ result, onFix }: { result: ScanResult; onFix: (fixId: F
                 <p className="text-sm text-muted">{TOOL_HINTS[id]}</p>
               </div>
               {n > 0 ? (
-                <Button size="sm" className="h-10 shrink-0" onClick={() => onFix(id)} aria-label={`${FIX_LABELS[id]}: ${n.toLocaleString("en-US")} found`}>
-                  <Wand2 className="size-4" aria-hidden="true" /> {n.toLocaleString("en-US")} found · Preview
+                <Button size="sm" className="h-10 shrink-0" onClick={() => onFix(id)}>
+                  <Wand2 className="size-4" aria-hidden="true" /> {n.toLocaleString("en-US")} found · Preview<span className="sr-only"> ({FIX_LABELS[id]})</span>
                 </Button>
               ) : (
                 <span className="flex shrink-0 items-center gap-1.5 text-sm text-success">

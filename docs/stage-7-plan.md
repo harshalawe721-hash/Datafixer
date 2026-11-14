@@ -84,6 +84,12 @@ Finish the website: every page says only what is built and tested, each tool pag
 - Two Stage 4 browser-test lookups were updated to the new semantics (the hint's new wording; cells now have the `gridcell` role instead of `cell`); the checks themselves are unchanged.
 - Browser test: `npm run test:a11y`, 28 keyboard checks (reaching the grid with Tab, all navigation keys, editing and escaping, renaming a column by keyboard, which clears the Validator's “column without a name” error, and a keyboard-only Fix all / Apply / Download / Undo on the Cleaner).
 
+### Step 4 — Automated accessibility checks (done, 14 November 2026)
+
+- Decision 3A: axe-core (already installed with the lint tools: `eslint-config-next` → `eslint-plugin-jsx-a11y` → `axe-core` 4.14.0; nothing added) runs in `npm run test:a11y` on all 11 pages (including the 404 page) in light and dark mode, and on each tool after a file is opened: Error Detector results, affected rows, Fix all preview, change history, the cell editor, Cleaner tools and a preview with choices, Validator results, repair preview and download options, both converters' settings and summaries. Any serious or critical finding fails the test.
+- **Found and fixed:** (1) visible text not part of the accessible name (serious): column sort buttons were announced “Sort by id (column A)” while showing “A id”, and the Cleaner's buttons “Remove extra spaces: 2 found” while showing “2 found · Preview” — now “Sort by column A id” and “2 found · Preview (Remove extra spaces)”, so voice-control users can say what they see; (2) the fix preview's scrollable area had no keyboard access when it held no focusable content — it is now focusable; (3) the “See every change in History” link had 3.8:1 contrast in dark mode (blue on dark green) — now underlined body text.
+- Result: 0 serious, 0 critical, 0 moderate, 0 minor findings in all 42 checked states. Three earlier browser-test lookups were updated to the new accessible names (same checks).
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

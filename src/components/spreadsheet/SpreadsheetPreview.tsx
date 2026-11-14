@@ -310,8 +310,9 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                           onClick={() => toggleSort(col)}
                           className="flex w-full max-w-64 min-w-24 items-center justify-between gap-2 px-3 py-2 text-left hover:bg-line/50"
                           title={`Sort by ${label || `column ${columnLetter(col)}`}`}
-                          aria-label={`Sort by ${label ? `${label} (column ${columnLetter(col)})` : `column ${columnLetter(col)}`}`}
                         >
+                          {/* The visible text (letter and name) is part of the accessible name: “Sort by column A id”. */}
+                          <span className="sr-only">Sort by column </span>
                           <span className="min-w-0">
                             <span className="block text-[11px] font-medium text-muted">{columnLetter(col)}</span>
                             {headerRow && <span className="block truncate">{label || <em className="text-muted">(no name)</em>}</span>}

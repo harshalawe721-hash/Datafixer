@@ -466,7 +466,7 @@ const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
   check((await page.getByText(/split or merge/i).count()) === 0, "no claim of unbuilt features (split/merge)");
   await page.locator("input[type=file]").setInputFiles(path.join(FIXTURES, "1-problems.csv"));
   await page.getByRole("heading", { name: "Cleaning tools" }).waitFor({ timeout: 30000 });
-  const tool = page.getByRole("button", { name: "Remove extra spaces: 2 found" });
+  const tool = page.getByRole("button", { name: "2 found · Preview (Remove extra spaces)" });
   check(await visible(tool), "tool shows what it would fix (2 found)");
   check(await visible(page.getByText("Nothing to fix").first()) || true, "tools with nothing to fix say so");
   await tool.click();

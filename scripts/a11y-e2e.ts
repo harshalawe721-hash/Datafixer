@@ -9,6 +9,10 @@ import path from "node:path";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const VALIDATE = new URL("../tests/fixtures/validate/", import.meta.url).pathname;
+const CONVERT = new URL("../tests/fixtures/convert/", import.meta.url).pathname;
+const EXCEL = new URL("../tests/fixtures/excel/", import.meta.url).pathname;
+// axe-core comes with the existing lint tools (eslint-config-next → eslint-plugin-jsx-a11y); nothing extra is installed.
+const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 const SCAN = new URL("../tests/fixtures/scan/", import.meta.url).pathname;
 let passes = 0;
 let failures = 0;
@@ -23,7 +27,8 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 900 
 const page = await context.newPage();
 const errors: string[] = [];
 page.on("pageerror", (e: Error) => errors.push(String(e)));
-page.on("console", (m: { type(): string; text(): string }) => m.type() === "error" && errors.push(m.text()));
+// (The “page not found” check loads /does-not-exist on purpose: its 404 is expected.)
+page.on("console", (m: { type(): string; text(): string; location(): { url: string } }) => m.type() === "error" && !m.location().url.includes("/does-not-exist") && errors.push(m.text()));
 const visible = (loc: { first(): { waitFor(o: object): Promise<void> } }, timeout = 15000) =>
   loc.first().waitFor({ state: "visible", timeout }).then(() => true, () => false);
 /** The focused element: grid position, role, label and text. */
@@ -88,7 +93,7 @@ console.log("\nKeyboard: the header and renaming a column (decision 2)");
 await page.locator('td[data-r="0"][data-c="2"]').focus();
 await key("ArrowUp");
 a = await active();
-check(a.label?.startsWith("Sort by") && a.label.includes("column C"), `↑ from the first row reaches the column's header (${a.label})`);
+check(a.text.startsWith("Sort by column C"), `↑ from the first row reaches the column's header (${a.text})`);
 await key("ArrowRight");
 a = await active();
 check(a.label === "Rename column C", `→ reaches the column's Rename button (${a.label})`);
@@ -136,6 +141,104 @@ await key("Enter");
 await page.getByRole("button", { name: "Undo" }).focus();
 await key("Enter");
 check(await visible(page.getByText(/undone/i)), "Undo by keyboard works");
+
+// ---------------------------------------------------------------- axe-core (decision 3)
+interface AxeViolation { id: string; impact: string | null; help: string; nodes: { target: string[] }[] }
+const minor: Record<string, number> = {};
+async function axe(label: string, dark = false) {
+  if (dark) await page.evaluate(() => document.documentElement.classList.add("dark"));
+  else await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.waitForTimeout(150);
+  if (!(await page.evaluate(() => "axe" in window))) await page.addScriptTag({ path: AXE });
+  const violations = (await page.evaluate(async () => {
+    const w = window as unknown as { axe: { run: (ctx: Document, o: object) => Promise<{ violations: unknown[] }> } };
+    return (await w.axe.run(document, { resultTypes: ["violations"] })).violations;
+  })) as AxeViolation[];
+  const bad = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+  for (const v of violations.filter((x) => !bad.includes(x))) minor[`${v.id} (${v.impact})`] = (minor[`${v.id} (${v.impact})`] ?? 0) + 1;
+  check(bad.length === 0, `${label}${dark ? " [dark]" : ""}: no serious or critical problems${bad.length ? ` — ${bad.map((v) => `${v.id}: ${v.help} at ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(", ")}`).join(" | ")}` : ""}`);
+}
+
+console.log("\naxe-core: every page, light and dark mode");
+for (const p of ["/", "/spreadsheet-error-detector", "/spreadsheet-cleaner", "/csv-validator", "/excel-to-csv", "/csv-to-excel", "/about", "/contact", "/privacy-policy", "/terms-of-service", "/does-not-exist"]) {
+  await page.goto(`${BASE}${p}`, { waitUntil: "networkidle" });
+  await axe(p);
+  await axe(p, true);
+}
+
+console.log("\naxe-core: each tool after a file is opened");
+await page.goto(`${BASE}/spreadsheet-error-detector`, { waitUntil: "networkidle" });
+await page.locator("input[type=file]").setInputFiles(path.join(SCAN, "1-problems.csv"));
+await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+await axe("Error Detector: results");
+await axe("Error Detector: results", true);
+await page.locator("article").first().getByRole("button", { name: "View affected data" }).click();
+await page.waitForTimeout(500);
+await axe("Error Detector: affected rows shown");
+await page.getByRole("button", { name: "Fix all safe problems" }).click();
+await page.getByRole("dialog").getByRole("button", { name: /^Apply all fixes/ }).waitFor({ timeout: 30000 });
+await axe("Error Detector: Fix all preview");
+await axe("Error Detector: Fix all preview", true);
+await page.getByRole("dialog").getByRole("button", { name: /^Apply all fixes/ }).click();
+await page.getByRole("dialog").waitFor({ state: "detached", timeout: 30000 });
+await page.getByRole("button", { name: "History", exact: true }).click();
+await axe("Error Detector: changes and history");
+await page.locator('td[data-r="0"][data-c="1"]').click();
+await page.getByRole("dialog").getByRole("textbox").waitFor({ timeout: 10000 });
+await axe("cell editor");
+await axe("cell editor", true);
+await page.keyboard.press("Escape");
+
+await page.goto(`${BASE}/spreadsheet-cleaner`, { waitUntil: "networkidle" });
+await page.locator("input[type=file]").setInputFiles(path.join(SCAN, "1-problems.csv"));
+await page.getByRole("heading", { name: "Cleaning tools" }).waitFor({ timeout: 30000 });
+await axe("Cleaner: tools");
+await page.getByRole("button", { name: /Make date formats consistent|Fix capitalization/ }).first().click();
+await page.getByRole("dialog").waitFor({ timeout: 30000 });
+await page.waitForTimeout(500);
+await axe("Cleaner: preview with choices");
+await page.keyboard.press("Escape");
+
+await page.goto(`${BASE}/csv-validator`, { waitUntil: "networkidle" });
+await page.locator("input[type=file]").setInputFiles(path.join(VALIDATE, "1-uneven.csv"));
+await page.locator("#validator-heading").waitFor({ timeout: 30000 });
+await axe("CSV Validator: results");
+await axe("CSV Validator: results", true);
+await page.getByRole("button", { name: "Add empty cells" }).click();
+await page.getByRole("dialog").getByRole("button", { name: /^Apply fix/ }).waitFor({ timeout: 30000 });
+await axe("CSV Validator: repair preview");
+await page.getByRole("dialog").getByRole("button", { name: /^Apply fix/ }).click();
+await page.getByRole("dialog").waitFor({ state: "detached", timeout: 30000 });
+await page.locator("#validator-heading").waitFor({ timeout: 30000 });
+await page.getByRole("button", { name: "Download corrected CSV" }).click();
+await page.getByRole("dialog").getByRole("radio").first().waitFor({ timeout: 10000 });
+await axe("CSV Validator: download options");
+await axe("CSV Validator: download options", true);
+await page.keyboard.press("Escape");
+
+await page.goto(`${BASE}/csv-to-excel`, { waitUntil: "networkidle" });
+await page.locator("input[type=file]").setInputFiles(path.join(CONVERT, "2-customers.csv"));
+await page.locator("#convert-heading").waitFor({ timeout: 30000 });
+await page.waitForTimeout(500);
+await axe("CSV to Excel: settings");
+await axe("CSV to Excel: settings", true);
+const d1 = page.waitForEvent("download", { timeout: 30000 });
+await page.getByRole("button", { name: "Convert to Excel (.xlsx)" }).click();
+await d1;
+await page.locator("#converted-heading").waitFor({ timeout: 30000 });
+await axe("CSV to Excel: summary");
+
+await page.goto(`${BASE}/excel-to-csv`, { waitUntil: "networkidle" });
+await page.locator("input[type=file]").setInputFiles(path.join(EXCEL, "lo-features.xlsx"));
+await page.locator("#to-csv-heading").waitFor({ timeout: 30000 });
+await axe("Excel to CSV: settings");
+await axe("Excel to CSV: settings", true);
+const d2 = page.waitForEvent("download", { timeout: 30000 });
+await page.getByRole("button", { name: "Download this sheet as CSV" }).click();
+await d2;
+await page.locator("#to-csv-done").waitFor({ timeout: 30000 });
+await axe("Excel to CSV: summary");
+console.log(`  (moderate and minor findings, by rule: ${Object.keys(minor).length ? JSON.stringify(minor) : "none"})`);
 
 console.log("\nErrors");
 check(errors.length === 0, `no console or page errors (${errors.slice(0, 3).join(" | ")})`);

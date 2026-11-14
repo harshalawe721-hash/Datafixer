@@ -166,7 +166,8 @@ export function FixDialog({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {/* Focusable so keyboard users can scroll a long preview. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 focus-visible:outline-2 focus-visible:outline-primary" tabIndex={0} aria-label="Preview of the changes">
           {state.status === "loading" && (
             <p className="flex items-center gap-2 py-8 text-sm text-muted" role="status">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
