@@ -23,6 +23,12 @@ export interface CsvWriteOptions {
   bom?: boolean;
   /** Excel source: write values as shown (formatted dates and numbers). CSV source: raw text. */
   useDisplay: boolean;
+  /**
+   * Stage 6 (Excel to CSV, decision 4): “plain values” instead of values as shown:
+   * dates as yyyy-mm-dd (with hh:mm:ss when there is a time), numbers in full
+   * precision without formatting, TRUE/FALSE. Overrides useDisplay.
+   */
+  plain?: boolean;
   cancel?: CancelToken;
   onProgress?: (done: number, total: number) => void;
   /** Characters of text per Blob part (default ~2M). */
@@ -32,11 +38,43 @@ export interface CsvWriteOptions {
 const BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
 const ROWS_PER_YIELD = 20_000;
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * An Excel date serial as yyyy-mm-dd (and hh:mm:ss when there is a time;
+ * a time without a date as hh:mm:ss). 1900 system: serial 60 is Excel's
+ * non-existent 29 February 1900, shown as Excel shows it.
+ */
+export function serialToIso(v: number, date1904 = false): string {
+  if (!Number.isFinite(v) || v < 0) return String(v);
+  let days = Math.floor(v);
+  let secs = Math.round((v - days) * 86_400);
+  if (secs === 86_400) {
+    days++;
+    secs = 0;
+  }
+  const time = secs ? `${pad(Math.floor(secs / 3600))}:${pad(Math.floor((secs % 3600) / 60))}:${pad(secs % 60)}` : "";
+  if (!date1904 && days === 0) return time || "00:00:00";
+  let date: string;
+  if (!date1904 && days === 60) date = "1900-02-29";
+  else {
+    const base = date1904 ? Date.UTC(1904, 0, 1) : days < 60 ? Date.UTC(1899, 11, 31) : Date.UTC(1899, 11, 30);
+    const d = new Date(base + days * 86_400_000);
+    date = `${String(d.getUTCFullYear()).padStart(4, "0")}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  }
+  return time ? `${date} ${time}` : date;
+}
+
 /** The text a cell is written as. */
-export function cellOutText(sheet: SheetModel, r: number, c: number, useDisplay: boolean): string {
+export function cellOutText(sheet: SheetModel, r: number, c: number, useDisplay: boolean, plain = false): string {
   const g = sheet.grid;
   const v = g.get(r, c);
   if (v === null) return "";
+  if (plain) {
+    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+    if (typeof v === "number") return g.isDate?.(r, c) ? serialToIso(v, sheet.date1904 ?? false) : String(v);
+    return String(v);
+  }
   if (useDisplay && g.display) return g.display(r, c);
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   return String(v);
@@ -50,10 +88,10 @@ export function quoteField(s: string, delimiter: string): string {
 }
 
 /** One row as written (cells, in order). Rows keep their own length (ragged rows stay ragged). */
-export function expectedRow(sheet: SheetModel, r: number, useDisplay: boolean): string[] {
+export function expectedRow(sheet: SheetModel, r: number, useDisplay: boolean, plain = false): string[] {
   const len = sheet.grid.rowLength(r);
   const out = new Array<string>(len);
-  for (let c = 0; c < len; c++) out[c] = cellOutText(sheet, r, c, useDisplay);
+  for (let c = 0; c < len; c++) out[c] = cellOutText(sheet, r, c, useDisplay, plain);
   return out;
 }
 
@@ -65,7 +103,7 @@ export async function buildCsv(sheet: SheetModel, o: CsvWriteOptions): Promise<{
   let bufChars = 0;
   let formulaLike = 0;
   for (let r = 0; r < rows; r++) {
-    const cells = expectedRow(sheet, r, o.useDisplay);
+    const cells = expectedRow(sheet, r, o.useDisplay, o.plain);
     for (let c = 0; c < cells.length; c++) {
       const s = cells[c]!;
       const ch = s.charCodeAt(0);
@@ -104,7 +142,7 @@ export interface CsvVerification {
 export async function verifyCsv(
   blob: Blob,
   sheet: SheetModel,
-  o: Pick<CsvWriteOptions, "delimiter" | "useDisplay" | "cancel" | "bom"> & { onProgress?: (loaded: number, total: number) => void },
+  o: Pick<CsvWriteOptions, "delimiter" | "useDisplay" | "cancel" | "bom" | "plain"> & { onProgress?: (loaded: number, total: number) => void },
 ): Promise<CsvVerification> {
   const head = new Uint8Array(await blob.slice(0, 3).arrayBuffer());
   const hasBom = head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf;
@@ -140,7 +178,7 @@ export async function verifyCsv(
           }
           throw verificationFailed(`row ${r + 1} shouldn't exist`);
         }
-        const want = expectedRow(sheet, r, o.useDisplay);
+        const want = expectedRow(sheet, r, o.useDisplay, o.plain);
         if (!same(got, want)) {
           const c = want.findIndex((w, i) => got[i] !== w);
           throw verificationFailed(`row ${r + 1}${c >= 0 ? `, column ${c + 1}` : ""} doesn't match`);

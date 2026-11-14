@@ -5,7 +5,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Download, FileDown, X } from 
 import { Button } from "@/components/ui/Button";
 import { ProcessingProgress } from "@/components/spreadsheet/ProcessingProgress";
 import type { ToolApi } from "@/components/spreadsheet/tool-api";
-import type { CsvDownloadOptions, ExportResult } from "@/engine/core";
+import type { CsvDownloadOptions, CsvFormat, ExportResult } from "@/engine/core";
 import type { ProgressEvent } from "@/engine/types";
 import { EngineError } from "@/engine/errors";
 import { formatBytes } from "@/lib/format";
@@ -64,7 +64,7 @@ export function DownloadDialog({ api, onClose }: { api: ToolApi; onClose: () => 
   // Excel files: choose Excel or CSV first, with what each keeps. CSV Validator: choose the format first.
   const [state, setState] = useState<State>(excel ? { status: "confirm" } : withOptions ? { status: "options" } : { status: "working", progress: null, kind: "csv" });
   const original = api.summary.csv;
-  const [csvOptions, setCsvOptions] = useState<Required<CsvDownloadOptions>>(() => ({
+  const [csvOptions, setCsvOptions] = useState<CsvFormat>(() => ({
     delimiter: original && (original.delimiter === ";" || original.delimiter === "\t") ? original.delimiter : ",",
     lineEnding: original?.lineEnding === "\n" ? "\n" : "\r\n",
     bom: true,
@@ -322,10 +322,13 @@ const BOM_OPTIONS = [
 ] as const;
 
 /** CSV Validator (decision 3): separator, line endings and BOM for the download. */
-function CsvOptions({ value, onChange }: { value: Required<CsvDownloadOptions>; onChange: (v: Required<CsvDownloadOptions>) => void }) {
+export function CsvOptions({ value, onChange, fromExcel = false }: { value: CsvFormat; onChange: (v: CsvFormat) => void; fromExcel?: boolean }) {
   return (
     <>
-      <p className="text-sm">Choose how the new file is written. Every value is saved exactly, including quotes, separators and line breaks inside values. Your original file is never changed. (The “Column separator” box on the page is different: it only says how your file is read.)</p>
+      <p className="text-sm">
+        Choose how the new file is written. Every value is saved exactly, including quotes, separators and line breaks inside values. Your original file is never changed.
+        {fromExcel ? "" : " (The “Column separator” box on the page is different: it only says how your file is read.)"}
+      </p>
       <OptionGroup<CsvDownloadOptions["delimiter"] & string> legend="Separator in the new file" name="dl-sep" options={SEPARATORS} current={value.delimiter} set={(delimiter) => onChange({ ...value, delimiter })} />
       <OptionGroup<CsvDownloadOptions["lineEnding"] & string> legend="Line endings in the new file" name="dl-eol" options={LINE_ENDINGS} current={value.lineEnding} set={(lineEnding) => onChange({ ...value, lineEnding })} />
       <OptionGroup<boolean> legend="Text encoding of the new file" name="dl-bom" options={BOM_OPTIONS} current={value.bom} set={(bom) => onChange({ ...value, bom })} />

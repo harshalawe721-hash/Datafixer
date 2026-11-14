@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { EngineCore, type CsvDownloadOptions } from "../../src/engine/core.ts";
+import { EngineCore, type CsvFormat } from "../../src/engine/core.ts";
 
 const noop = () => {};
 
@@ -43,7 +43,7 @@ function pythonRead(file: string, delimiter: string, bom: boolean): string[][] {
   return JSON.parse(py.stdout) as string[][];
 }
 
-const COMBOS: Required<CsvDownloadOptions>[] = [];
+const COMBOS: CsvFormat[] = [];
 for (const delimiter of [",", ";", "\t"] as const) for (const lineEnding of ["\r\n", "\n"] as const) for (const bom of [true, false]) COMBOS.push({ delimiter, lineEnding, bom });
 
 test("decision 3: all 12 combinations keep every value exactly (DataFixer's check and Python's csv module)", async () => {

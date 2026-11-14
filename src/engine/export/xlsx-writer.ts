@@ -153,7 +153,8 @@ function tooLong(sheet: string, r: number, c: number, len: number): EngineError 
 
 // ---------------------------------------------------------------- writing
 
-function newEntry(name: string): ZipEntry {
+/** A ZIP entry header for a newly written part (also used for the all-sheets ZIP). */
+export function newEntry(name: string): ZipEntry {
   const d = new Date();
   return {
     name,

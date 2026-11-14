@@ -196,6 +196,7 @@ export function SpreadsheetWorkspace({
     validate: (options, onProgress) => validate(summary.activeSheet, options, onProgress),
     abortScans,
     file,
+    exportWorkbookZip: (options, onProgress) => engine.exportWorkbookZip(options, onProgress),
     convertToXlsx: (onProgress) => engine.convertToXlsx(sheetName, { headerRow: current.headerRow }, onProgress),
     viewIssue: (issue) => {
       setView((v) => ({ ...v, issue }));

@@ -109,6 +109,16 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 - Shared changes: the workspace option for CSV pages is renamed `csvTools` (used by the Validator and the converter); the progress bar can use page-specific step names; the open file is available to tool panels (for the hand-over).
 - Browser test: `npm run test:converter`, 25 checks (realistic file: counts, file name, check message; openpyxl: bold header, frozen row, filter, types per column; column names unticked: no header formatting; hand-over to the Validator; every planted value's type in the downloaded file; 1,048,580 rows split into 2 sheets, read by openpyxl; Cancel; phone and tablet widths; no off-site requests or console errors).
 
+### Step 4 — Excel to CSV page (done, 14 November 2026)
+
+- `/excel-to-csv` now works: open an XLSX or XLS workbook, choose a sheet (the Stage 2 sheet list), choose **Values in the new file** — “As shown in Excel” (default) or “Plain values (for databases)” (decision 4) — and the Stage 5 format options (separator, line endings, UTF-8 with or without BOM). **Download this sheet as CSV** (`Book - Sheet.csv`) or **All N sheets (ZIP)** (decision 3, `Book - all sheets.zip`).
+- Plain values: dates as `yyyy-mm-dd` (with `hh:mm:ss` when there is a time; a time alone as `hh:mm:ss`), both the 1900 and 1904 date systems, Excel's non-existent 29 February 1900 written as Excel shows it; numbers in full precision without formatting; TRUE/FALSE; error results as shown (`#DIV/0!`).
+- All sheets: each worksheet is read in turn (the open sheet is used as it is; the others get the rest of the memory budget and are released after use), written, checked cell by cell, and added to the ZIP; the ZIP is then read back and every file compared byte by byte before it is offered. Hidden and very hidden sheets are included and marked; real chart sheets have no cells and are listed as left out. File names are made safe and unique (`.tsv` for tab).
+- Decision 5: hidden rows and columns are included and a merged value is written once (in its first cell); both are listed under “What a CSV file can't keep”, with formulas, formatting, other sheets, charts, images, comments, data validation, conditional formatting and hyperlinks.
+- A chart sheet shows “This sheet has no cells to convert” and no single-sheet button (the ZIP of the worksheets is still offered).
+- Found while testing: LibreOffice saves a chart sheet as an ordinary worksheet holding the chart, so such a sheet is converted (to an empty CSV); only real chart sheets are left out.
+- Tests: `tests/engine/excel-to-csv.test.ts` (8: date conversion; plain values against openpyxl cell by cell for .xlsx and .xls; values as shown and the summary; 1904 dates; ZIPs read by Python's zipfile and csv modules, with options, Unicode sheet names, a real chart sheet). Converter browser test now 45 checks.
+
 ## Testing
 
 - Every value rule with exact examples, including the ones that must stay text (`007`, `0044…`, 16+ digit numbers, `1,250`, `03/04/2024`, `=1+1`, `TRUE`, empty cells, line breaks, emoji).

@@ -8,7 +8,7 @@ import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { ValidationResult } from "@/engine/validate/validate";
-import type { ConvertResult, CsvDownloadOptions } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult } from "@/engine/core";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { FixOptions } from "@/engine/fix/fixes";
 import type { AnyFixId } from "@/engine/fix/fix-ids";
@@ -104,6 +104,12 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
+  /** Stage 6: all worksheets as CSV files in one ZIP. */
+  const exportWorkbookZip = useCallback(
+    (options: CsvDownloadOptions, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookZipResult> => client().exportWorkbookZip(options, onProgress),
+    [client],
+  );
+
   /** Stage 6: CSV → new Excel workbook. */
   const convertToXlsx = useCallback(
     (sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ConvertResult> => client().convertToXlsx(sheet, options, onProgress),
@@ -141,5 +147,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }

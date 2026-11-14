@@ -62,6 +62,16 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "exportWorkbookZip": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = await core.exportWorkbookZip(req.options, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "convertToXlsx": {
         const t = { cancelled: false };
         scanTokens.add(t);

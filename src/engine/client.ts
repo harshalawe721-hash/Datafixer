@@ -15,7 +15,7 @@ import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
-import type { ConvertResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
+import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
 import type { FixOptions } from "./fix/fixes";
 import type { AnyFixId } from "./fix/fix-ids";
 import type { HistoryItem, HistorySummary } from "./edit/session";
@@ -127,6 +127,11 @@ export class EngineClient {
   }
 
   /** Create and verify the corrected CSV; the Blob comes back by reference (no copy). */
+  /** Stage 6: every worksheet as a verified CSV, in one ZIP (stop with abortScans). */
+  exportWorkbookZip(options: CsvDownloadOptions, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookZipResult> {
+    return this.request<"exportWorkbookZip">({ type: "exportWorkbookZip", options }, onProgress);
+  }
+
   /** Stage 6: CSV → new Excel workbook (stop with abortScans). */
   convertToXlsx(sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ConvertResult> {
     return this.request<"convertToXlsx">({ type: "convertToXlsx", sheet, options }, onProgress);

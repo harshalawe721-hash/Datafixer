@@ -24,7 +24,8 @@ import { columnLetter } from "./query/query.ts";
 import { planFix, type FixId, type FixOptions, type FixPlan, type FixPreview, type PlanContext } from "./fix/fixes.ts";
 import { isRepairId, VALIDATOR_FIX_ALL, type AnyFixId } from "./fix/fix-ids.ts";
 import { planRepair } from "./validate/repairs.ts";
-import { writeXlsx, verifyNewXlsx } from "./export/xlsx-writer.ts";
+import { writeXlsx, verifyNewXlsx, newEntry } from "./export/xlsx-writer.ts";
+import { PartWriter, writeZip, streamEntry, type OutputEntry } from "./xlsx/zip.ts";
 import { countConversion, KEPT_REASON_TEXT, planCsvToXlsx, type KeptReason } from "./convert/csv-to-xlsx.ts";
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
 import { classify } from "./scan/classify.ts";
@@ -95,6 +96,29 @@ export interface CsvDownloadOptions {
   lineEnding?: "\r\n" | "\n";
   /** UTF-8 with BOM (default) or without (for databases). */
   bom?: boolean;
+  /** Stage 6, Excel sources (decision 4): values as shown in Excel (default) or plain values for databases. */
+  values?: "shown" | "plain";
+}
+
+/** The three format choices of a CSV download (Stage 5, decision 3). */
+export type CsvFormat = Required<Pick<CsvDownloadOptions, "delimiter" | "lineEnding" | "bom">>;
+
+/** Stage 6 (decision 3): every worksheet as its own CSV, in one ZIP file. */
+export interface WorkbookZipSummary {
+  originalName: string;
+  downloadName: string;
+  bytes: number;
+  csv: { delimiter: string; lineEnding: "\r\n" | "\n"; bom: boolean; values: "shown" | "plain" };
+  files: { name: string; sheet: string; hidden: boolean; rows: number; cells: number; bytes: number }[];
+  /** Chart sheets (no cells), not included. */
+  skipped: string[];
+  notPreserved: string[];
+  warnings: string[];
+}
+
+export interface WorkbookZipResult {
+  blob: Blob;
+  summary: WorkbookZipSummary;
 }
 
 /** Shown after a successful, verified download (safeguard S3). */
@@ -118,7 +142,7 @@ export interface ExportSummary {
   automaticCorrections: number;
   manualEdits: number;
   /** CSV downloads: how the file was written. */
-  csv?: { delimiter: string; lineEnding: "\r\n" | "\n"; bom: boolean };
+  csv?: { delimiter: string; lineEnding: "\r\n" | "\n"; bom: boolean; values?: "shown" | "plain" };
   /** What the downloaded file can't keep (empty: nothing lost). */
   notPreserved: string[];
   warnings: string[];
@@ -768,6 +792,8 @@ export class EngineCore {
     const delimiter = options.delimiter ?? st.csv?.delimiter ?? ",";
     const lineEnding: "\n" | "\r\n" = options.lineEnding ?? (st.csv?.lineEnding === "\n" ? "\n" : "\r\n");
     const bom = options.bom ?? true;
+    if (options.values !== undefined && options.values !== "shown" && options.values !== "plain") throw new EngineError("internal", "Unknown value option for the download.");
+    const plain = excel && options.values === "plain";
     // Running out of memory in a worker crashes the whole tab in Chromium, so check first.
     // The export streams (2 MB text parts become Blobs at once; verification reads 4 MB at a
     // time), so beyond the data already held it needs only a few chunks: ~32 MB. The budget is
@@ -785,6 +811,7 @@ export class EngineCore {
         delimiter,
         lineEnding,
         bom,
+        plain,
         useDisplay: excel,
         cancel,
         onProgress: (done, total) => onProgress({ phase: "exporting", loaded: done, total }),
@@ -792,6 +819,7 @@ export class EngineCore {
       const verification = await verifyCsv(blob, view, {
         delimiter,
         bom,
+        plain,
         useDisplay: excel,
         cancel,
         onProgress: (loaded, total) => onProgress({ phase: "verifying", loaded, total }),
@@ -816,7 +844,11 @@ export class EngineCore {
         if (view.merges.length) notPreserved.push("Merged cells");
         if (view.hiddenRows.size || view.hiddenColumns.size) notPreserved.push("Hidden rows and columns (they are included, unhidden)");
         if (view.hyperlinks.size) notPreserved.push("Hyperlinks (the cell text is kept)");
-        warnings.push("Dates and numbers are saved as they are shown in the table.");
+        warnings.push(
+          plain
+            ? "Plain values: dates are saved as year-month-day (2026-11-13, with the time when there is one), numbers in full precision without formatting, and TRUE/FALSE as words."
+            : "Dates and numbers are saved as they are shown in the table.",
+        );
       } else {
         if (st.csv && st.csv.encoding !== "utf-8") warnings.push(`The original file used ${st.csv.encoding}; the new file is UTF-8, which Excel and Google Sheets read correctly.`);
         if (st.csv && st.csv.lineEnding !== "\n" && st.csv.lineEnding !== "\r\n" && options.lineEnding === undefined) warnings.push("Line endings were made consistent (Windows style).");
@@ -834,9 +866,13 @@ export class EngineCore {
         blob,
         summary: {
           originalName: st.fileName,
-          downloadName: `${excel ? `${base} - ${safeSheet}` : base}-${stats.changesApplied ? "cleaned" : "copy"}.${delimiter === "\t" ? "tsv" : "csv"}`,
+          // Excel sheet without changes (Excel to CSV converter): “Book - Sheet.csv”.
+          downloadName:
+            excel && !stats.changesApplied
+              ? `${base} - ${safeSheet}.${delimiter === "\t" ? "tsv" : "csv"}`
+              : `${excel ? `${base} - ${safeSheet}` : base}-${stats.changesApplied ? "cleaned" : "copy"}.${delimiter === "\t" ? "tsv" : "csv"}`,
           format: "csv",
-          csv: { delimiter, lineEnding, bom },
+          csv: { delimiter, lineEnding, bom, ...(excel ? { values: plain ? ("plain" as const) : ("shown" as const) } : {}) },
           bytes: blob.size,
           rows: view.grid.rowCount,
           columns: view.columnCount,
@@ -898,6 +934,118 @@ export class EngineCore {
    * the original package (owner decision 4), then read the generated bytes back
    * with DataFixer's Excel reader and compare every cell before returning it.
    */
+  /**
+   * Stage 6 (decision 3): every worksheet as its own verified CSV, in one ZIP.
+   * Sheets are read one at a time and released after use; the sheet already
+   * open is used as it is. Chart sheets have no cells and are listed as left out.
+   * Each CSV is checked cell by cell before it is added, and the ZIP is read
+   * back and compared byte by byte before it is offered.
+   */
+  async exportWorkbookZip(options: CsvDownloadOptions, onProgress: Progress, cancel?: CancelToken): Promise<WorkbookZipResult> {
+    const st = this.requireState();
+    if (st.format === "csv") throw new EngineError("unsupported-format", "A ZIP of all sheets is only for Excel workbooks.");
+    const delimiter = options.delimiter ?? ",";
+    if (![",", ";", "\t"].includes(delimiter)) throw new EngineError("internal", "Unknown separator for the download.");
+    const lineEnding = options.lineEnding ?? "\r\n";
+    const bom = options.bom ?? true;
+    const plain = options.values === "plain";
+    const ext = delimiter === "\t" ? "tsv" : "csv";
+    const base = st.fileName.replace(/\.[^.]+$/, "") || "workbook";
+    const worksheets = st.sheets.map((info, index) => ({ info, index })).filter((x) => x.info.kind === "worksheet");
+    const skipped = st.sheets.filter((x) => x.kind !== "worksheet").map((x) => x.name);
+    if (worksheets.length === 0) throw new EngineError("unsupported-format", "This workbook has no sheets with cells.");
+    const used = new Set<string>();
+    const fileName = (sheet: string) => {
+      const safe = sheet.replace(/[\\/:*?"<>|]+/g, "_").trim() || "Sheet";
+      let name = `${safe}.${ext}`;
+      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${safe} (${n}).${ext}`;
+      used.add(name.toLowerCase());
+      return name;
+    };
+    const active = st.loaded.get(st.activeSheet);
+    const activeBytes = active ? this.current(st.activeSheet).sheet.grid.approxBytes : 0;
+    const files: WorkbookZipSummary["files"] = [];
+    const entries: OutputEntry[] = [];
+    const blobs: Blob[] = [];
+    let formulas = 0;
+    let merges = 0;
+    let hiddenRowsCols = false;
+    let links = 0;
+    try {
+      for (let k = 0; k < worksheets.length; k++) {
+        const { info, index } = worksheets[k]!;
+        onProgress({ phase: "exporting", loaded: k, total: worksheets.length });
+        let sheet: SheetModel;
+        if (info.name === st.activeSheet && active) sheet = this.current(info.name).sheet;
+        else {
+          const read = await readExcelSheet(st.file, st.format, {
+            sheetIndex: index,
+            inspection: st.inspection,
+            // The open sheet stays in memory, so the others get what is left of the budget.
+            memoryBudgetBytes: st.memoryBudgetBytes ? Math.max(1, st.memoryBudgetBytes - activeBytes) : undefined,
+            cancel,
+          });
+          sheet = read.sheet;
+        }
+        const { blob } = await buildCsv(sheet, { delimiter, lineEnding, bom, plain, useDisplay: true, cancel });
+        const v = await verifyCsv(blob, sheet, { delimiter, bom, plain, useDisplay: true, cancel });
+        formulas += sheet.formulas.size;
+        merges += sheet.merges.length;
+        links += sheet.hyperlinks.size;
+        if (sheet.hiddenRows.size || sheet.hiddenColumns.size) hiddenRowsCols = true;
+        const name = fileName(info.name);
+        const w = new PartWriter();
+        for (let off = 0; off < blob.size; off += 4 * 1024 * 1024) {
+          w.push(new Uint8Array(await blob.slice(off, off + 4 * 1024 * 1024).arrayBuffer()));
+          throwIfCancelled(cancel);
+        }
+        entries.push({ kind: "new", entry: newEntry(name), ...w.finish() });
+        blobs.push(blob);
+        files.push({ name, sheet: info.name, hidden: info.state !== "visible", rows: v.rows, cells: v.cells, bytes: blob.size });
+      }
+      const zip = await writeZip(new Blob([]), entries);
+      // Read the ZIP back: every file must decompress to exactly the CSV that was checked.
+      const back = await readZipEntries(zip);
+      if (back.length !== blobs.length) throw new EngineError("internal", "The ZIP file didn't pass DataFixer's check, so it was not offered. Please try again.", "zip entry count");
+      for (let k = 0; k < back.length; k++) {
+        const want = new Uint8Array(await blobs[k]!.arrayBuffer());
+        let pos = 0;
+        let ok = back[k]!.name === files[k]!.name;
+        await streamEntry(zip, back[k]!, (d) => {
+          for (let i = 0; i < d.length && ok; i++) if (d[i] !== want[pos + i]) ok = false;
+          pos += d.length;
+        }, { cancel, maxBytes: Number.MAX_SAFE_INTEGER });
+        if (!ok || pos !== want.length) throw new EngineError("internal", "The ZIP file didn't pass DataFixer's check, so it was not offered. Please try again.", `zip entry ${k}`);
+      }
+      onProgress({ phase: "verifying", loaded: worksheets.length, total: worksheets.length });
+      const f = st.inspection?.features;
+      const notPreserved = ["Formatting such as fonts, colours, borders and column widths (CSV files hold values only)"];
+      if (formulas) notPreserved.push(`Formulas (${formulas.toLocaleString("en-US")}): the values they show are saved instead`);
+      if (skipped.length) notPreserved.push(`Chart sheets (${skipped.join(", ")}): they have no cells`);
+      if (f?.charts) notPreserved.push(`${f.charts} chart${f.charts > 1 ? "s" : ""}`);
+      if (f?.images) notPreserved.push(`${f.images} image${f.images > 1 ? "s" : ""}`);
+      if (f?.comments) notPreserved.push("Comments");
+      if (f?.dataValidation) notPreserved.push("Data validation rules");
+      if (f?.conditionalFormatting) notPreserved.push("Conditional formatting");
+      if (merges) notPreserved.push("Merged cells (each value is saved once, in its first cell)");
+      if (hiddenRowsCols) notPreserved.push("Hidden rows and columns (they are included, unhidden)");
+      if (links) notPreserved.push("Hyperlinks (the cell text is kept)");
+      const warnings = [
+        plain
+          ? "Plain values: dates are saved as year-month-day (2026-11-13, with the time when there is one), numbers in full precision without formatting, and TRUE/FALSE as words."
+          : "Dates and numbers are saved as they are shown in Excel.",
+      ];
+      if (files.some((x) => x.hidden)) warnings.push("Hidden sheets are included (their names are marked in the list).");
+      return {
+        blob: zip,
+        summary: { originalName: st.fileName, downloadName: `${base} - all sheets.zip`, bytes: zip.size, csv: { delimiter, lineEnding, bom, values: plain ? "plain" : "shown" }, files, skipped, notPreserved, warnings },
+      };
+    } catch (err) {
+      if (isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the ZIP file. Nothing was downloaded. Download the sheets one at a time instead, or close other tabs and try again.", String((err as Error).message));
+      throw err;
+    }
+  }
+
   /**
    * Stage 6: CSV → new Excel workbook (decisions 1, 2 and 6). Uses the current
    * view (with any changes); the original file is never changed. The new file

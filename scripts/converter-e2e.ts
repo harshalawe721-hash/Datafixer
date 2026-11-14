@@ -1,5 +1,5 @@
 /**
- * Browser test of the Stage 6 converter pages (Step 3: CSV to Excel).
+ * Browser test of the Stage 6 converter pages (Step 3: CSV to Excel; Step 4: Excel to CSV).
  * Usage: start the app (npm run build && npm start), then `npm run test:converter`.
  */
 import { createRequire } from "node:module";
@@ -12,6 +12,7 @@ const { chromium, devices } = createRequire(import.meta.url)("playwright");
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const CONVERT = new URL("../tests/fixtures/convert/", import.meta.url).pathname;
 const VALIDATE = new URL("../tests/fixtures/validate/", import.meta.url).pathname;
+const EXCEL = new URL("../tests/fixtures/excel/", import.meta.url).pathname;
 const pack = JSON.parse(readFileSync(path.join(CONVERT, "expected.json"), "utf8")) as { customers: { numbers: number; dates: number; text: number; empty: number } };
 let passes = 0;
 let failures = 0;
@@ -129,6 +130,72 @@ await page.getByText("Creating your Excel file").waitFor({ timeout: 30000 });
 await page.getByRole("button", { name: "Cancel" }).click();
 check(await visible(page.getByText("The conversion was cancelled. Nothing was created."), 30000), "Cancel stops the conversion; nothing is downloaded");
 
+console.log("\nExcel to CSV: one sheet");
+const openXl = async (f: string) => {
+  await page.goto(`${BASE}/excel-to-csv`, { waitUntil: "networkidle" });
+  await page.locator("input[type=file]").setInputFiles(path.join(EXCEL, f));
+  await page.locator("#to-csv-heading").waitFor({ timeout: 60000 });
+};
+const pyCsv = (file: string, delim = ",") => {
+  const r = spawnSync("python3", ["-I", "-c", "import csv,sys,json\nb=open(sys.argv[1],'rb').read()\nprint(json.dumps({'bom':b[:3]==b'\\xef\\xbb\\xbf','crlf':b'\\r\\n' in b,'rows':list(csv.reader(open(sys.argv[1],newline='',encoding='utf-8-sig'),delimiter=sys.argv[2]))}))", file, delim], { encoding: "utf8" });
+  return r.status === 0 ? (JSON.parse(r.stdout) as { bom: boolean; crlf: boolean; rows: string[][] }) : null;
+};
+const saveDownload = async (button: RegExp | string, name: string) => {
+  const dl = page.waitForEvent("download", { timeout: 120000 });
+  await page.getByRole("button", { name: button }).click();
+  const d = await dl;
+  await page.locator("#to-csv-done").waitFor({ timeout: 120000 });
+  const file = path.join(DL, name);
+  await d.saveAs(file);
+  return { file, suggested: d.suggestedFilename() as string };
+};
+await openXl("lo-features.xlsx");
+check(await visible(page.getByText(/Sheet: Data/)), "the open sheet is named");
+check(await page.getByRole("radio", { name: /As shown in Excel/ }).isChecked(), "values as shown in Excel is the default (decision 4)");
+check(await visible(page.getByText("Separator in the new file")), "Stage 5 format options are offered");
+const s1 = await saveDownload("Download this sheet as CSV", "data.csv");
+check(s1.suggested === "lo-features - Data.csv", `file name ${s1.suggested}`);
+const c1 = pyCsv(s1.file);
+check(c1?.bom && c1.crlf && JSON.stringify(c1.rows[1]!.slice(0, 3)) === JSON.stringify(["Ann", "10.50", "2024-01-31"]), "values as shown: 10.50, 2024-01-31 (Python reads the file)");
+check(await visible(page.getByText(/Merged cells/)) && (await visible(page.getByText(/Hidden rows and columns \(they are included, unhidden\)/))), "summary lists merged cells and hidden rows/columns (decision 5)");
+check(c1?.rows.length === 5 && c1.rows[1]![6] === "hidden column value", "hidden row and column are included");
+await page.getByRole("button", { name: "Change settings or sheet" }).click();
+await page.getByRole("radio", { name: /Plain values/ }).check();
+await page.getByRole("radio", { name: /Semicolon/ }).check();
+await page.getByRole("radio", { name: /LF \(Unix, Mac\)/ }).check();
+await page.getByRole("radio", { name: /without BOM/ }).check();
+const s2 = await saveDownload("Download this sheet as CSV", "plain.csv");
+const c2 = pyCsv(s2.file, ";");
+check(c2 && !c2.bom && !c2.crlf && JSON.stringify(c2.rows[1]!.slice(0, 4)) === JSON.stringify(["Ann", "10.5", "2024-01-31", "TRUE"]), "plain values with semicolon, LF, no BOM: 10.5, 2024-01-31, TRUE");
+check(await visible(page.getByText(/Semicolon \(;\) · LF \(Unix, Mac\) · UTF-8 without BOM · plain values/)), "summary shows the format and plain values");
+
+console.log("\nExcel to CSV: another sheet, and all sheets as a ZIP");
+await page.getByRole("button", { name: "Change settings or sheet" }).click();
+await page.getByRole("button", { name: "Summary", exact: true }).click();
+await page.getByText(/Sheet: Summary/).waitFor({ timeout: 30000 });
+check(true, "another sheet can be chosen");
+await page.getByRole("radio", { name: /As shown in Excel/ }).check();
+await page.getByRole("radio", { name: /Comma/ }).check();
+await page.getByRole("radio", { name: /CRLF/ }).check();
+await page.getByRole("radio", { name: /UTF-8 with BOM/ }).check();
+const z = await saveDownload(/All 5 sheets \(ZIP\)/, "all.zip");
+check(z.suggested === "lo-features - all sheets.zip", `ZIP name ${z.suggested}`);
+const zipInfo = spawnSync("python3", ["-I", "-c", "import zipfile,sys,json\nz=zipfile.ZipFile(sys.argv[1])\nprint(json.dumps([z.testzip() is None, z.namelist(), z.read('Summary.csv').decode('utf-8-sig').splitlines()[1]]))", z.file], { encoding: "utf8" });
+check(zipInfo.status === 0 && zipInfo.stdout.trim() === '[true, ["Data.csv", "Summary.csv", "Archive.csv", "Secret.csv", "Chart1.csv"], "First name,Ann"]', `Python opens the ZIP: ${zipInfo.stdout.trim()}`);
+check(await visible(page.getByText(/Archive.csv \(hidden sheet\)/)), "hidden sheets are marked in the summary");
+check(await visible(page.getByText(/read the ZIP back/)), "says every file was checked and the ZIP read back");
+
+console.log("\nExcel to CSV: a chart sheet, and an old .xls file");
+await openXl("openpyxl-features.xlsx");
+await page.getByRole("button", { name: "Chart1" }).click();
+check(await visible(page.getByText(/This sheet has no cells to convert/)), "a chart sheet: says there are no cells");
+check((await page.getByRole("button", { name: "Download this sheet as CSV" }).count()) === 0, "no single-sheet download for a chart sheet (no fake button)");
+check(await visible(page.getByRole("button", { name: /All 4 sheets \(ZIP\)/ })), "the ZIP of the 4 worksheets is still offered");
+await openXl("lo-multisheet.xls");
+const x = await saveDownload(/All 3 sheets \(ZIP\)/, "multi.zip");
+const multi = spawnSync("python3", ["-I", "-c", "import zipfile,sys,json\nz=zipfile.ZipFile(sys.argv[1])\nprint(json.dumps(z.namelist()))", x.file], { encoding: "utf8" });
+check(multi.stdout.trim() === '["January.csv", "F\\u00e9vrier.csv", "\\u4e09\\u6708.csv"]', `.xls workbook, Unicode sheet names: ${multi.stdout.trim()}`);
+
 console.log("\nPhone and tablet layouts");
 for (const [name, device] of [["phone", devices["Pixel 7"]], ["tablet", devices["Galaxy Tab S4"]]] as const) {
   const ctx = await browser.newContext({ ...device, deviceScaleFactor: 1, acceptDownloads: true });
@@ -144,6 +211,16 @@ for (const [name, device] of [["phone", devices["Pixel 7"]], ["tablet", devices[
   await p.locator("#converted-heading").waitFor({ timeout: 30000 });
   const w2 = await p.evaluate(() => document.documentElement.scrollWidth);
   check(w1 <= device.viewport.width && w2 <= device.viewport.width, `${name}: fits the screen before and after converting (${w1}, ${w2} ≤ ${device.viewport.width})`);
+  await p.goto(`${BASE}/excel-to-csv`, { waitUntil: "networkidle" });
+  await p.locator("input[type=file]").setInputFiles(path.join(EXCEL, "lo-features.xlsx"));
+  await p.locator("#to-csv-heading").waitFor({ timeout: 30000 });
+  const w3 = await p.evaluate(() => document.documentElement.scrollWidth);
+  const dl2 = p.waitForEvent("download");
+  await p.getByRole("button", { name: "Download this sheet as CSV" }).click();
+  await dl2;
+  await p.locator("#to-csv-done").waitFor({ timeout: 30000 });
+  const w4 = await p.evaluate(() => document.documentElement.scrollWidth);
+  check(w3 <= device.viewport.width && w4 <= device.viewport.width, `${name}: Excel to CSV fits the screen before and after (${w3}, ${w4} ≤ ${device.viewport.width})`);
   await ctx.close();
 }
 

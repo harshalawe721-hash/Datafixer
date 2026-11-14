@@ -1,7 +1,7 @@
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { ScanIssue, ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { ConvertResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "@/engine/core";
 
 /** The latest change, undo or redo, for the "Done" message. */
 export interface LastChange {
@@ -30,6 +30,8 @@ export interface ToolApi {
   abortScans(): void;
   /** The open file (e.g. to hand it to another tool page; never uploaded). */
   file: File;
+  /** Stage 6: every worksheet as a verified CSV, in one ZIP (stop with abortScans). */
+  exportWorkbookZip(options: CsvDownloadOptions, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookZipResult>;
   /** Stage 6: CSV → new Excel workbook, checked before it is returned (stop with abortScans). */
   convertToXlsx(onProgress?: (p: ProgressEvent) => void): Promise<ConvertResult>;
   /** Stage 5: check the CSV file's structure (stop with abortScans). */
