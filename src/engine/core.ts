@@ -962,8 +962,22 @@ export class EngineCore {
       used.add(name.toLowerCase());
       return name;
     };
-    const active = st.loaded.get(st.activeSheet);
-    const activeBytes = active ? this.current(st.activeSheet).sheet.grid.approxBytes : 0;
+    let active = st.loaded.get(st.activeSheet);
+    let activeBytes = active ? this.current(st.activeSheet).sheet.grid.approxBytes : 0;
+    // Low memory: if the open sheet plus the largest other sheet wouldn't fit, set the open sheet
+    // aside while the ZIP is made (it is read again afterwards). It has no changes on this page.
+    const activeIndex = st.sheets.findIndex((x) => x.name === st.activeSheet);
+    let reloadActive = false;
+    if (active && st.memoryBudgetBytes && !active.session?.hasChanges) {
+      const largest = Math.max(0, ...worksheets.filter((w) => w.info.name !== st.activeSheet).map((w) => estimateExcelMemory(st.file.size, st.format as "xlsx" | "xls", st.inspection, w.index)));
+      if (activeBytes * 1.6 + largest > st.memoryBudgetBytes) {
+        st.loaded.clear();
+        st.lastScan = null;
+        active = undefined;
+        activeBytes = 0;
+        reloadActive = true;
+      }
+    }
     const files: WorkbookZipSummary["files"] = [];
     const entries: OutputEntry[] = [];
     const blobs: Blob[] = [];
@@ -978,14 +992,22 @@ export class EngineCore {
         let sheet: SheetModel;
         if (info.name === st.activeSheet && active) sheet = this.current(info.name).sheet;
         else {
-          const read = await readExcelSheet(st.file, st.format, {
-            sheetIndex: index,
-            inspection: st.inspection,
-            // The open sheet stays in memory, so the others get what is left of the budget.
-            memoryBudgetBytes: st.memoryBudgetBytes ? Math.max(1, st.memoryBudgetBytes - activeBytes) : undefined,
-            cancel,
-          });
-          sheet = read.sheet;
+          try {
+            const read = await readExcelSheet(st.file, st.format, {
+              sheetIndex: index,
+              inspection: st.inspection,
+              // The open sheet stays in memory, so the others get what is left of the budget.
+              memoryBudgetBytes: st.memoryBudgetBytes ? Math.max(1, st.memoryBudgetBytes - activeBytes) : undefined,
+              cancel,
+            });
+            sheet = read.sheet;
+          } catch (err) {
+            // Say which sheet couldn't be read (e.g. too large for this device's memory).
+            if (err instanceof EngineError && err.code !== "cancelled") {
+              throw new EngineError(err.code, `“${info.name}” couldn't be read, so no ZIP was created: ${err.message} Nothing was downloaded.`, err.detail);
+            }
+            throw err;
+          }
         }
         const { blob } = await buildCsv(sheet, { delimiter, lineEnding, bom, plain, useDisplay: true, cancel });
         const v = await verifyCsv(blob, sheet, { delimiter, bom, plain, useDisplay: true, cancel });
@@ -1041,8 +1063,16 @@ export class EngineCore {
         summary: { originalName: st.fileName, downloadName: `${base} - all sheets.zip`, bytes: zip.size, csv: { delimiter, lineEnding, bom, values: plain ? "plain" : "shown" }, files, skipped, notPreserved, warnings },
       };
     } catch (err) {
-      if (isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the ZIP file. Nothing was downloaded. Download the sheets one at a time instead, or close other tabs and try again.", String((err as Error).message));
+      if (!(err instanceof EngineError) && isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the ZIP file. Nothing was downloaded. Download the sheets one at a time instead, or close other tabs and try again.", String((err as Error).message));
       throw err;
+    } finally {
+      // Bring back the sheet that was open (whatever happened above).
+      if (reloadActive && activeIndex >= 0) {
+        // (The returned summary uses `files`, so only the working copies are released.)
+        entries.length = 0;
+        blobs.length = 0;
+        await this.loadExcelSheet(activeIndex, () => {}).catch(() => {});
+      }
     }
   }
 

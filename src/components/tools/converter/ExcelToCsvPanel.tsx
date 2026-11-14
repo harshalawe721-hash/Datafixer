@@ -103,8 +103,13 @@ export function ExcelToCsvPanel({ api }: { api: ToolApi }) {
                   {active && active.state !== "visible" ? " (hidden in Excel)" : ""}
                   {worksheets.length > 1 ? ". Choose another sheet in the list above, or download every sheet at once." : "."}
                 </>
-              ) : (
+              ) : api.summary.sheetError?.code === "chartsheet" ? (
                 "This sheet has no cells to convert. Choose a worksheet in the list above, or download every sheet at once."
+              ) : (
+                <>
+                  This sheet couldn&apos;t be opened on this device (see the message above), so it can&apos;t be converted here.
+                  {worksheets.length > 1 ? " Other sheets may still open: choose one in the list above." : ""}
+                </>
               )}{" "}
               The CSV is created on this device; your workbook is never changed.
             </p>

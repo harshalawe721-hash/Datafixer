@@ -174,3 +174,30 @@ test("the ZIP is refused for CSV files; a workbook with only chart sheets has no
   await assert.rejects(core.exportWorkbookZip({}, noop), /only for Excel workbooks/);
   assert.equal(s.format, "csv");
 });
+
+test("low memory: the open sheet is set aside while the ZIP is made, then read again (nothing lost)", async () => {
+  const { estimateExcelMemory } = await import("../../src/engine/xlsx/read-workbook.ts");
+  const { inspectXlsx } = await import("../../src/engine/xlsx/inspect.ts");
+  const bytes = new Uint8Array(readFileSync(xl("lo-multisheet.xlsx")));
+  const probe = await open("lo-multisheet.xlsx");
+  const activeBytes = probe.core.getSheet(probe.sheet)!.grid.approxBytes;
+  const inspection = await inspectXlsx(new Blob([bytes]));
+  const largest = Math.max(estimateExcelMemory(bytes.length, "xlsx", inspection, 1), estimateExcelMemory(bytes.length, "xlsx", inspection, 2));
+  // Just too little to hold the open sheet and read another one, but enough for any one sheet.
+  const budget = Math.floor(activeBytes * 1.6 + largest - 1);
+  const core = new EngineCore();
+  const s = await core.open(new File([bytes], "lo-multisheet.xlsx"), "xlsx", { memoryBudgetBytes: budget }, noop);
+  const { summary } = await core.exportWorkbookZip({}, noop);
+  assert.deepEqual(summary.files.map((f) => [f.name, f.rows]), [["January.csv", 101], ["Février.csv", 101], ["三月.csv", 101]]);
+  // The open sheet is back.
+  const page = core.getRows(s.activeSheet, { offset: 0, limit: 2, headerRow: true });
+  assert.equal(page.total, 100);
+  assert.equal(page.rows[0]!.cells[1], "1");
+});
+
+test("a sheet too large for this device: the ZIP is refused and names the sheet (nothing is downloaded)", async () => {
+  const core = new EngineCore();
+  const s = await core.open(new File([new Uint8Array(readFileSync(xl("lo-multisheet.xlsx")))], "m.xlsx"), "xlsx", { memoryBudgetBytes: 1000 }, noop);
+  assert.ok(s.sheetError, "the first sheet is too large for this tiny budget");
+  await assert.rejects(core.exportWorkbookZip({}, noop), /“January” couldn't be read, so no ZIP was created: .*Nothing was downloaded/);
+});

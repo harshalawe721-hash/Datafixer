@@ -1,6 +1,6 @@
 # Stage 6 plan: Excel ↔ CSV converters
 
-**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026** and said “Start Stage 6” the same day. Progress is recorded under “Progress” below.
+**Status:** plan prepared on 13 November 2026. **The owner chose option A for all six decisions on 13 November 2026** and said “Start Stage 6” the same day. Progress is recorded under “Progress” below. All five steps are built; Stage 6 awaits the owner's approval.
 
 ## Goal
 
@@ -118,6 +118,13 @@ Workbook layout (decision 6): one sheet named after the file; with column names 
 - A chart sheet shows “This sheet has no cells to convert” and no single-sheet button (the ZIP of the worksheets is still offered).
 - Found while testing: LibreOffice saves a chart sheet as an ordinary worksheet holding the chart, so such a sheet is converted (to an empty CSV); only real chart sheets are left out.
 - Tests: `tests/engine/excel-to-csv.test.ts` (8: date conversion; plain values against openpyxl cell by cell for .xlsx and .xls; values as shown and the summary; 1904 dates; ZIPs read by Python's zipfile and csv modules, with options, Unicode sheet names, a real chart sheet). Converter browser test now 45 checks.
+
+### Step 5 — Large files, layouts, test pack, report (done, 14 November 2026)
+
+- `npm run test:converter-perf` (`scripts/converter-perf.ts`): both converters through the website at normal memory and a 512 MB heap; exact counts, every download checked by Python, originals unchanged. Results in `docs/stage-6-test-report.md`.
+- Fixed during the runs: the ZIP now names a sheet that can't be read on the device instead of a generic memory message; the Excel to CSV panel says a too-large sheet couldn't be opened (instead of “no cells”, kept for chart sheets); the ZIP sets the open sheet aside when memory is tight and reads it again afterwards (unit tests for both).
+- Phone and tablet widths: covered by the converter browser test. Test pack: listed in the test report.
+- `docs/stage-6-test-report.md` written. Stage 6 waits for the owner's tablet tests and approval.
 
 ## Testing
 
