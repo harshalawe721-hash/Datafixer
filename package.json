@@ -20,6 +20,7 @@
     "test:validator": "node scripts/validator-e2e.ts",
     "test:converter": "node scripts/converter-e2e.ts",
     "test:a11y": "node scripts/a11y-e2e.ts",
+    "test:seo": "node scripts/seo-check.ts",
     "test:export-perf": "node scripts/export-perf.ts",
     "test:validator-perf": "node scripts/validator-perf.ts",
     "test:converter-perf": "node scripts/converter-perf.ts"

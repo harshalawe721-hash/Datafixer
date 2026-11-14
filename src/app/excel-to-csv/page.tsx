@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Excel to CSV Converter – Convert XLSX & XLS to CSV",
   description:
-    "Convert Excel XLSX or XLS worksheets to CSV online: one sheet or all sheets as a ZIP, values as shown or plain values for databases, comma, semicolon or tab. Nothing is uploaded.",
+    "Convert Excel XLSX or XLS sheets to CSV online: one sheet or all sheets as a ZIP, values as shown or plain for databases, comma, semicolon or tab.",
   path: "/excel-to-csv",
 });
 

@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "The terms that apply when you use DataFixer's free spreadsheet tools.",
+  description: "The terms that apply when you use DataFixer's free, browser-based tools for checking, cleaning and converting spreadsheets.",
   path: "/terms-of-service",
 });
 

@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   ...pageMetadata({
     title: `${siteConfig.name} – Find and Fix Spreadsheet Problems in Seconds`,
     description:
-      "Free online tools to clean Excel and CSV files. Detect duplicate rows, missing data, bad dates and formatting problems, fix them, and download a corrected spreadsheet.",
+      "Free tools to check, clean, repair and convert Excel and CSV files in your browser. Find duplicates, missing data and bad dates, fix them, and download.",
     path: "/",
   }),
   // The homepage uses the full title rather than the "%s | DataFixer" template.

@@ -90,6 +90,12 @@ Finish the website: every page says only what is built and tested, each tool pag
 - **Found and fixed:** (1) visible text not part of the accessible name (serious): column sort buttons were announced “Sort by id (column A)” while showing “A id”, and the Cleaner's buttons “Remove extra spaces: 2 found” while showing “2 found · Preview” — now “Sort by column A id” and “2 found · Preview (Remove extra spaces)”, so voice-control users can say what they see; (2) the fix preview's scrollable area had no keyboard access when it held no focusable content — it is now focusable; (3) the “See every change in History” link had 3.8:1 contrast in dark mode (blue on dark green) — now underlined body text.
 - Result: 0 serious, 0 critical, 0 moderate, 0 minor findings in all 42 checked states. Three earlier browser-test lookups were updated to the new accessible names (same checks).
 
+### Step 5 — SEO and performance check (done, 14 November 2026)
+
+- `npm run test:seo` (`scripts/seo-check.ts`): sitemap (10 pages, without `/diagnostics`) and robots.txt; on every page: status 200, one H1, `lang="en"`, a unique title of 20–75 characters, a description of 70–160 characters, an absolute canonical link, complete Open Graph tags (title, description, url, type, site name, image with width, height and alt) and the large-image Twitter card, valid JSON-LD, no images without alt text, not marked noindex. The preview image is served as a 1200×630 PNG of 81 KB. All internal links work; no page links to `/diagnostics`, which still works and is marked noindex, nofollow (decision 7A); unknown pages answer 404.
+- **Found and fixed:** six descriptions were too long or too short for search results (the Validator's was 214 characters), and the Error Detector's still said “Upload an Excel or CSV file” — all rewritten to 123–160 characters and accurate.
+- Loading on a phone-sized screen in Chromium with the CPU slowed 4× (local server, no network delay): first and largest paint 72–180 ms, layout shift 0.000 on the homepage, three tool pages and About; scripts 23–194 KB per page (uncompressed). No changes were needed.
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

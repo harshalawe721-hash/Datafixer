@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "CSV Validator – Check CSV Files for Structural Errors",
   description:
-    "Validate CSV files online. Detect missing or duplicate headers, uneven row lengths, broken quotes, the wrong separator, hidden characters and encoding problems, see the exact lines, and repair them with a preview.",
+    "Validate CSV files online: find uneven rows, broken quotes, duplicate headers, wrong separators and encoding problems, see the exact lines, and repair them.",
   path: "/csv-validator",
 });
 

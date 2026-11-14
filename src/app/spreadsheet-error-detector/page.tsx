@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Spreadsheet Error Detector – Find Errors in Excel & CSV Files",
   description:
-    "Upload an Excel or CSV file and instantly find duplicate rows, missing cells, inconsistent dates, invalid emails, numbers stored as text and other data problems.",
+    "Open an Excel or CSV file and find duplicate rows, missing cells, inconsistent dates, invalid emails and numbers stored as text, then fix them with a preview.",
   path: "/spreadsheet-error-detector",
 });
 

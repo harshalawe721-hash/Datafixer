@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Spreadsheet Cleaner – Clean Excel & CSV Data Online",
   description:
-    "Clean Excel and CSV files online: remove duplicates and empty rows, trim spaces, fix capitalization, dates and numbers stored as text, edit cells, undo, and download a clean copy.",
+    "Clean Excel and CSV files online: remove duplicates and empty rows, trim spaces, fix capitalization and dates, edit cells, undo, and download a clean copy.",
   path: "/spreadsheet-cleaner",
 });
 
