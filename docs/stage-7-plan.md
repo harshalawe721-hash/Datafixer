@@ -60,6 +60,15 @@ Finish the website: every page says only what is built and tested, each tool pag
 | 5 | SEO and performance check: every page's title, description, canonical link, headings, structured data, sitemap; first-load size per page and loading speed on a phone-sized screen in Chromium; fixes |
 | 6 | Final test of the whole site (all stages' tests, phone and tablet sizes, large files), launch checklist, Stage 7 test report |
 
+## Progress
+
+### Step 1 — Accuracy pass (done, 14 November 2026)
+
+- Homepage: “Upload your spreadsheet” → “Open your spreadsheet” (nothing is uploaded); step 3 now says fixes are previewed and can be undone; the formats answer mentions .tsv/.txt for the CSV tools; the formulas answer says automatic fixes never change formula cells and untouched formulas are kept in Excel downloads; **the browser answer now says only what is tested** (Chrome and Chromium-based browsers on Android and desktop; others should work but are untested) — decision 5.
+- Tool summaries updated to what the tools now do (Validator repairs, Excel to CSV ZIP, CSV to Excel value rules); the CSV tools list .tsv and .txt as accepted.
+- Privacy policy (date 14 November 2026): changes stay only in the tab's memory until downloaded; a file passed between DataFixer pages stays in the tab and is not uploaded.
+- Contact (decision 4B): the honest notice stays, without “please check back soon”. About, Privacy and Terms no longer say questions “can be sent through” the contact page while it has no address.
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

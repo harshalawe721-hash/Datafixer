@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       title="Privacy Policy"
       path="/privacy-policy"
       intro="Privacy is central to DataFixer. This policy explains, in plain language, what happens to your files and what little information we handle."
-      updated="10 November 2026"
+      updated="14 November 2026"
     >
       <h2>Summary</h2>
       <ul>
@@ -31,6 +31,12 @@ export default function PrivacyPage() {
         When you choose a file, your browser reads it into the memory of the open tab. The checks, cleaning
         operations and conversions run as JavaScript on your device. When you download a result, the new file is
         created locally by your browser. Closing or reloading the tab releases the file from memory.
+      </p>
+      <p>
+        Changes you make (fixes, repairs and edited cells) are also kept only in the memory of that tab until you
+        download the result; nothing is saved anywhere else. When one DataFixer page passes your file to another (for
+        example “Check and repair in the CSV Validator” on the CSV to Excel page), the file stays in the same tab&apos;s
+        memory and is not uploaded.
       </p>
       <p>
         Your original file is never modified. Formulas inside spreadsheets are treated as text and are never executed
@@ -70,8 +76,8 @@ export default function PrivacyPage() {
 
       <h2>Changes to this policy</h2>
       <p>
-        If we change how DataFixer handles data, we will update this page and the date above. Questions can be sent
-        through our <Link href="/contact">contact page</Link>.
+        If we change how DataFixer handles data, we will update this page and the date above. Contact details,
+        once published, are on our <Link href="/contact">contact page</Link>.
       </p>
     </ProsePage>
   );

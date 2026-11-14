@@ -18,7 +18,7 @@ export interface ToolDefinition {
   summary: string;
   icon: LucideIcon;
   /** File types the tool accepts. */
-  accepts: readonly (".xlsx" | ".xls" | ".csv")[];
+  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt")[];
   /** Shown in "Popular tools" on the homepage. */
   featured: boolean;
 }
@@ -53,9 +53,9 @@ export const tools: readonly ToolDefinition[] = [
     name: "CSV Validator",
     shortName: "CSV Validator",
     href: "/csv-validator",
-    summary: "Check CSV structure: headers, row lengths, quoting, delimiters and encoding.",
+    summary: "Check CSV structure (headers, row lengths, quotes, separators, encoding) and repair problems with a preview.",
     icon: FileCheck2,
-    accepts: [".csv"],
+    accepts: [".csv", ".tsv", ".txt"],
     featured: true,
   },
   {
@@ -63,7 +63,7 @@ export const tools: readonly ToolDefinition[] = [
     name: "Excel to CSV Converter",
     shortName: "Excel to CSV",
     href: "/excel-to-csv",
-    summary: "Pick a worksheet from an XLSX or XLS workbook and download it as CSV.",
+    summary: "Download a worksheet from an XLSX or XLS workbook as CSV, or every sheet at once as a ZIP.",
     icon: FileSpreadsheet,
     accepts: [".xlsx", ".xls"],
     featured: true,
@@ -73,9 +73,9 @@ export const tools: readonly ToolDefinition[] = [
     name: "CSV to Excel Converter",
     shortName: "CSV to Excel",
     href: "/csv-to-excel",
-    summary: "Turn a CSV file into a clean XLSX workbook with automatic delimiter detection.",
+    summary: "Turn a CSV file into a clean XLSX workbook: numbers and dates become real Excel values, codes keep their zeros.",
     icon: Sheet,
-    accepts: [".csv"],
+    accepts: [".csv", ".tsv", ".txt"],
     featured: false,
   },
 ];

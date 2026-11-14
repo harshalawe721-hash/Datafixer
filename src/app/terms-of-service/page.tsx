@@ -65,7 +65,7 @@ export default function TermsPage() {
 
       <h2>8. Contact</h2>
       <p>
-        Questions about these terms can be sent through our <Link href="/contact">contact page</Link>.
+        Contact details for questions about these terms, once published, are on our <Link href="/contact">contact page</Link>.
       </p>
     </ProsePage>
   );

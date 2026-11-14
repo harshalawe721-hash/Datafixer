@@ -59,7 +59,7 @@ export default function AboutPage() {
 
       <h2>Get in touch</h2>
       <p>
-        Have an idea, found a bug or need a feature? Visit the <Link href="/contact">contact page</Link>.
+        Contact details, once published, are on the <Link href="/contact">contact page</Link>.
       </p>
     </ProsePage>
   );

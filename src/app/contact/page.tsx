@@ -30,7 +30,7 @@ export default function ContactPage() {
         </>
       ) : (
         <p>
-          A public contact address has not been published yet. Please check back soon.
+          A public contact address has not been published yet.
         </p>
       )}
       <h2>Before you write</h2>

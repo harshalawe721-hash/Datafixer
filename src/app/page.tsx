@@ -73,9 +73,9 @@ const fixable = [
 ];
 
 const steps = [
-  { icon: Upload, title: "Upload your spreadsheet", text: "Drop in an XLSX, XLS or CSV file. It is opened by your browser." },
+  { icon: Upload, title: "Open your spreadsheet", text: "Choose an XLSX, XLS or CSV file. Your browser opens it on your device; nothing is uploaded." },
   { icon: ScanSearch, title: "Detect problems", text: "DataFixer scans every row and column for common data issues." },
-  { icon: ListChecks, title: "Review suggested fixes", text: "See exactly which cells are affected and choose what to change." },
+  { icon: ListChecks, title: "Review suggested fixes", text: "See exactly which cells are affected, preview every fix before it is applied, and undo any change." },
   { icon: Download, title: "Download your corrected file", text: "Get a clean copy. Your original file is never modified." },
 ];
 
@@ -102,7 +102,7 @@ const faqs = [
   },
   {
     q: "Which file formats are supported?",
-    a: "You can open Excel workbooks (.xlsx and the older .xls format) and CSV files. Files up to 150 MB are accepted. Because processing happens on your device, very large files can be slow, and on phones or older computers they may need more memory than the browser allows.",
+    a: "You can open Excel workbooks (.xlsx and the older .xls format) and CSV files; the CSV Validator and the CSV to Excel converter also accept .tsv and .txt files. Files up to 150 MB are accepted. Because processing happens on your device, very large files can be slow, and on phones or older computers they may need more memory than the browser allows.",
   },
   {
     q: "Will DataFixer change my original file?",
@@ -110,11 +110,11 @@ const faqs = [
   },
   {
     q: "Can it fix formulas?",
-    a: "DataFixer can point out cells that show formula errors such as #N/A or #DIV/0!, but it does not rewrite formulas for you. Formulas are never executed as code.",
+    a: "DataFixer points out cells that show formula errors such as #N/A or #DIV/0!, but it does not rewrite formulas for you. Automatic fixes never change formula cells, and formulas are never executed as code. When you download an Excel file, the formulas you didn't edit are kept.",
   },
   {
     q: "Does it work on phones and tablets?",
-    a: "Yes. DataFixer works in modern browsers on Windows, macOS, Android and iOS, including Chrome, Edge, Firefox and Safari. Larger files are easier to review on a bigger screen.",
+    a: "DataFixer is tested in Chrome and other Chromium-based browsers (such as Edge, Samsung Internet and Brave) on Android phones and tablets and on desktop computers. Other modern browsers should work, but they have not been tested yet. Very large files need a computer or a recent phone with enough memory, and are easier to review on a bigger screen.",
   },
 ];
 
