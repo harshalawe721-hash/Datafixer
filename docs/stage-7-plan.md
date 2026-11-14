@@ -96,6 +96,10 @@ Finish the website: every page says only what is built and tested, each tool pag
 - **Found and fixed:** six descriptions were too long or too short for search results (the Validator's was 214 characters), and the Error Detector's still said “Upload an Excel or CSV file” — all rewritten to 123–160 characters and accurate.
 - Loading on a phone-sized screen in Chromium with the CPU slowed 4× (local server, no network delay): first and largest paint 72–180 ms, layout shift 0.000 on the homepage, three tool pages and About; scripts 23–194 KB per page (uncompressed). No changes were needed.
 
+### Step 6 — Final testing and report (done, 14 November 2026)
+
+- Every test suite of every stage run on the final code, including all large-file tests and the Stage 2/3 performance harness (its sort step now targets the sort button, since header cells also hold a Rename button). No failures. Results and remaining limitations: `docs/stage-7-test-report.md`. Stage 7 waits for the owner's approval.
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

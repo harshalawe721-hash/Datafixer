@@ -248,7 +248,7 @@ async function run(name: string, file: string, opts: { cancelAt?: number } = {})
     const firstRow = () => page.locator("tbody tr").first().innerText();
     const beforeSort = await firstRow();
     const ts = Date.now();
-    await page.locator("thead th button").nth(1).click();
+    await page.locator("thead th button[title^=\"Sort by\"]").nth(1).click(); // (header cells also hold a Rename button since Stage 7)
     await page.waitForFunction(
       (prev: string) => (document.querySelector("tbody tr") as HTMLElement | null)?.innerText !== prev,
       beforeSort,
