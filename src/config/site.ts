@@ -2,7 +2,21 @@
  * Central site configuration. Values that differ per deployment come from
  * environment variables so nothing here needs editing to go live.
  */
-const rawUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000";
+/**
+ * The site's public address, used for canonical links, the sitemap and link
+ * previews (Open Graph images must be absolute URLs for WhatsApp, Facebook…).
+ * NEXT_PUBLIC_SITE_URL wins when set. Otherwise, on Vercel, the address Vercel
+ * provides at build time: the production domain for production deployments,
+ * the branch's preview address for previews. localhost only on a developer machine.
+ */
+function vercelUrl(): string | undefined {
+  const host =
+    process.env.VERCEL_ENV === "production"
+      ? process.env.VERCEL_PROJECT_PRODUCTION_URL
+      : process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
+  return host ? `https://${host.replace(/^https?:\/\//, "")}` : undefined;
+}
+const rawUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || vercelUrl() || "http://localhost:3000";
 
 export const siteConfig = {
   name: "DataFixer",

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { ToolGuide } from "@/components/tools/ToolGuide";
+import { cleanerGuide } from "@/content/guides";
 import { CleanerWorkspace } from "@/components/tools/cleaner/CleanerWorkspace";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -14,6 +16,7 @@ export default function Page() {
   return (
     <ToolPageShell
       toolId="spreadsheet-cleaner"
+      content={<ToolGuide toolName="the Cleaner" guide={cleanerGuide} />}
       intro="Remove duplicates and empty rows, trim spaces, fix capitalization, dates, phone layouts and numbers stored as text, edit any cell, preview every change, undo mistakes and download a clean copy."
     >
       <CleanerWorkspace />

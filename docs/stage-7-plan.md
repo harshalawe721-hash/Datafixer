@@ -69,6 +69,13 @@ Finish the website: every page says only what is built and tested, each tool pag
 - Privacy policy (date 14 November 2026): changes stay only in the tab's memory until downloaded; a file passed between DataFixer pages stays in the tab and is not uploaded.
 - Contact (decision 4B): the honest notice stays, without “please check back soon”. About, Privacy and Terms no longer say questions “can be sent through” the contact page while it has no address.
 
+### Step 2 — Help content and link previews (done, 14 November 2026)
+
+- Decision 1A: each tool page has a guide below the tool (`src/content/guides.tsx`, `src/components/tools/ToolGuide.tsx`): how it works, an example, what it never does, good to know (limits), and six questions and answers (FAQ structured data). 650–860 words per page; every statement describes tested behaviour.
+- Decision 6A: a 1200×630 link preview image (`src/app/opengraph-image.tsx`, drawn at build time by Next.js's built-in `next/og`; 82 KB PNG). Every page now lists it in `og:image` (with type, width, height and alt text) and `twitter:image`, with the large-image card. **Found:** a page's own Open Graph block replaced the inherited image, so tool pages had no `og:image`; the image is now set in the shared page metadata.
+- **Found:** without `NEXT_PUBLIC_SITE_URL`, absolute links (canonical, `og:url`, `og:image`, sitemap) pointed to `http://localhost:3000`, so previews couldn't work on Vercel. The site address now falls back to the address Vercel provides at build time (production domain for production, the branch address for previews). Checked with simulated Vercel preview and production builds: all absolute links become `https://…`.
+- Note: if Vercel's Deployment Protection is on for previews, WhatsApp and Facebook can't fetch preview pages; the live (production) address is not affected.
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

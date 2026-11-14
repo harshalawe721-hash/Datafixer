@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
+import { SHARE_IMAGE } from "@/lib/metadata";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { FileHandoffProvider } from "@/components/upload/FileHandoffProvider";
@@ -18,7 +19,9 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     type: "website",
     locale: "en_US",
+    images: [SHARE_IMAGE],
   },
+  twitter: { card: "summary_large_image", images: [SHARE_IMAGE] },
   formatDetection: { telephone: false, email: false, address: false },
 };
 

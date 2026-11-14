@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { ToolGuide } from "@/components/tools/ToolGuide";
+import { detectorGuide } from "@/content/guides";
 import { DetectorWorkspace } from "@/components/tools/detector/DetectorWorkspace";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -14,6 +16,7 @@ export default function Page() {
   return (
     <ToolPageShell
       toolId="spreadsheet-error-detector"
+      content={<ToolGuide toolName="the Error Detector" guide={detectorGuide} />}
       intro="Check an Excel or CSV file for duplicate rows, missing cells, extra spaces, inconsistent dates, invalid emails and other hidden problems. Each problem is explained, many can be fixed for you after a preview, and your original file is never changed."
     >
       <DetectorWorkspace />

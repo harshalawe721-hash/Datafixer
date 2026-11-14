@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { ToolGuide } from "@/components/tools/ToolGuide";
+import { excelToCsvGuide } from "@/content/guides";
 import { ExcelToCsvWorkspace } from "@/components/tools/converter/ExcelToCsvWorkspace";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -14,6 +16,7 @@ export default function Page() {
   return (
     <ToolPageShell
       toolId="excel-to-csv"
+      content={<ToolGuide toolName="the converter" guide={excelToCsvGuide} />}
       intro="Choose a worksheet from an XLSX or XLS workbook, preview it and download it as CSV, or download every sheet at once as a ZIP of CSV files."
     >
       <ExcelToCsvWorkspace />
