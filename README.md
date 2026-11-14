@@ -90,6 +90,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 4 | Automatic fixing and Spreadsheet Cleaner: one-tap fixes for the detected problems, cell editing, download a clean CSV/Excel file | **Complete** (approved by the project owner on 12 November 2026). See `docs/stage-4-test-report.md` |
 | 5 | CSV Validator: structural checks, repairs with preview, download options | **Complete** (approved by the project owner on 13 November 2026). See `docs/stage-5-test-report.md` |
 | 6 | Excel ↔ CSV converters | **Complete** (approved by the project owner on 14 November 2026). See `docs/stage-6-test-report.md` |
-| 7 | SEO content, accessibility, performance, testing | Planned |
+| 7 | SEO content, accessibility, performance, testing | Plan prepared, waiting for the owner's decisions and approval (see `docs/stage-7-plan.md`) |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.
