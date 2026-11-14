@@ -114,7 +114,7 @@ export const cleanerGuide: Guide = {
     },
     {
       q: "Can I edit cells myself?",
-      a: "Yes. Tap a cell in the table to open the editor. If the cell holds a formula, DataFixer warns you first, because saving a value replaces the formula.",
+      a: "Yes. Tap a cell in the table (or move to it with the arrow keys and press Enter) to open the editor. Column names can be renamed with the pencil next to each name. If a cell holds a formula, DataFixer warns you first, because saving a value replaces the formula.",
     },
     {
       q: "Which spelling is kept when capitalization differs?",

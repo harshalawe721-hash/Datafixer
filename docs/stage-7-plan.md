@@ -76,6 +76,14 @@ Finish the website: every page says only what is built and tested, each tool pag
 - **Found:** without `NEXT_PUBLIC_SITE_URL`, absolute links (canonical, `og:url`, `og:image`, sitemap) pointed to `http://localhost:3000`, so previews couldn't work on Vercel. The site address now falls back to the address Vercel provides at build time (production domain for production, the branch address for previews). Checked with simulated Vercel preview and production builds: all absolute links become `https://…`.
 - Note: if Vercel's Deployment Protection is on for previews, WhatsApp and Facebook can't fetch preview pages; the live (production) address is not affected.
 
+### Step 3 — Keyboard and screen-reader access to the table (done, 14 November 2026)
+
+- Decision 2A: the preview table is an ARIA grid (`role="grid"`, row and column counts, row and column positions, read-only when editing isn't offered). One cell is in the Tab order; arrow keys move between cells, Home/End to the row's first/last cell, Ctrl+Home/End to the first/last cell of the page, PageUp/PageDown ten rows, Enter or F2 opens the editor, Escape closes it and focus returns to the cell. ↑ from the first row reaches the column header, ← → move across the header buttons, ↓ goes back to the cells (header buttons are no longer one Tab stop each).
+- Column names can be renamed (pages with editing: Error Detector, Cleaner, CSV Validator; with “First row contains column names” ticked): a pencil button next to each name opens the editor as “Rename column”, with a note that only the name changes. Undo and history work as for any change.
+- The hint above the table now explains tap and keyboard editing.
+- Two Stage 4 browser-test lookups were updated to the new semantics (the hint's new wording; cells now have the `gridcell` role instead of `cell`); the checks themselves are unchanged.
+- Browser test: `npm run test:a11y`, 28 keyboard checks (reaching the grid with Tab, all navigation keys, editing and escaping, renaming a column by keyboard, which clears the Validator's “column without a name” error, and a keyboard-only Fix all / Apply / Download / Undo on the Cleaner).
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

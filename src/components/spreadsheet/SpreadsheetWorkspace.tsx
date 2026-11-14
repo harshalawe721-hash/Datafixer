@@ -84,7 +84,7 @@ export function SpreadsheetWorkspace({
     };
   }, [unsaved]);
   /** Cell open in the cell editor (view position). */
-  const [editing, setEditing] = useState<{ row: number; col: number; label: string } | null>(null);
+  const [editing, setEditing] = useState<{ row: number; col: number; label: string; header: boolean } | null>(null);
   /** Column-names setting and the issue being viewed, reset for each file/sheet/separator. */
   const [view, setView] = useState<{ key: string; headerRow: boolean; issue: ScanIssue | null }>({ key: "", headerRow: false, issue: null });
   const { peekPending, clearPending } = useFileHandoff();
@@ -262,7 +262,7 @@ export function SpreadsheetWorkspace({
             issue={current.issue}
             onClearIssue={() => setView((v) => ({ ...v, issue: null }))}
             dataVersion={edits.version}
-            onCellClick={allowEditing ? (row, col, label) => setEditing({ row, col, label }) : undefined}
+            onCellClick={allowEditing ? (row, col, label, header) => setEditing({ row, col, label, header: !!header }) : undefined}
           />
         </div>
       ) : null}
@@ -271,6 +271,7 @@ export function SpreadsheetWorkspace({
           key={`${editing.row}:${editing.col}:${edits.version}`}
           row={editing.row}
           columnLabel={editing.label}
+          header={editing.header}
           loadInfo={() => engine.cellInfo(sheetName, editing.row, editing.col)}
           save={(text, replaceFormula) => engine.editCell(sheetName, editing.row, editing.col, text, replaceFormula).then(track("applied"))}
           onClose={() => setEditing(null)}

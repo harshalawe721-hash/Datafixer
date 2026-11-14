@@ -232,8 +232,8 @@ for (const [label, viewport] of [
   console.log("\nEditing cells by hand (CSV)");
   const page = await setup({ width: 1280, height: 900 });
   await open(page, "1-problems.csv");
-  check(await visible(page.getByText("Tap any cell to edit it.")), "table says cells can be edited");
-  await page.getByRole("cell", { name: "person7example.com", exact: true }).click();
+  check(await visible(page.getByText(/Tap a cell to edit it, or move with the arrow keys and press Enter/)), "table says cells can be edited (by tap or keyboard)");
+  await page.getByRole("gridcell", { name: "person7example.com", exact: true }).click();
   check(await visible(dialog(page).getByRole("heading", { name: "Edit cell C8" })), "editor opens for C8");
   check(await visible(dialog(page).getByText("“person7example.com”")), "shows the current value");
   await dialog(page).getByLabel("New value").fill("person7@example.com");
@@ -249,7 +249,7 @@ for (const [label, viewport] of [
   check(await visible(page.locator("td[data-edited]", { hasText: "person7@example.com" })), "edited cell highlighted in green");
   await page.getByRole("button", { name: "Undo" }).click();
   check(await visible(page.getByText(/Undone:.*Edit cell C8/)), "Undo message");
-  check(await visible(page.getByRole("cell", { name: "person7example.com", exact: true })), "Undo restores the old value in the table");
+  check(await visible(page.getByRole("gridcell", { name: "person7example.com", exact: true })), "Undo restores the old value in the table");
 
   console.log("\nFix all: Done message lists every fix");
   await page.getByRole("button", { name: "Fix all safe problems" }).click();
@@ -261,7 +261,7 @@ for (const [label, viewport] of [
   console.log("\nEditing a formula cell (Excel)");
   const page = await setup({ width: 1280, height: 900 });
   await open(page, "2-problems.xlsx");
-  await page.getByRole("cell", { name: /#DIV\/0!/ }).first().click();
+  await page.getByRole("gridcell", { name: /#DIV\/0!/ }).first().click();
   check(await visible(dialog(page).getByText("This cell contains a formula")), "formula warning shown before editing");
   const save = dialog(page).getByRole("button", { name: "Save" });
   await dialog(page).getByLabel("New value").fill("0");
@@ -277,7 +277,7 @@ for (const [label, viewport] of [
   console.log("\nEditing on a phone");
   const page = await setup({ width: 390, height: 844 });
   await open(page, "1-problems.csv");
-  await page.getByRole("cell", { name: "N/A", exact: true }).click();
+  await page.getByRole("gridcell", { name: "N/A", exact: true }).click();
   const box = await dialog(page).boundingBox();
   check(box && box.width <= 391, "editor fits the phone screen");
   const sb = await dialog(page).getByRole("button", { name: "Save" }).boundingBox();
@@ -442,7 +442,7 @@ const DL = mkdtempSync(path.join(tmpdir(), "df-dl-"));
   await page.goto(URL, { waitUntil: "networkidle" });
   await page.locator("input[type=file]").setInputFiles(shared);
   await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
-  await page.getByRole("cell", { name: /^fx\s*113$/ }).first().click();
+  await page.getByRole("gridcell", { name: /^fx\s*113$/ }).first().click();
   await dialog(page).getByLabel("Replace the formula with my value").check();
   await dialog(page).getByLabel("New value").fill("5");
   await dialog(page).getByRole("button", { name: "Save" }).click();

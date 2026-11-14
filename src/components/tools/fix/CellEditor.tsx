@@ -14,6 +14,7 @@ import { EngineError } from "@/engine/errors";
 export function CellEditor({
   row,
   columnLabel,
+  header = false,
   loadInfo,
   save,
   onClose,
@@ -22,6 +23,8 @@ export function CellEditor({
   row: number;
   /** Column name from the table header, if any. */
   columnLabel: string;
+  /** Stage 7: this cell is the column's name (the header row), not data. */
+  header?: boolean;
   loadInfo: () => Promise<CellInfo>;
   save: (text: string, replaceFormula: boolean) => Promise<EditResult>;
   onClose: () => void;
@@ -93,10 +96,10 @@ export function CellEditor({
             <PencilLine className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
             <div className="min-w-0">
               <h2 id="cell-editor-title" className="text-lg font-semibold">
-                Edit cell {info?.ref ?? ""}
+                {header ? "Rename column" : "Edit cell"} {info?.ref ?? ""}
               </h2>
               <p className="truncate text-xs text-muted">
-                Row {(row + 1).toLocaleString("en-US")} · {columnLabel}
+                {header ? `Column name · ${columnLabel}` : `Row ${(row + 1).toLocaleString("en-US")} · ${columnLabel}`}
               </p>
             </div>
           </div>
@@ -138,8 +141,13 @@ export function CellEditor({
                   </label>
                 </div>
               )}
+              {header && (
+                <p className="rounded-xl bg-surface-muted px-4 py-3 text-sm text-muted">
+                  This is the column&apos;s name in the first row. Only the name changes; the data in the column stays as it is. Undo works as for any change.
+                </p>
+              )}
               <label className="block text-sm font-medium" htmlFor="cell-editor-input">
-                New value
+                {header ? "New name" : "New value"}
               </label>
               <textarea
                 id="cell-editor-input"

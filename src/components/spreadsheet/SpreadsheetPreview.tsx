@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Loader2, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Loader2, PencilLine, Search, X } from "lucide-react";
 import type { RowPage, RowQuery, SortSpec } from "@/engine/query/query";
 import { columnLetter } from "@/engine/query/query";
 import type { ScanIssue, Severity } from "@/engine/scan/scan";
@@ -19,8 +19,11 @@ export interface SpreadsheetPreviewProps {
   onClearIssue?: () => void;
   /** Changes whenever the data changes (Stage 4 fixes, undo, redo): the page is fetched again. */
   dataVersion?: number;
-  /** Stage 4: called when a data cell is tapped (row/column are positions in the current data). */
-  onCellClick?: (row: number, col: number, columnLabel: string) => void;
+  /**
+   * Stage 4: called when a data cell is tapped or Enter is pressed on it (row/column are
+   * positions in the current data). Stage 7: also for a column name (`header` true, row 0).
+   */
+  onCellClick?: (row: number, col: number, columnLabel: string, header?: boolean) => void;
 }
 
 const PAGE_SIZES = [50, 100, 250, 500] as const;
@@ -51,6 +54,10 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
   const [error, setError] = useState<string | null>(null);
   const requestSeq = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** Keyboard focus in the grid (Stage 7): row and column within the shown page and column window. */
+  const [focus, setFocus] = useState({ r: 0, c: 0 });
+  const cells = useRef(new Map<string, HTMLElement>());
+  const headerButtons = useRef(new Map<number, HTMLElement>());
 
   // Debounce search typing.
   useEffect(() => {
@@ -115,6 +122,65 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
   const firstRow = total === 0 ? 0 : page * pageSize + 1;
   const lastRow = Math.min(total, (page + 1) * pageSize);
 
+  // ---- Keyboard navigation (Stage 7, decision 2): arrow keys move between cells, Home/End
+  // to the row's first/last cell, Ctrl+Home/End to the first/last cell of the page, Enter or F2
+  // opens the editor. Only one cell is in the Tab order (the one last focused).
+  const rowsShown = data?.rows.length ?? 0;
+  const colsShown = data?.rows[0]?.cells.length ?? 0;
+  const fr = Math.min(focus.r, Math.max(0, rowsShown - 1));
+  const fc = Math.min(focus.c, Math.max(0, colsShown - 1));
+  const moveTo = (r: number, c: number) => {
+    const nr = Math.max(0, Math.min(rowsShown - 1, r));
+    const nc = Math.max(0, Math.min(colsShown - 1, c));
+    setFocus({ r: nr, c: nc });
+    cells.current.get(`${nr}:${nc}`)?.focus();
+  };
+  const openCell = (r: number, c: number) => {
+    const row = data?.rows[r];
+    if (!row || !onCellClick) return;
+    const col = colStart + c;
+    onCellClick(row.index, col, (headerRow && data?.header?.[c]) || `Column ${columnLetter(col)}`);
+  };
+  const onGridKey = (e: React.KeyboardEvent<HTMLElement>) => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>("[data-r]");
+    if (!t) return;
+    const r = Number(t.dataset.r);
+    const c = Number(t.dataset.c);
+    const keys: Record<string, () => void> = {
+      ArrowDown: () => moveTo(r + 1, c),
+      ArrowRight: () => moveTo(r, c + 1),
+      ArrowLeft: () => moveTo(r, c - 1),
+      ArrowUp: () => {
+        if (r > 0) return moveTo(r - 1, c);
+        headerButtons.current.get(c)?.focus(); // up from the first row: the column's header
+      },
+      Home: () => (e.ctrlKey ? moveTo(0, 0) : moveTo(r, 0)),
+      End: () => (e.ctrlKey ? moveTo(rowsShown - 1, colsShown - 1) : moveTo(r, colsShown - 1)),
+      PageDown: () => moveTo(r + 10, c),
+      PageUp: () => moveTo(r - 10, c),
+      Enter: () => openCell(r, c),
+      F2: () => openCell(r, c),
+    };
+    const run = keys[e.key];
+    if (run) {
+      e.preventDefault();
+      run();
+    }
+  };
+  const editableHeader = !!onCellClick && headerRow;
+  /** In the header: ← → move across the sort and rename buttons, ↓ goes back to the cells. */
+  const onHeaderKey = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const buttons = [...(e.currentTarget.closest("tr")?.querySelectorAll<HTMLButtonElement>("button[data-hb]") ?? [])];
+    const k = buttons.indexOf(e.currentTarget);
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      buttons[Math.max(0, Math.min(buttons.length - 1, k + (e.key === "ArrowRight" ? 1 : -1)))]?.focus();
+    } else if (e.key === "ArrowDown" && rowsShown) {
+      e.preventDefault();
+      moveTo(0, Number(e.currentTarget.dataset.hb));
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-line bg-surface shadow-card">
       {/* Toolbar */}
@@ -167,9 +233,11 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
         </div>
       </div>
 
-      {onCellClick && (
-        <p className="border-b border-line px-4 py-2 text-xs text-muted">Tap any cell to edit it. Changed cells are shown in green.</p>
-      )}
+      <p id={`${id}-grid-help`} className="border-b border-line px-4 py-2 text-xs text-muted">
+        {onCellClick
+          ? `Tap a cell to edit it, or move with the arrow keys and press Enter.${headerRow ? " Use the pencil next to a column name to rename the column." : ""} Changed cells are shown in green.`
+          : "Move between cells with the arrow keys."}
+      </p>
 
       {issue && (
         <div className="flex flex-col gap-2 border-b border-line bg-surface-muted px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" role="status">
@@ -201,13 +269,21 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
               </span>
             </div>
           )}
-          <div ref={scrollRef} className="max-h-[32rem] overflow-auto overscroll-contain" tabIndex={0} aria-label="Spreadsheet preview, scrollable">
-            <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+          <div ref={scrollRef} className="max-h-[32rem] overflow-auto overscroll-contain">
+            <table
+              role="grid"
+              aria-readonly={!onCellClick}
+              aria-rowcount={total + 1}
+              aria-colcount={columnCount + 1}
+              aria-describedby={`${id}-grid-help`}
+              onKeyDown={onGridKey}
+              className="w-max min-w-full border-separate border-spacing-0 text-sm"
+            >
               <caption className="sr-only">
                 Preview of sheet {sheet}, rows {firstRow} to {lastRow} of {total}
               </caption>
               <thead>
-                <tr>
+                <tr aria-rowindex={1}>
                   <th scope="col" className="sticky top-0 left-0 z-10 border-r border-b border-line bg-surface-muted px-3 py-2 text-right text-xs font-medium text-muted">
                     #
                   </th>
@@ -222,8 +298,15 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                         aria-sort={active ? (sort!.direction === "asc" ? "ascending" : "descending") : "none"}
                         className="sticky top-0 z-[5] border-r border-b border-line bg-surface-muted p-0 text-left font-semibold"
                       >
+                        <div className="flex items-stretch">
                         <button
                           type="button"
+                          ref={(el) => {
+                            if (el) headerButtons.current.set(i, el);
+                          }}
+                          tabIndex={-1}
+                          data-hb={i}
+                          onKeyDown={onHeaderKey}
                           onClick={() => toggleSort(col)}
                           className="flex w-full max-w-64 min-w-24 items-center justify-between gap-2 px-3 py-2 text-left hover:bg-line/50"
                           title={`Sort by ${label || `column ${columnLetter(col)}`}`}
@@ -239,14 +322,29 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                             <ArrowUpDown className="size-3.5 shrink-0 text-muted/60" aria-hidden="true" />
                           )}
                         </button>
+                        {editableHeader && (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            data-hb={i}
+                            onKeyDown={onHeaderKey}
+                            onClick={() => onCellClick!(0, col, label || `Column ${columnLetter(col)}`, true)}
+                            className="flex w-9 shrink-0 items-center justify-center border-l border-line text-muted hover:bg-line/50 hover:text-foreground"
+                            title={`Rename column ${columnLetter(col)}`}
+                            aria-label={`Rename column ${columnLetter(col)}${label ? ` (${label})` : ""}`}
+                          >
+                            <PencilLine className="size-3.5" aria-hidden="true" />
+                          </button>
+                        )}
+                        </div>
                       </th>
                     );
                   })}
                 </tr>
               </thead>
               <tbody>
-                {data?.rows.map((row) => (
-                  <tr key={row.index} className="group">
+                {data?.rows.map((row, r) => (
+                  <tr key={row.index} className="group" aria-rowindex={row.index + (headerRow ? 1 : 2)}>
                     <th scope="row" className="sticky left-0 z-[1] border-r border-b border-line bg-surface-muted px-3 py-1.5 text-right text-xs font-normal text-muted tabular-nums">
                       {row.index + 1}
                     </th>
@@ -259,11 +357,21 @@ export function SpreadsheetPreview({ sheet, getRows, headerRow, onHeaderRowChang
                       return (
                         <td
                           key={col}
+                          role="gridcell"
+                          aria-colindex={col + 2}
+                          tabIndex={r === fr && i === fc ? 0 : -1}
+                          data-r={r}
+                          data-c={i}
+                          ref={(el) => {
+                            if (el) cells.current.set(`${r}:${i}`, el);
+                            else cells.current.delete(`${r}:${i}`);
+                          }}
+                          onFocus={() => (r !== focus.r || i !== focus.c) && setFocus({ r, c: i })}
                           title={isEdited ? `Changed: ${value}` : value.length > 40 ? value : undefined}
                           data-edited={isEdited || undefined}
                           onClick={onCellClick ? () => onCellClick(row.index, col, (headerRow && data?.header?.[i]) || `Column ${columnLetter(col)}`) : undefined}
                           className={cn(
-                            "max-w-64 truncate border-r border-b border-line px-3 py-1.5 whitespace-pre group-hover:bg-surface-muted/60",
+                            "max-w-64 truncate border-r border-b border-line px-3 py-1.5 whitespace-pre group-hover:bg-surface-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
                             isEdited && !flagged && "bg-success-soft",
                             onCellClick && "cursor-pointer hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-primary/50",
                             flagged && flagClass[issue.severity],
