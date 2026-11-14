@@ -1,6 +1,6 @@
 # Stage 7 plan: content, SEO, accessibility, performance, final testing
 
-**Status:** plan prepared on 14 November 2026. **Waiting for the owner's decisions (below) and approval.** Nothing is built yet. Building starts only when the owner says “Start Stage 7”.
+**Status:** plan prepared on 14 November 2026. **The owner approved it on 14 November 2026 with decisions 1A, 2A, 3A, 4B, 5A, 6A, 7A** and asked for implementation, with these requirements: no new paid services or unnecessary dependencies; keep all existing functionality; no unverified browser-compatibility claims; test keyboard accessibility and automated accessibility checks; link previews must work on WhatsApp, Facebook and other platforms through proper Open Graph metadata; `/diagnostics` reachable but hidden and unlinked; nothing marked complete without testing; a completion report at the end. Progress is recorded under “Progress” below.
 
 ## Goal
 
@@ -18,7 +18,7 @@ Finish the website: every page says only what is built and tested, each tool pag
 | Accessibility | Labels, headings, focus styles, phone layouts | **Table cells can't be reached with the keyboard** (known since Stage 4); **column-name cells can't be edited** (known since Stage 4); no automated accessibility check yet |
 | Browsers | Chromium (desktop, phone and tablet sizes) and the owner's Android tablet | Firefox, Safari and iPhone not tested; only Chromium is installed in the build environment |
 
-## Owner decisions needed
+## Owner decisions (approved 14 November 2026: 1A, 2A, 3A, 4B, 5A, 6A, 7A)
 
 **1. Help content on each tool page** (below the tool, for people and for search engines)
 - **A (recommended):** a short guide per tool, about 400–700 words: what it checks or does, a worked example, what it never does (privacy, the original file), limits, and 4–6 questions and answers. Plain HTML, no pop-ups.
