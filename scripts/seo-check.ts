@@ -104,6 +104,9 @@ check(![...links].some((l) => new URL(l).pathname.startsWith("/diagnostics")), "
 const diag = await page.goto(`${BASE}/diagnostics`, { waitUntil: "networkidle" });
 const diagRobots = await page.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "");
 check(diag?.status() === 200 && /noindex/.test(diagRobots) && /nofollow/.test(diagRobots), `/diagnostics still works for internal use and is hidden from search engines (${diagRobots})`);
+await page.goto(`${BASE}/contact`, { waitUntil: "networkidle" });
+const mailto = await page.locator('a[href^="mailto:"]').first().getAttribute("href");
+check(mailto === "mailto:wavelightning639@gmail.com", `the contact page shows the owner's address (${mailto})`);
 const notFound = await page.goto(`${BASE}/does-not-exist`, { waitUntil: "networkidle" });
 check(notFound?.status() === 404, "unknown pages answer 404");
 broken = [];

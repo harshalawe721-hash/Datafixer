@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 import { ProsePage } from "@/components/layout/ProsePage";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -65,7 +66,15 @@ export default function TermsPage() {
 
       <h2>8. Contact</h2>
       <p>
-        Contact details for questions about these terms, once published, are on our <Link href="/contact">contact page</Link>.
+        {siteConfig.contactEmail ? (
+          <>
+            Questions about these terms can be sent through our <Link href="/contact">contact page</Link>.
+          </>
+        ) : (
+          <>
+            Contact details for questions about these terms, once published, are on our <Link href="/contact">contact page</Link>.
+          </>
+        )}
       </p>
     </ProsePage>
   );

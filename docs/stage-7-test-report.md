@@ -10,7 +10,7 @@ The owner approved the plan (`docs/stage-7-plan.md`) on 14 November 2026 with de
 
 | Step | Change |
 |---|---|
-| 1 Accuracy | Homepage: “Open your spreadsheet” (nothing is uploaded); fixes previewed and undoable; formats include .tsv/.txt for the CSV tools; formulas answer accurate; **browser answer limited to what is tested** (decision 5A). Tool summaries updated. Privacy policy: changes and hand-overs stay in the tab's memory. Contact keeps its honest notice without promises (decision 4B); About, Privacy and Terms no longer imply a published contact address |
+| 1 Accuracy | Homepage: “Open your spreadsheet” (nothing is uploaded); fixes previewed and undoable; formats include .tsv/.txt for the CSV tools; formulas answer accurate; **browser answer limited to what is tested** (decision 5A). Tool summaries updated. Privacy policy: changes and hand-overs stay in the tab's memory. Contact: decision 4B at first (honest notice); on 14 November 2026 the owner gave a contact address, so the Contact page now shows **wavelightning639@gmail.com** with the existing “Write email” form (it opens the visitor's own mail app; nothing is sent through DataFixer), and About, Privacy and Terms point to it |
 | 2 Content and previews | A guide on each of the five tool pages (decision 1A): how it works, an example, what it never does, limits, six questions and answers (650–860 words, FAQ structured data). A 1200×630 link preview image (decision 6A) made at build time by Next.js's built-in `next/og`, set on every page with full Open Graph and Twitter tags. The site address now falls back to Vercel's own address when `NEXT_PUBLIC_SITE_URL` isn't set (it used to fall back to localhost, which would have broken previews, canonical links and the sitemap on Vercel) |
 | 3 Keyboard | The table is an ARIA grid: Tab reaches it in one stop; arrow keys, Home/End, Ctrl+Home/End, PageUp/PageDown; Enter or F2 edits; Escape returns to the cell; ↑ reaches the header. Column names can be renamed with a pencil button (decision 2A) |
 | 4 Accessibility checks | axe-core (already installed with the lint tools; nothing added) on every page and tool state, light and dark mode (decision 3A). Fixed: accessible names that didn't include the visible text, a preview area that couldn't be scrolled by keyboard, a low-contrast link in dark mode |
@@ -40,7 +40,7 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 | CSV Validator (`test:validator`) | Stage 5 | ✅ 106 / 106 |
 | Converters (`test:converter`) | Stage 6 | ✅ 45 / 45 |
 | **Accessibility (`test:a11y`)** | **28 keyboard checks + axe-core on 11 pages and 16 tool states, light and dark (42 checks): 0 serious, 0 critical, 0 moderate, 0 minor findings; no console errors** | ✅ **71 / 71** |
-| **SEO and performance (`test:seo`)** | **sitemap, robots, every page's tags, preview image, links, hidden `/diagnostics`, 404, phone-sized loading** | ✅ **25 / 25** |
+| **SEO and performance (`test:seo`)** | **sitemap, robots, every page's tags, preview image, links, hidden `/diagnostics`, the contact address, 404, phone-sized loading** | ✅ **26 / 26** (after the contact address was added) |
 | 150 MB limit (`test:large`) | Stage 2 | ✅ 64 / 64 |
 | Large files, fixing (`test:export-perf`) | 50/100/150 MB: open, check, Fix all, download | ✅ all ok (150 MB: Fix all 31.5 s, download 6.7 s) |
 | Large files, Validator (`test:validator-perf`) | 50/100/150 MB, exact planted counts, Python checks | ✅ all ok, 0 problems |
@@ -57,7 +57,7 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 
 - **Browsers:** only Chromium-based browsers are tested (desktop, phone- and tablet-sized screens in Chromium, and the owner's Android tablet). Firefox, Safari and iPhone are not tested; the site says so.
 - **Link previews** are verified through the page's metadata and the image itself, not through the platforms' crawlers (see above).
-- **Contact:** no public contact address yet (decision 4B). Setting `NEXT_PUBLIC_CONTACT_EMAIL` on Vercel shows it without code changes.
+- **Contact:** the address is set in the site's settings (`src/config/site.ts`); setting `NEXT_PUBLIC_CONTACT_EMAIL` on Vercel would override it.
 - **Keyboard grid:** moving past the last row of a page or the last column of the 50-column window doesn't turn the page; use the Next and column buttons below the table (reachable with Tab).
 - **Performance figures** are from a local server with a slowed CPU but no network delay; real loading on a phone network will be slower, and very large files remain limited by the device's memory (Stages 2–6).
 - Earlier stages' limits still apply (see the Stage 2–6 test reports): one Excel sheet at a time, values only in CSV, .xls rebuilt as .xlsx with listed losses, files up to 150 MB.
@@ -66,7 +66,7 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 
 1. Make this branch the live site on Vercel (merge it into the main branch, or set it as the production branch).
 2. Set `NEXT_PUBLIC_SITE_URL` to the final address (for example `https://www.your-domain.com`), especially if a custom domain is used.
-3. Optional: set `NEXT_PUBLIC_CONTACT_EMAIL`.
+3. Contact email: done (shown on the Contact page).
 4. Check a link preview: paste the live address into WhatsApp, or into Facebook's Sharing Debugger.
 5. Open a few downloaded files in Microsoft Excel and Google Sheets.
 6. Try the site on an Android phone, and on an iPhone (Safari) if possible.

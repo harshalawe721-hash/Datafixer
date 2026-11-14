@@ -100,6 +100,10 @@ Finish the website: every page says only what is built and tested, each tool pag
 
 - Every test suite of every stage run on the final code, including all large-file tests and the Stage 2/3 performance harness (its sort step now targets the sort button, since header cells also hold a Rename button). No failures. Results and remaining limitations: `docs/stage-7-test-report.md`. Stage 7 waits for the owner's approval.
 
+### Contact address (14 November 2026)
+
+- The owner gave a contact address: **wavelightning639@gmail.com**, now the default in `src/config/site.ts` (`NEXT_PUBLIC_CONTACT_EMAIL` still overrides it). The Contact page shows it with the existing “Write email” form; About, Privacy and Terms point to the contact page again. This replaces decision 4B with 4A. Checked: the page's mailto link, the form opening the mail app with topic and message, the phone layout, and axe-core on the page.
+
 ## Testing
 
 - Every page: one H1, unique title and description, canonical link, valid JSON-LD, in the sitemap (except `/diagnostics`), no broken internal links.

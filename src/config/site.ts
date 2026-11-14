@@ -24,7 +24,8 @@ export const siteConfig = {
   description:
     "Free online tools to find and fix spreadsheet problems. Detect duplicates, missing data and formatting issues in Excel and CSV files, clean them, and download better data.",
   url: rawUrl.replace(/\/+$/, ""),
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "",
+  /** Public contact address (owner, 14 November 2026). NEXT_PUBLIC_CONTACT_EMAIL overrides it. */
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "wavelightning639@gmail.com",
   /**
    * Maximum accepted file size: 150 MB (150 × 1024 × 1024 = 157,286,400 bytes).
    * A file of exactly this size is accepted; one byte more is rejected.

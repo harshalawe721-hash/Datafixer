@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 import { ProsePage } from "@/components/layout/ProsePage";
 import { pageMetadata } from "@/lib/metadata";
 import { tools } from "@/config/tools";
@@ -59,7 +60,15 @@ export default function AboutPage() {
 
       <h2>Get in touch</h2>
       <p>
-        Contact details, once published, are on the <Link href="/contact">contact page</Link>.
+        {siteConfig.contactEmail ? (
+          <>
+            Have an idea, found a bug or need a feature? Visit the <Link href="/contact">contact page</Link>.
+          </>
+        ) : (
+          <>
+            Contact details, once published, are on the <Link href="/contact">contact page</Link>.
+          </>
+        )}
       </p>
     </ProsePage>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { siteConfig } from "@/config/site";
 import { ProsePage } from "@/components/layout/ProsePage";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -76,8 +77,16 @@ export default function PrivacyPage() {
 
       <h2>Changes to this policy</h2>
       <p>
-        If we change how DataFixer handles data, we will update this page and the date above. Contact details,
-        once published, are on our <Link href="/contact">contact page</Link>.
+        If we change how DataFixer handles data, we will update this page and the date above.{" "}
+        {siteConfig.contactEmail ? (
+          <>
+            Questions can be sent through our <Link href="/contact">contact page</Link>.
+          </>
+        ) : (
+          <>
+            Contact details, once published, are on our <Link href="/contact">contact page</Link>.
+          </>
+        )}
       </p>
     </ProsePage>
   );
