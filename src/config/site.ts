@@ -5,15 +5,15 @@
 /**
  * The site's public address, used for canonical links, the sitemap and link
  * previews (Open Graph images must be absolute URLs for WhatsApp, Facebook…).
- * NEXT_PUBLIC_SITE_URL wins when set. Otherwise, on Vercel, the address Vercel
- * provides at build time: the production domain for production deployments,
- * the branch's preview address for previews. localhost only on a developer machine.
+ * NEXT_PUBLIC_SITE_URL wins when set. Otherwise, on Vercel: mydatafixer.com for
+ * production deployments, the branch's preview address for previews. localhost only on a developer machine.
  */
+/** The live domain (owner, 15 November 2026). Used for production deployments. */
+export const PRODUCTION_URL = "https://mydatafixer.com";
+
 function vercelUrl(): string | undefined {
-  const host =
-    process.env.VERCEL_ENV === "production"
-      ? process.env.VERCEL_PROJECT_PRODUCTION_URL
-      : process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
+  if (process.env.VERCEL_ENV === "production") return PRODUCTION_URL;
+  const host = process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
   return host ? `https://${host.replace(/^https?:\/\//, "")}` : undefined;
 }
 const rawUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || vercelUrl() || "http://localhost:3000";

@@ -66,7 +66,7 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 ## Before launch (owner actions)
 
 1. Make this branch the live site on Vercel (merge it into the main branch, or set it as the production branch).
-2. Set `NEXT_PUBLIC_SITE_URL` to the final address (for example `https://www.your-domain.com`), especially if a custom domain is used.
+2. Domain: mydatafixer.com is connected, and production builds use it automatically (no variable needed).
 3. Contact email: done (shown on the Contact page).
 4. Check a link preview: paste the live address into WhatsApp, or into Facebook's Sharing Debugger.
 5. Open a few downloaded files in Microsoft Excel and Google Sheets.
