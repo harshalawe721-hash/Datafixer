@@ -1,6 +1,6 @@
 # Stage 7 plan: content, SEO, accessibility, performance, final testing
 
-**Status:** plan prepared on 14 November 2026. **The owner approved it on 14 November 2026 with decisions 1A, 2A, 3A, 4B, 5A, 6A, 7A** and asked for implementation, with these requirements: no new paid services or unnecessary dependencies; keep all existing functionality; no unverified browser-compatibility claims; test keyboard accessibility and automated accessibility checks; link previews must work on WhatsApp, Facebook and other platforms through proper Open Graph metadata; `/diagnostics` reachable but hidden and unlinked; nothing marked complete without testing; a completion report at the end. Progress is recorded under “Progress” below.
+**Status:** plan prepared on 14 November 2026. **The owner approved it on 14 November 2026 with decisions 1A, 2A, 3A, 4B, 5A, 6A, 7A** and asked for implementation, with these requirements: no new paid services or unnecessary dependencies; keep all existing functionality; no unverified browser-compatibility claims; test keyboard accessibility and automated accessibility checks; link previews must work on WhatsApp, Facebook and other platforms through proper Open Graph metadata; `/diagnostics` reachable but hidden and unlinked; nothing marked complete without testing; a completion report at the end. Progress is recorded under “Progress” below. **Stage 7 was approved by the owner on 15 November 2026 and is complete.**
 
 ## Goal
 

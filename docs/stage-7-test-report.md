@@ -2,7 +2,7 @@
 
 **Date:** 14 November 2026
 
-**Status:** ⏳ **Built and tested; awaiting the owner's approval.** Stage 7 is not complete until the owner approves it.
+**Status:** ✅ **COMPLETE.** Approved by the owner on 15 November 2026. The site is live at https://mydatafixer.com.
 
 The owner approved the plan (`docs/stage-7-plan.md`) on 14 November 2026 with decisions **1A, 2A, 3A, 4B, 5A, 6A, 7A**, and asked: no new paid services or unnecessary dependencies; keep existing functionality; no unverified browser claims; test keyboard accessibility and automated accessibility checks; link previews that work on WhatsApp, Facebook and other platforms through proper Open Graph metadata; `/diagnostics` reachable but hidden and unlinked; nothing marked complete without testing.
 
@@ -65,7 +65,7 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 
 ## Before launch (owner actions)
 
-1. Make this branch the live site on Vercel (merge it into the main branch, or set it as the production branch).
+1. Live site: done. This branch is deployed to production on Vercel at mydatafixer.com.
 2. Domain: mydatafixer.com is connected, and production builds use it automatically (no variable needed).
 3. Contact email: done (shown on the Contact page).
 4. Check a link preview: paste the live address into WhatsApp, or into Facebook's Sharing Debugger.
@@ -74,4 +74,4 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 
 ## Approval
 
-Stage 7 will be marked complete only after the owner approves it.
+The owner approved Stage 7 on 15 November 2026 (“Stage 7 approved”), after the site went live on mydatafixer.com and Google Search Console verified ownership (HTML file) and accepted an indexing request for the homepage.
