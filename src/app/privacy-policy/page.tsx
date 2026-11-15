@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       title="Privacy Policy"
       path="/privacy-policy"
       intro="Privacy is central to MyDataFixer. This policy explains, in plain language, what happens to your files and what little information we handle."
-      updated="14 November 2026"
+      updated="15 November 2026"
     >
       <h2>Summary</h2>
       <ul>
@@ -61,9 +61,12 @@ export default function PrivacyPage() {
 
       <h2>Analytics</h2>
       <p>
-        MyDataFixer does not currently use analytics. If privacy-friendly usage statistics are added in the future (for
-        example, counting how often a tool is opened), they will never include spreadsheet contents or information
-        taken from your files, and this policy will be updated before that happens.
+        MyDataFixer uses Vercel Web Analytics to count visits, so we can see which pages and tools are used. It does
+        not use cookies and does not follow you across other websites. It records the page address you visit, the
+        page you came from, and general information such as your browser, operating system, device type and country.
+        Visitors are counted using a value that is discarded after one day, so you cannot be identified or recognised
+        on a later visit. It never receives the contents of your spreadsheets or anything taken from your files:
+        those stay on your device.
       </p>
 
       <h2>Emails you send us</h2>

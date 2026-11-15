@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { SHARE_IMAGE } from "@/lib/metadata";
@@ -54,6 +55,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
           <Footer />
         </FileHandoffProvider>
+        {/*
+          Vercel Web Analytics (owner, 15 November 2026): counts page views without cookies.
+          Vercel serves the script from this site's own domain and it reports back to the same
+          domain, so the Content-Security-Policy (connect-src 'self') is unchanged. It sees
+          page addresses only, never file contents. Production deployments only.
+        */}
+        {process.env.VERCEL_ENV === "production" && <Script src="/_vercel/insights/script.js" strategy="afterInteractive" />}
       </body>
     </html>
   );

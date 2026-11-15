@@ -75,3 +75,10 @@ Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, 
 ## Approval
 
 The owner approved Stage 7 on 15 November 2026 (“Stage 7 approved”), after the site went live on mydatafixer.com and Google Search Console verified ownership (HTML file) and accepted an indexing request for the homepage.
+
+## After completion: visitor analytics (15 November 2026, owner's request)
+
+- Vercel Web Analytics added **without a new package**: production deployments load `/_vercel/insights/script.js`, which Vercel serves from the site's own domain; it reports to the same domain, so the Content-Security-Policy (`connect-src 'self'`) is unchanged. No cookies. It receives page addresses (which never contain file data), the referring page, and browser/device/country information; never file contents.
+- Privacy policy “Analytics” section rewritten to say this; policy date 15 November 2026.
+- Checked: a simulated production build includes the script on every page checked (/, /csv-validator, /privacy-policy) with `connect-src 'self'`; a non-production build does not include it. tsc, lint, unit 382/382, smoke 114, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71, seo 26.
+- **Not testable from here:** the live counting itself. It starts after the owner enables Web Analytics in the Vercel project (Analytics → Enable); until then the script address returns 404 and nothing is counted.
