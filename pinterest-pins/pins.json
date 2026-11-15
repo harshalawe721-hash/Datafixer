@@ -1,0 +1,1044 @@
+[
+ {
+  "type": "hero",
+  "theme": "navy",
+  "kicker": "Data cleaning made easy",
+  "title": "Messy spreadsheet? Fix it in seconds.",
+  "sub": "Upload your file. MyDataFixer finds and fixes duplicates, typos and broken formats for you.",
+  "desc": "Tired of cleaning spreadsheets by hand? MyDataFixer finds and fixes duplicates, extra spaces, broken dates and messy formats automatically. Upload, fix, download.",
+  "tags": [
+   "datacleaning",
+   "excel",
+   "spreadsheet",
+   "productivity"
+  ],
+  "file": "customers.csv"
+ },
+ {
+  "type": "steps",
+  "theme": "cream",
+  "kicker": "How it works",
+  "title": "Clean your data in 4 simple steps",
+  "steps": [
+   [
+    "Upload",
+    "Drop in your CSV or Excel file"
+   ],
+   [
+    "Scan",
+    "We spot duplicates, blanks and bad formats"
+   ],
+   [
+    "Fix",
+    "Fix every issue with one click"
+   ],
+   [
+    "Download",
+    "Get a clean file, ready to use"
+   ]
+  ],
+  "desc": "Here's how MyDataFixer works: upload your file, let it scan for problems, fix them with one click, and download clean data. No formulas needed.",
+  "tags": [
+   "howto",
+   "datacleaning",
+   "csv",
+   "exceltips"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "teal",
+  "kicker": "Before → After",
+  "title": "Remove duplicate rows automatically",
+  "cols": [
+   "Name",
+   "Email"
+  ],
+  "before": [
+   [
+    "Priya Shah",
+    "priya@mail.com"
+   ],
+   [
+    "John Lee",
+    "john@mail.com"
+   ],
+   [
+    "Priya Shah",
+    "priya@mail.com"
+   ],
+   [
+    "John Lee",
+    "john@mail.com"
+   ]
+  ],
+  "bad": [
+   [
+    2,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Priya Shah",
+    "priya@mail.com"
+   ],
+   [
+    "John Lee",
+    "john@mail.com"
+   ]
+  ],
+  "desc": "Duplicate rows mess up your counts, reports and email lists. MyDataFixer finds and removes them in one click.",
+  "tags": [
+   "duplicates",
+   "excel",
+   "datacleaning",
+   "spreadsheettips"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "navy",
+  "kicker": "Before → After",
+  "title": "Make every date use the same format",
+  "cols": [
+   "Order",
+   "Date"
+  ],
+  "before": [
+   [
+    "#101",
+    "03/04/24"
+   ],
+   [
+    "#102",
+    "April 5, 2024"
+   ],
+   [
+    "#103",
+    "2024.04.06"
+   ],
+   [
+    "#104",
+    "7-Apr-24"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "#101",
+    "2024-03-04"
+   ],
+   [
+    "#102",
+    "2024-04-05"
+   ],
+   [
+    "#103",
+    "2024-04-06"
+   ],
+   [
+    "#104",
+    "2024-04-07"
+   ]
+  ],
+  "desc": "Mixed date formats break sorting and charts. MyDataFixer puts every date in one consistent format.",
+  "tags": [
+   "dates",
+   "excel",
+   "datacleaning",
+   "dataanalysis"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "cream",
+  "kicker": "Before → After",
+  "title": "Fix messy names and extra spaces",
+  "cols": [
+   "First",
+   "Last"
+  ],
+  "before": [
+   [
+    "  jOHN",
+    "smith "
+   ],
+   [
+    "MARIA",
+    "  garcia"
+   ],
+   [
+    "aLeX ",
+    "CHEN"
+   ],
+   [
+    "sara",
+    "o'BRIEN"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "John",
+    "Smith"
+   ],
+   [
+    "Maria",
+    "Garcia"
+   ],
+   [
+    "Alex",
+    "Chen"
+   ],
+   [
+    "Sara",
+    "O'Brien"
+   ]
+  ],
+  "desc": "Random caps and hidden spaces make your data look sloppy and break lookups. MyDataFixer trims and capitalizes names properly.",
+  "tags": [
+   "excel",
+   "dataentry",
+   "cleandata",
+   "smallbusiness"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "purple",
+  "kicker": "Before → After",
+  "title": "Format phone numbers the same way",
+  "cols": [
+   "Contact",
+   "Phone"
+  ],
+  "before": [
+   [
+    "Ana",
+    "5551234567"
+   ],
+   [
+    "Ben",
+    "(555) 987-6543"
+   ],
+   [
+    "Cal",
+    "555.222.3333"
+   ],
+   [
+    "Dee",
+    "+1 555 444 5555"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Ana",
+    "+1 555-123-4567"
+   ],
+   [
+    "Ben",
+    "+1 555-987-6543"
+   ],
+   [
+    "Cal",
+    "+1 555-222-3333"
+   ],
+   [
+    "Dee",
+    "+1 555-444-5555"
+   ]
+  ],
+  "desc": "Phone numbers typed ten different ways? MyDataFixer puts them all in one clean, consistent format.",
+  "tags": [
+   "crm",
+   "contacts",
+   "datacleaning",
+   "sales"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "teal",
+  "kicker": "Fixed automatically",
+  "title": "7 data problems MyDataFixer fixes for you",
+  "items": [
+   "Duplicate rows",
+   "Extra and hidden spaces",
+   "Mixed date formats",
+   "Random capitalization",
+   "Blank or missing cells",
+   "Numbers stored as text",
+   "Inconsistent spellings"
+  ],
+  "desc": "These 7 common spreadsheet problems waste hours every week. MyDataFixer finds and fixes them for you.",
+  "tags": [
+   "datacleaning",
+   "exceltips",
+   "spreadsheet",
+   "productivityhacks"
+  ]
+ },
+ {
+  "type": "problem",
+  "theme": "amber",
+  "kicker": "Be honest…",
+  "title": "Still cleaning spreadsheets by hand?",
+  "answer": "Let MyDataFixer do the boring part. Upload your file and get clean data back in minutes.",
+  "desc": "Copying, pasting, find-and-replace, fixing one cell at a time… stop. MyDataFixer cleans your spreadsheet for you.",
+  "tags": [
+   "worksmarter",
+   "excel",
+   "productivity",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "hero",
+  "theme": "purple",
+  "kicker": "No formulas. No macros.",
+  "title": "Stop fighting Excel formulas.",
+  "sub": "Skip TRIM, PROPER and nested IFs. MyDataFixer cleans your data without a single formula.",
+  "desc": "Don't want to learn TRIM, PROPER, SUBSTITUTE and nested IFs? You don't have to. MyDataFixer cleans your data without formulas.",
+  "tags": [
+   "exceltips",
+   "excelformulas",
+   "nocode",
+   "datacleaning"
+  ],
+  "file": "leads.xlsx"
+ },
+ {
+  "type": "ba",
+  "theme": "navy",
+  "kicker": "Before → After",
+  "title": "Find and flag missing values",
+  "cols": [
+   "Customer",
+   "City"
+  ],
+  "before": [
+   [
+    "Omar",
+    ""
+   ],
+   [
+    "Lena",
+    "Austin"
+   ],
+   [
+    "",
+    "Denver"
+   ],
+   [
+    "Raj",
+    "N/A"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Omar",
+    "⚠ missing"
+   ],
+   [
+    "Lena",
+    "Austin"
+   ],
+   [
+    "⚠ missing",
+    "Denver"
+   ],
+   [
+    "Raj",
+    "⚠ missing"
+   ]
+  ],
+  "desc": "Blank cells and 'N/A' hide everywhere. MyDataFixer finds and flags every missing value so nothing slips through.",
+  "tags": [
+   "missingdata",
+   "dataquality",
+   "excel",
+   "dataanalysis"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "cream",
+  "kicker": "Made for",
+  "title": "Who is MyDataFixer for?",
+  "items": [
+   "Marketers cleaning email lists",
+   "Small business owners",
+   "Online store sellers",
+   "Recruiters and HR teams",
+   "Students and researchers",
+   "Analysts who need clean data fast"
+  ],
+  "desc": "Marketers, store owners, recruiters, students and analysts use MyDataFixer to clean spreadsheets without the headache.",
+  "tags": [
+   "smallbusiness",
+   "marketing",
+   "ecommerce",
+   "students"
+  ]
+ },
+ {
+  "type": "hero",
+  "theme": "teal",
+  "kicker": "The simplest way",
+  "title": "Upload messy. Download clean.",
+  "sub": "That's it. That's how MyDataFixer works.",
+  "desc": "Upload messy. Download clean. MyDataFixer keeps data cleaning simple.",
+  "tags": [
+   "datacleaning",
+   "csv",
+   "excel",
+   "simpletools"
+  ],
+  "file": "orders.csv"
+ },
+ {
+  "type": "ba",
+  "theme": "amber",
+  "kicker": "Before → After",
+  "title": "Clean up email addresses",
+  "cols": [
+   "Name",
+   "Email"
+  ],
+  "before": [
+   [
+    "Kim",
+    " KIM@Mail.COM"
+   ],
+   [
+    "Leo",
+    "leo@mail,com"
+   ],
+   [
+    "Mia",
+    "mia@mail.com "
+   ],
+   [
+    "Noah",
+    "noah@@mail.com"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Kim",
+    "kim@mail.com"
+   ],
+   [
+    "Leo",
+    "leo@mail.com"
+   ],
+   [
+    "Mia",
+    "mia@mail.com"
+   ],
+   [
+    "Noah",
+    "⚠ check email"
+   ]
+  ],
+  "desc": "Bad email addresses mean bounced campaigns. MyDataFixer lowercases, trims and flags broken emails before you hit send.",
+  "tags": [
+   "emailmarketing",
+   "emaillist",
+   "datacleaning",
+   "marketingtips"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "navy",
+  "kicker": "Before you import",
+  "title": "6 things to check before uploading to your CRM",
+  "items": [
+   "No duplicate contacts",
+   "Names capitalized properly",
+   "Emails lowercase and valid",
+   "Phone numbers in one format",
+   "No empty required fields",
+   "Columns match your CRM"
+  ],
+  "desc": "Importing to your CRM? Check these 6 things first, or let MyDataFixer check them for you.",
+  "tags": [
+   "crm",
+   "salesforce",
+   "hubspot",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "tip",
+  "theme": "cream",
+  "kicker": "Data tip #1",
+  "title": "Hidden spaces break your lookups",
+  "body": "\"Apple\" and \"Apple \" look the same, but your spreadsheet treats them as two different values. That's why VLOOKUP and matching fail.",
+  "fix": "MyDataFixer trims hidden spaces from every cell automatically.",
+  "desc": "Why does VLOOKUP fail when the values look the same? Hidden spaces. MyDataFixer removes them automatically.",
+  "tags": [
+   "vlookup",
+   "exceltips",
+   "spreadsheettips",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "purple",
+  "kicker": "Before → After",
+  "title": "Turn text into real numbers",
+  "cols": [
+   "Item",
+   "Price"
+  ],
+  "before": [
+   [
+    "Mug",
+    "$1,200.00"
+   ],
+   [
+    "Pen",
+    "12 USD"
+   ],
+   [
+    "Bag",
+    " 45.5"
+   ],
+   [
+    "Hat",
+    "'30"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Mug",
+    "1200.00"
+   ],
+   [
+    "Pen",
+    "12.00"
+   ],
+   [
+    "Bag",
+    "45.50"
+   ],
+   [
+    "Hat",
+    "30.00"
+   ]
+  ],
+  "desc": "Can't SUM your column? Your numbers are probably stored as text. MyDataFixer converts them into real numbers.",
+  "tags": [
+   "excel",
+   "numbers",
+   "accounting",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "problem",
+  "theme": "navy",
+  "kicker": "Plot twist",
+  "title": "Your formula isn't broken. Your data is.",
+  "answer": "Most spreadsheet errors come from messy data. Clean it with MyDataFixer and watch your formulas work again.",
+  "desc": "If your formulas keep failing, the problem is usually the data. MyDataFixer cleans it so your formulas just work.",
+  "tags": [
+   "excelhelp",
+   "spreadsheet",
+   "datacleaning",
+   "exceltips"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "amber",
+  "kicker": "Save this",
+  "title": "The data cleaning checklist",
+  "items": [
+   "Remove duplicates",
+   "Trim extra spaces",
+   "Fix capitalization",
+   "Standardize dates",
+   "Fill or flag blanks",
+   "Convert text to numbers",
+   "Check emails and phones"
+  ],
+  "desc": "Save this data cleaning checklist for your next spreadsheet. Or skip the list and let MyDataFixer do it all.",
+  "tags": [
+   "checklist",
+   "datacleaning",
+   "excel",
+   "organization"
+  ]
+ },
+ {
+  "type": "ba",
+  "theme": "teal",
+  "kicker": "Before → After",
+  "title": "Use one spelling for every country",
+  "cols": [
+   "Client",
+   "Country"
+  ],
+  "before": [
+   [
+    "Ava",
+    "USA"
+   ],
+   [
+    "Eli",
+    "U.S."
+   ],
+   [
+    "Ivy",
+    "united states"
+   ],
+   [
+    "Max",
+    "America"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ]
+  ],
+  "after": [
+   [
+    "Ava",
+    "United States"
+   ],
+   [
+    "Eli",
+    "United States"
+   ],
+   [
+    "Ivy",
+    "United States"
+   ],
+   [
+    "Max",
+    "United States"
+   ]
+  ],
+  "desc": "Four spellings of the same country ruin your reports and pivot tables. MyDataFixer makes them match.",
+  "tags": [
+   "pivottable",
+   "dataanalysis",
+   "excel",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "steps",
+  "theme": "navy",
+  "kicker": "Your new workflow",
+  "title": "From messy export to report-ready",
+  "steps": [
+   [
+    "Export",
+    "Pull data from your app or store"
+   ],
+   [
+    "Upload",
+    "Drop the file into MyDataFixer"
+   ],
+   [
+    "Review",
+    "See every issue it found"
+   ],
+   [
+    "Use",
+    "Clean data for reports and imports"
+   ]
+  ],
+  "desc": "Exported data is always messy. Add MyDataFixer to your workflow and get report-ready data every time.",
+  "tags": [
+   "workflow",
+   "reporting",
+   "dataanalysis",
+   "productivity"
+  ]
+ },
+ {
+  "type": "tip",
+  "theme": "amber",
+  "kicker": "Data tip #2",
+  "title": "Duplicates cost you more than you think",
+  "body": "The same customer twice means double emails, wrong sales totals and confused teams. Duplicates quietly break your numbers.",
+  "fix": "MyDataFixer finds duplicate rows, even when spacing or caps are different.",
+  "desc": "Duplicate rows cause double emails and wrong totals. MyDataFixer finds them, even when the spacing or caps are different.",
+  "tags": [
+   "duplicates",
+   "crm",
+   "emailmarketing",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "hero",
+  "theme": "cream",
+  "kicker": "Works with your files",
+  "title": "CSV or Excel? We fix both.",
+  "sub": "Bring the file you already have. Download it clean in the same format.",
+  "desc": "MyDataFixer works with your CSV and Excel files. Upload, clean, and download in the same format.",
+  "tags": [
+   "csv",
+   "excel",
+   "xlsx",
+   "datacleaning"
+  ],
+  "file": "sales.xlsx"
+ },
+ {
+  "type": "ba",
+  "theme": "navy",
+  "kicker": "Before → After",
+  "title": "Split full names into first and last",
+  "cols": [
+   "Full name"
+  ],
+  "before": [
+   [
+    "Emma Stone"
+   ],
+   [
+    "Liam Patel"
+   ],
+   [
+    "Zoe Kim"
+   ],
+   [
+    "Ivan Petrov"
+   ]
+  ],
+  "bad": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ]
+  ],
+  "after": [
+   [
+    "Emma",
+    "Stone"
+   ],
+   [
+    "Liam",
+    "Patel"
+   ],
+   [
+    "Zoe",
+    "Kim"
+   ],
+   [
+    "Ivan",
+    "Petrov"
+   ]
+  ],
+  "afterCols": [
+   "First",
+   "Last"
+  ],
+  "desc": "Need first and last names in separate columns? MyDataFixer splits them for you, no formulas required.",
+  "tags": [
+   "excel",
+   "mailmerge",
+   "datacleaning",
+   "exceltips"
+  ]
+ },
+ {
+  "type": "problem",
+  "theme": "purple",
+  "kicker": "Sound familiar?",
+  "title": "Spent your whole Monday cleaning one spreadsheet?",
+  "answer": "Get your Mondays back. MyDataFixer cleans it for you while you do real work.",
+  "desc": "Lost a whole day cleaning one spreadsheet? Never again. MyDataFixer does it for you.",
+  "tags": [
+   "mondaymotivation",
+   "worksmarter",
+   "productivity",
+   "excel"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "teal",
+  "kicker": "Warning signs",
+  "title": "5 signs your data needs fixing",
+  "items": [
+   "Totals don't add up",
+   "VLOOKUP returns #N/A",
+   "Sorting puts dates in the wrong order",
+   "The same customer shows up twice",
+   "Emails bounce back"
+  ],
+  "desc": "Totals that don't add up? #N/A everywhere? Those are signs your data needs fixing. MyDataFixer can help.",
+  "tags": [
+   "dataquality",
+   "excelproblems",
+   "spreadsheet",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "tip",
+  "theme": "navy",
+  "kicker": "Data tip #3",
+  "title": "Fix your date formats before you sort",
+  "body": "When dates are typed in different formats, your spreadsheet sorts them like text. \"12/01\" ends up before \"2/01\" and your timeline is wrong.",
+  "fix": "MyDataFixer converts every date into one sortable format.",
+  "desc": "Dates sorting in the wrong order? They're stored in mixed formats. MyDataFixer fixes them so they sort correctly.",
+  "tags": [
+   "dates",
+   "excel",
+   "sorting",
+   "exceltips"
+  ]
+ },
+ {
+  "type": "hero",
+  "theme": "amber",
+  "kicker": "Why it matters",
+  "title": "Clean data = better decisions.",
+  "sub": "Reports, forecasts and campaigns are only as good as your data. Start with clean data.",
+  "desc": "Your reports and decisions are only as good as your data. Start with clean data from MyDataFixer.",
+  "tags": [
+   "datadriven",
+   "business",
+   "analytics",
+   "datacleaning"
+  ],
+  "file": "q3-report.csv"
+ },
+ {
+  "type": "steps",
+  "theme": "purple",
+  "kicker": "For marketers",
+  "title": "Clean your email list before you send",
+  "steps": [
+   [
+    "Upload",
+    "Your subscriber CSV"
+   ],
+   [
+    "Dedupe",
+    "Remove repeat contacts"
+   ],
+   [
+    "Fix",
+    "Lowercase and trim every email"
+   ],
+   [
+    "Flag",
+    "Spot broken addresses"
+   ]
+  ],
+  "desc": "Before your next campaign, run your email list through MyDataFixer: remove duplicates, fix formatting and flag broken addresses.",
+  "tags": [
+   "emailmarketing",
+   "newsletter",
+   "marketingtips",
+   "datacleaning"
+  ]
+ },
+ {
+  "type": "list",
+  "theme": "cream",
+  "kicker": "Why people choose us",
+  "title": "Why use MyDataFixer?",
+  "items": [
+   "No formulas or coding",
+   "Works in your browser",
+   "Fixes many problems at once",
+   "Shows you what changed",
+   "Gives you a clean file back"
+  ],
+  "desc": "No formulas, no coding, no headaches. Here's why people clean their data with MyDataFixer.",
+  "tags": [
+   "nocode",
+   "tools",
+   "datacleaning",
+   "productivity"
+  ]
+ },
+ {
+  "type": "cta",
+  "theme": "teal",
+  "kicker": "Ready when you are",
+  "title": "Try MyDataFixer today",
+  "sub": "Turn your messiest spreadsheet into clean, ready-to-use data.",
+  "steps": [
+   "Upload",
+   "Fix",
+   "Download"
+  ],
+  "desc": "Ready to stop cleaning spreadsheets by hand? Try MyDataFixer today: upload, fix, download.",
+  "tags": [
+   "datacleaning",
+   "excel",
+   "csv",
+   "productivitytools"
+  ]
+ }
+]
