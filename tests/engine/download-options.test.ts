@@ -46,7 +46,7 @@ function pythonRead(file: string, delimiter: string, bom: boolean): string[][] {
 const COMBOS: CsvFormat[] = [];
 for (const delimiter of [",", ";", "\t"] as const) for (const lineEnding of ["\r\n", "\n"] as const) for (const bom of [true, false]) COMBOS.push({ delimiter, lineEnding, bom });
 
-test("decision 3: all 12 combinations keep every value exactly (DataFixer's check and Python's csv module)", async () => {
+test("decision 3: all 12 combinations keep every value exactly (MyDataFixer's check and Python's csv module)", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "dl-options-"));
   try {
     for (const o of COMBOS) {
@@ -97,7 +97,7 @@ test("without BOM: a first value that starts with an invisible U+FEFF is refused
   // A BOM-less file whose first value starts with U+FEFF needs the encoding chosen so the character is kept as data.
   const s = await core.open(new File(["a,b\n1,2\n"], "t.csv"), "csv", {}, noop);
   core.editCell(s.activeSheet, 0, 0, "﻿a");
-  await assert.rejects(core.exportCsv(s.activeSheet, noop, undefined, { bom: false }), /didn't pass DataFixer's check/);
+  await assert.rejects(core.exportCsv(s.activeSheet, noop, undefined, { bom: false }), /didn't pass MyDataFixer's check/);
   const ok = await core.exportCsv(s.activeSheet, noop, undefined, { bom: true });
   assert.equal(ok.summary.verification.rows, 2);
 });

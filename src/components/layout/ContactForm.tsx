@@ -11,7 +11,7 @@ const fieldClass =
 
 /**
  * Composes an email in the visitor's own mail app (mailto:). Nothing is sent
- * through DataFixer's servers, so no message data is stored by us.
+ * through MyDataFixer's servers, so no message data is stored by us.
  */
 export function ContactForm({ email }: { email: string }) {
   const id = useId();
@@ -26,7 +26,7 @@ export function ContactForm({ email }: { email: string }) {
       return;
     }
     setError(null);
-    const subject = encodeURIComponent(`DataFixer: ${topic}`);
+    const subject = encodeURIComponent(`MyDataFixer: ${topic}`);
     const body = encodeURIComponent(message.trim());
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
   }

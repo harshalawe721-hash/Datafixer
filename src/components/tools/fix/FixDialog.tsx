@@ -364,7 +364,7 @@ function ExcelCheck({ check, onChoose }: { check: NonNullable<FixPreviewResult["
         ))}
       </ul>
       <p className="mt-2">
-        So DataFixer won&apos;t remove them. You can clear their cells instead: the rows stay in place, so nothing that refers to them breaks. Or keep them here and
+        So MyDataFixer won&apos;t remove them. You can clear their cells instead: the rows stay in place, so nothing that refers to them breaks. Or keep them here and
         download the sheet as a CSV file (values only), where removing rows can&apos;t break anything.
       </p>
       <label className="mt-2 inline-flex min-h-10 cursor-pointer items-center gap-2 font-medium">
@@ -448,7 +448,7 @@ function ChoiceList({ choices, onChoose }: { choices: FixChoice[]; onChoose: (c:
           return (
             <fieldset key={ch.key} className="rounded-xl border border-warning/50 bg-warning-soft/40 px-4 py-3">
               <legend className="px-1 text-sm font-semibold">Which spelling should “{ch.columnName}” use?</legend>
-              <p className="text-xs text-muted">These are equally common, so DataFixer won&apos;t guess.</p>
+              <p className="text-xs text-muted">These are equally common, so MyDataFixer won&apos;t guess.</p>
               <div className="mt-1 flex flex-wrap gap-x-5">
                 {ch.options.map((o) => (
                   <label key={o.value} className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm">

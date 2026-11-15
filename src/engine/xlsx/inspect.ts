@@ -390,7 +390,7 @@ export async function inspectXlsx(blob: Blob, options: InspectOptions = {}): Pro
     if (types.includes("wordprocessingml")) throw new EngineError("unsupported-format", "This is a Word document, not an Excel workbook.");
     if (types.includes("presentationml")) throw new EngineError("unsupported-format", "This is a PowerPoint presentation, not an Excel workbook.");
     if (types.includes("sheet.binary") || /xl\/workbook\.bin/.test(types)) {
-      throw new EngineError("unsupported-format", "This is an Excel Binary Workbook (.xlsb), which DataFixer does not support. Open it in Excel and save it as .xlsx.");
+      throw new EngineError("unsupported-format", "This is an Excel Binary Workbook (.xlsb), which MyDataFixer does not support. Open it in Excel and save it as .xlsx.");
     }
     throw new EngineError("unsupported-format", "This file is a ZIP archive but not an Excel workbook.");
   }

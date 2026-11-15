@@ -19,7 +19,7 @@ function vercelUrl(): string | undefined {
 const rawUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || vercelUrl() || "http://localhost:3000";
 
 export const siteConfig = {
-  name: "DataFixer",
+  name: "MyDataFixer",
   tagline: "Find Spreadsheet Problems. Fix Them. Get Better Data.",
   description:
     "Free online tools to find and fix spreadsheet problems. Detect duplicates, missing data and formatting issues in Excel and CSV files, clean them, and download better data.",

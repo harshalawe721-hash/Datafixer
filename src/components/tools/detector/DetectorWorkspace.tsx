@@ -15,7 +15,7 @@ export function DetectorWorkspace() {
       <p className="flex items-start gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
         <span>
-          DataFixer checks your spreadsheet for common problems, explains each one, and can fix many of them for you after
+          MyDataFixer checks your spreadsheet for common problems, explains each one, and can fix many of them for you after
           showing a preview. Everything happens on your device, and your original file is never changed.
         </span>
       </p>

@@ -1,7 +1,7 @@
 /**
  * Stage 5 Step 1: CSV Validator engine (checks A–I) and the reader's
  * line-ending normaliser. The test pack's expected counts come from what
- * scripts/fixtures/make_validate_pack.py planted, not from DataFixer's output.
+ * scripts/fixtures/make_validate_pack.py planted, not from MyDataFixer's output.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -51,7 +51,7 @@ for (const [name, exp] of Object.entries(pack.expected)) {
   });
 }
 
-test("test pack: DataFixer's reader matches Python's csv module (incl. mixed line endings)", async () => {
+test("test pack: MyDataFixer's reader matches Python's csv module (incl. mixed line endings)", async () => {
   for (const [name, pyRows] of Object.entries(pack.python)) {
     const { sheet } = await parseCsv(new Blob([new Uint8Array(readFileSync(new URL(name, dir)))]), "t");
     assert.deepEqual(rowsOf(sheet), pyRows, name);

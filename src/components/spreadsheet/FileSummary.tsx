@@ -127,12 +127,12 @@ export function FileSummary({
       )}
       {summary.csv && onChangeEncoding && (
         <p id="encoding-help" className="-mt-2 text-xs text-muted">
-          <strong className="font-semibold text-foreground">These settings only change how DataFixer reads your file.</strong> To choose the separator, line endings or
+          <strong className="font-semibold text-foreground">These settings only change how MyDataFixer reads your file.</strong> To choose the separator, line endings or
           BOM of the file you download, use the download button: it asks before creating the file.{" "}
           The text encoding decides how the bytes in your file are turned into letters.{" "}
           {summary.csv.encodingChosen
-            ? `You chose ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}; DataFixer detected ${ENCODINGS[summary.csv.detectedEncoding ?? ""] ?? summary.csv.detectedEncoding ?? "—"}.`
-            : `DataFixer detected ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}${summary.csv.hadBom ? " from the file's byte-order mark" : ""}.`}{" "}
+            ? `You chose ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}; MyDataFixer detected ${ENCODINGS[summary.csv.detectedEncoding ?? ""] ?? summary.csv.detectedEncoding ?? "—"}.`
+            : `MyDataFixer detected ${ENCODINGS[summary.csv.encoding] ?? summary.csv.encoding}${summary.csv.hadBom ? " from the file's byte-order mark" : ""}.`}{" "}
           If accented letters look wrong (é shown as Ã© or �), choose another one: the file is read again, and never changed.
         </p>
       )}

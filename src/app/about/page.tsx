@@ -6,20 +6,20 @@ import { pageMetadata } from "@/lib/metadata";
 import { tools } from "@/config/tools";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About DataFixer",
+  title: "About MyDataFixer",
   description:
-    "DataFixer is a free, privacy-first set of browser-based tools that help anyone find and fix problems in Excel and CSV spreadsheets.",
+    "MyDataFixer is a free, privacy-first set of browser-based tools that help anyone find and fix problems in Excel and CSV spreadsheets.",
   path: "/about",
 });
 
 export default function AboutPage() {
   return (
     <ProsePage
-      title="About DataFixer"
+      title="About MyDataFixer"
       path="/about"
-      intro="DataFixer helps people find spreadsheet problems, fix them and get better data, without complicated software."
+      intro="MyDataFixer helps people find spreadsheet problems, fix them and get better data, without complicated software."
     >
-      <h2>Why we built DataFixer</h2>
+      <h2>Why we built MyDataFixer</h2>
       <p>
         Spreadsheets run a surprising amount of the world: class projects, invoices, customer lists, inventory and
         payroll. Small problems such as a duplicated row, a stray space or a date typed the wrong way can quietly
@@ -27,7 +27,7 @@ export default function AboutPage() {
         software is built for specialists.
       </p>
       <p>
-        DataFixer is designed for everyone else: students, office workers, freelancers, accountants and business
+        MyDataFixer is designed for everyone else: students, office workers, freelancers, accountants and business
         owners who just want their spreadsheet to be right.
       </p>
 
@@ -38,7 +38,7 @@ export default function AboutPage() {
           upload or store the contents of your spreadsheets.
         </li>
         <li>
-          <strong>You stay in control.</strong> DataFixer explains what it found and lets you preview changes. Your
+          <strong>You stay in control.</strong> MyDataFixer explains what it found and lets you preview changes. Your
           original file is never modified.
         </li>
         <li>

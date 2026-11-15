@@ -325,7 +325,7 @@ export async function writeXlsx(sheets: SheetSource[], o: XlsxWriteOptions = {})
 function verifyFailed(detail: string): EngineError {
   return new EngineError(
     "internal",
-    "The new Excel file didn't pass DataFixer's check, so it was not offered for download. Your file is unchanged. Please try again; if it keeps happening, the file may contain content DataFixer can't write correctly yet.",
+    "The new Excel file didn't pass MyDataFixer's check, so it was not offered for download. Your file is unchanged. Please try again; if it keeps happening, the file may contain content MyDataFixer can't write correctly yet.",
     `XLSX verification failed: ${detail}`,
   );
 }

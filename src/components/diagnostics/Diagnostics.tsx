@@ -178,7 +178,7 @@ export function Diagnostics() {
               ["CPU threads", info.cpuThreads ?? "not reported"],
               ["Device memory", info.deviceMemoryGB ? `${info.deviceMemoryGB} GB (approximate)` : "not reported by this browser"],
               ["JavaScript heap limit", info.jsHeapLimitMB ? `${info.jsHeapLimitMB} MB` : "not reported by this browser"],
-              ["DataFixer memory budget", `${info.memoryBudgetMB} MB (${info.memoryBudgetSource})`],
+              ["MyDataFixer memory budget", `${info.memoryBudgetMB} MB (${info.memoryBudgetSource})`],
               ["Screen", info.screen],
             ].map(([k, v]) => (
               <div key={String(k)} className="min-w-0">

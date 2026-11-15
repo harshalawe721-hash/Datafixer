@@ -30,7 +30,7 @@ async function csvRows(blob: Blob, delimiter = ","): Promise<string[][]> {
   assert.equal(py.status, 0, py.stderr);
   return JSON.parse(py.stdout) as string[][];
 }
-/** Plain values of a sheet, as read by openpyxl (cached formula results), in DataFixer's plain format. */
+/** Plain values of a sheet, as read by openpyxl (cached formula results), in MyDataFixer's plain format. */
 function openpyxlPlain(f: string, sheet: string): string[][] {
   const py = spawnSync(
     "python3",

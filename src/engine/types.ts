@@ -1,5 +1,5 @@
 /**
- * Shared in-memory spreadsheet model used by every DataFixer tool.
+ * Shared in-memory spreadsheet model used by every MyDataFixer tool.
  * All formats (CSV, XLSX, XLS) are converted to this shape inside the worker.
  * Cells are plain values in row arrays; anything extra lives in sparse side
  * tables keyed by `cellKey(row, col)` so the common case stays compact.
@@ -100,7 +100,7 @@ export interface FeatureInventory {
   macros: boolean;
   dataValidation: boolean;
   conditionalFormatting: boolean;
-  /** Embedded objects (OLE, ActiveX), which DataFixer never runs. */
+  /** Embedded objects (OLE, ActiveX), which MyDataFixer never runs. */
   embeddedObjects: number;
 }
 

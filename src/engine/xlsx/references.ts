@@ -1,7 +1,7 @@
 /**
  * Stage 4, Step 7 — safeguard S2: before rows or columns are removed from an
  * Excel file, find everything in the workbook that refers to positions on this
- * sheet. Removing a row shifts everything below it; DataFixer does not rewrite
+ * sheet. Removing a row shifts everything below it; MyDataFixer does not rewrite
  * references, so a removal is only allowed when nothing refers to the removed
  * rows or anything after them (or the removed columns and anything to their right).
  *

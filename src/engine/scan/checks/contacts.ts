@@ -1,7 +1,7 @@
 /**
  * Stage 3 checks I–J: email addresses and phone numbers.
  *
- * Generic international rules, no external library (keeps DataFixer light).
+ * Generic international rules, no external library (keeps MyDataFixer light).
  * Cautious: only columns that are clearly email/phone columns are checked
  * (by column name, or because most values look like emails/phones), and the
  * rules accept anything a real address or number can look like.

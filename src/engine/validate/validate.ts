@@ -321,8 +321,8 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       title: "Text encoding was guessed (Windows-1252)",
       count: 1,
       unit: "columns",
-      explanation: "The file isn't valid UTF-8, so DataFixer read it as Windows-1252, the encoding older versions of Excel on Windows use. A file can't say which encoding it uses, so this is a best guess. If letters such as é, ñ or ü look wrong in the preview, the file uses another encoding.",
-      howToFix: "Check accented letters in the preview. If they look wrong, choose another encoding in the “Text encoding” box. Databases and Google Sheets usually expect UTF-8: DataFixer's download will save the file as UTF-8.",
+      explanation: "The file isn't valid UTF-8, so MyDataFixer read it as Windows-1252, the encoding older versions of Excel on Windows use. A file can't say which encoding it uses, so this is a best guess. If letters such as é, ñ or ü look wrong in the preview, the file uses another encoding.",
+      howToFix: "Check accented letters in the preview. If they look wrong, choose another encoding in the “Text encoding” box. Databases and Google Sheets usually expect UTF-8: MyDataFixer's download will save the file as UTF-8.",
     });
   }
 
@@ -359,7 +359,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       title: "Column separator not certain",
       count: 1,
       unit: "columns",
-      explanation: `DataFixer chose the ${sepName(delimiter)} as the separator, but the rows don't agree well on the number of columns, so this may be wrong.`,
+      explanation: `MyDataFixer chose the ${sepName(delimiter)} as the separator, but the rows don't agree well on the number of columns, so this may be wrong.`,
       howToFix: "Check that the columns in the preview look right. If not, choose the separator yourself in the “Column separator” box above.",
     });
   }
@@ -547,7 +547,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       title: "Mixed line endings",
       count: 1,
       explanation: "Lines end in different ways in this file (Windows-style CRLF on some lines, Unix-style LF or old Mac-style CR on others). Most programs cope, but some import tools and scripts count rows wrongly or add blank rows.",
-      howToFix: "Download the file from DataFixer: every line then ends the same way.",
+      howToFix: "Download the file from MyDataFixer: every line then ends the same way.",
       examples: lineEndingExamples(meta),
     });
   } else if (meta.lineEnding === "\r") {
@@ -558,7 +558,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       count: 1,
       explanation: "Lines end with a single CR character (old Mac OS style). Many current programs don't recognise this and read the whole file as one line.",
       examples: lineEndingExamples(meta),
-      howToFix: "Download the file from DataFixer: lines then end with Windows-style CRLF, which every program reads.",
+      howToFix: "Download the file from MyDataFixer: lines then end with Windows-style CRLF, which every program reads.",
     });
   }
   if (blank.size) {
@@ -582,7 +582,7 @@ export async function validateCsv(sheet: SheetModel, meta: CsvMeta, options: Val
       title: "No line break at the end of the file",
       count: 1,
       explanation: "The last line doesn't end with a line break. Most programs read it fine, but some command-line tools ignore the last row or join it with the next file.",
-      howToFix: "Download the file from DataFixer: every line, including the last, then ends with a line break.",
+      howToFix: "Download the file from MyDataFixer: every line, including the last, then ends with a line break.",
     });
   }
 

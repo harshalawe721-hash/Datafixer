@@ -113,7 +113,7 @@ const enc = page.getByRole("combobox", { name: "Text encoding" });
 check((await enc.inputValue()) === "utf-8", "detected UTF-8");
 check(JSON.stringify(await enc.locator("option").allTextContents()) === JSON.stringify(["UTF-8", "Windows-1252 (Western, older Excel)", "ISO-8859-1 (Latin-1)"]), "UTF-8, Windows-1252 and ISO-8859-1 offered");
 check(await visible(page.getByText(/decides how the bytes in your file are turned into letters/)), "explains what the encoding choice does");
-check(await visible(page.getByText("These settings only change how DataFixer reads your file.")), "the page says the separator and encoding boxes only change how the file is read");
+check(await visible(page.getByText("These settings only change how MyDataFixer reads your file.")), "the page says the separator and encoding boxes only change how the file is read");
 await enc.selectOption("windows-1252");
 await heading().waitFor({ state: "visible", timeout: 30000 });
 check(await visible(card("The file looks like UTF-8 but is read as WINDOWS-1252")), "wrong choice: clear warning");

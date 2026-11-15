@@ -331,12 +331,12 @@ export async function readExcelSheet(file: Blob, format: "xlsx" | "xls", options
   const warnings: string[] = [];
   if (formulasWithoutResult > 0) {
     warnings.push(
-      `${formulasWithoutResult.toLocaleString("en-US")} formula cell${formulasWithoutResult > 1 ? "s have" : " has"} no saved result (the file was saved by a program that doesn't calculate formulas), so ${formulasWithoutResult > 1 ? "they are" : "it is"} shown empty. DataFixer never calculates formulas.`,
+      `${formulasWithoutResult.toLocaleString("en-US")} formula cell${formulasWithoutResult > 1 ? "s have" : " has"} no saved result (the file was saved by a program that doesn't calculate formulas), so ${formulasWithoutResult > 1 ? "they are" : "it is"} shown empty. MyDataFixer never calculates formulas.`,
     );
   }
   if (repaired.n > 0) {
     warnings.push(
-      `${repaired.n.toLocaleString("en-US")} character${repaired.n > 1 ? "s" : ""} such as emoji ${repaired.n > 1 ? "were" : "was"} stored in a way the Excel reader decodes incorrectly; DataFixer restored ${repaired.n > 1 ? "them" : "it"} from the original file.`,
+      `${repaired.n.toLocaleString("en-US")} character${repaired.n > 1 ? "s" : ""} such as emoji ${repaired.n > 1 ? "were" : "was"} stored in a way the Excel reader decodes incorrectly; MyDataFixer restored ${repaired.n > 1 ? "them" : "it"} from the original file.`,
     );
   }
   if ((inspection?.astralRefs.ambiguous ?? 0) > 0) {

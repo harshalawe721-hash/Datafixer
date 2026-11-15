@@ -199,7 +199,7 @@ function Done({ result, onAgain }: { result: ConvertResult; onAgain: () => void 
               Excel file created
             </h2>
             <p className="text-sm" role="status">
-              Your download has started. Before it was offered, DataFixer read the new file back and checked all {fmt(s.verification.cells)} cells in{" "}
+              Your download has started. Before it was offered, MyDataFixer read the new file back and checked all {fmt(s.verification.cells)} cells in{" "}
               {plural(s.verification.rows, "row")}.
             </p>
           </div>

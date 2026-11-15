@@ -1,6 +1,6 @@
 /**
  * Stage 6 Step 1: the new-workbook writer. Every file is checked three ways:
- * the writer's own streaming check, DataFixer's Stage 2 reader (SheetJS), and
+ * the writer's own streaming check, MyDataFixer's Stage 2 reader (SheetJS), and
  * Python's openpyxl.
  */
 import { test } from "node:test";
@@ -50,7 +50,7 @@ test("writer: the file passes its own check; counts are exact", async () => {
   assert.equal(v.rows, src.rowCount);
 });
 
-test("writer: DataFixer's Stage 2 reader reads back every value and type (dates are dates)", async () => {
+test("writer: MyDataFixer's Stage 2 reader reads back every value and type (dates are dates)", async () => {
   const src = source();
   const { blob } = await writeXlsx([src]);
   const inspection = await inspectXlsx(blob);
@@ -135,7 +135,7 @@ test("the check catches a file that doesn't match (one changed value, a missing 
   const src = source();
   const { blob, sheetNames } = await writeXlsx([src]);
   const changed = (r0: number, c0: number, cell: OutCell): SheetSource => ({ ...src, row: (r) => src.row(r).map((x, c) => (r === r0 && c === c0 ? cell : x)) });
-  await assert.rejects(verifyNewXlsx(blob, [changed(2, 1, s("other"))], sheetNames), /didn't pass DataFixer's check/);
+  await assert.rejects(verifyNewXlsx(blob, [changed(2, 1, s("other"))], sheetNames), /didn't pass MyDataFixer's check/);
   await assert.rejects(verifyNewXlsx(blob, [changed(2, 4, n(1.5, "0.000"))], sheetNames), /didn't pass/);
   await assert.rejects(verifyNewXlsx(blob, [changed(2, 2, s("1250.25"))], sheetNames), /didn't pass/);
   await assert.rejects(verifyNewXlsx(blob, [{ ...src, rowCount: src.rowCount + 1, row: (r) => (r < src.rowCount ? src.row(r) : [s("extra")]) }], sheetNames), /didn't pass/);

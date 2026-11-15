@@ -173,7 +173,7 @@ export function ScanPanel({ api, variant = "detector" }: { api: ToolApi; variant
         )}
         {result.issues.length === 0 ? (
           <div className="mt-4 text-sm text-muted">
-            <p>DataFixer checked for:</p>
+            <p>MyDataFixer checked for:</p>
             <ul className="mt-1 grid gap-x-6 gap-y-0.5 sm:grid-cols-2">
               {CHECKS.map((c) => (
                 <li key={c} className="flex items-center gap-1.5">
@@ -235,7 +235,7 @@ function CleaningTools({ result, onFix }: { result: ScanResult; onFix: (fixId: F
   return (
     <Card>
       <h2 className="text-lg font-semibold">Cleaning tools</h2>
-      <p className="text-sm text-muted">Each tool shows a preview first. Cells DataFixer can&apos;t fix on its own (such as a wrong email address) can be edited by tapping them in the table below.</p>
+      <p className="text-sm text-muted">Each tool shows a preview first. Cells MyDataFixer can&apos;t fix on its own (such as a wrong email address) can be edited by tapping them in the table below.</p>
       <ul className="mt-3 divide-y divide-line">
         {(FIX_IDS as readonly FixId[]).map((id) => {
           const n = result.issues.find((i) => i.id === id)?.count ?? 0;

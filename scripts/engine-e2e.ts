@@ -111,7 +111,7 @@ check((await stat("Total rows")) === "3", "rows counted from the parsed sheet");
 check((await firstCell(0)) === "1" && (await firstCell(1)) === "2", "XLSX cells shown");
 check(await visible(page.getByRole("button", { name: /Archive.*hidden/ })), "hidden sheet badge");
 check(await visible(page.getByText(/contains 1 chart/)), "chart feature warning");
-check(await visible(page.getByText("This workbook contains macros. DataFixer never runs macros.")), "macro notice");
+check(await visible(page.getByText("This workbook contains macros. MyDataFixer never runs macros.")), "macro notice");
 await page.getByRole("button", { name: /^Notes/ }).click();
 check(await visible(page.locator("button[aria-pressed=true]", { hasText: "Notes" })), "sheet switch works");
 

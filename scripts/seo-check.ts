@@ -74,7 +74,7 @@ for (const p of paths) {
     (info.description?.length ?? 0) >= 70 &&
     (info.description?.length ?? 0) <= 160 &&
     info.canonical === abs &&
-    info.og.title && info.og.description && info.og.url === abs && info.og.type === "website" && info.og.site === "DataFixer" &&
+    info.og.title && info.og.description && info.og.url === abs && info.og.type === "website" && info.og.site === "MyDataFixer" &&
     info.og.image === `${BASE}/opengraph-image` && info.og.width === "1200" && info.og.height === "630" && info.og.alt &&
     info.twitter.card === "summary_large_image" && info.twitter.image === `${BASE}/opengraph-image` &&
     !info.robots?.includes("noindex") &&

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
       "Free tools to check, clean, repair and convert Excel and CSV files in your browser. Find duplicates, missing data and bad dates, fix them, and download.",
     path: "/",
   }),
-  // The homepage uses the full title rather than the "%s | DataFixer" template.
+  // The homepage uses the full title rather than the "%s | MyDataFixer" template.
   title: { absolute: `${siteConfig.name} – Find and Fix Spreadsheet Problems in Seconds` },
 };
 
@@ -74,7 +74,7 @@ const fixable = [
 
 const steps = [
   { icon: Upload, title: "Open your spreadsheet", text: "Choose an XLSX, XLS or CSV file. Your browser opens it on your device; nothing is uploaded." },
-  { icon: ScanSearch, title: "Detect problems", text: "DataFixer scans every row and column for common data issues." },
+  { icon: ScanSearch, title: "Detect problems", text: "MyDataFixer scans every row and column for common data issues." },
   { icon: ListChecks, title: "Review suggested fixes", text: "See exactly which cells are affected, preview every fix before it is applied, and undo any change." },
   { icon: Download, title: "Download your corrected file", text: "Get a clean copy. Your original file is never modified." },
 ];
@@ -93,28 +93,28 @@ const reasons = [
 
 const faqs = [
   {
-    q: "Is DataFixer really free?",
-    a: "Yes. All tools on DataFixer are free to use and do not require an account. There are no paid plans or hidden limits on the number of files you can check.",
+    q: "Is MyDataFixer really free?",
+    a: "Yes. All tools on MyDataFixer are free to use and do not require an account. There are no paid plans or hidden limits on the number of files you can check.",
   },
   {
     q: "Are my files uploaded to a server?",
-    a: "No. DataFixer reads and processes your spreadsheet inside your web browser using JavaScript running on your device. The file contents are not sent to our servers or to any third-party service.",
+    a: "No. MyDataFixer reads and processes your spreadsheet inside your web browser using JavaScript running on your device. The file contents are not sent to our servers or to any third-party service.",
   },
   {
     q: "Which file formats are supported?",
     a: "You can open Excel workbooks (.xlsx and the older .xls format) and CSV files; the CSV Validator and the CSV to Excel converter also accept .tsv and .txt files. Files up to 150 MB are accepted. Because processing happens on your device, very large files can be slow, and on phones or older computers they may need more memory than the browser allows.",
   },
   {
-    q: "Will DataFixer change my original file?",
-    a: "Never. Your original file stays exactly as it is on your device. DataFixer works on a copy in memory and only creates a new file when you choose to download the result.",
+    q: "Will MyDataFixer change my original file?",
+    a: "Never. Your original file stays exactly as it is on your device. MyDataFixer works on a copy in memory and only creates a new file when you choose to download the result.",
   },
   {
     q: "Can it fix formulas?",
-    a: "DataFixer points out cells that show formula errors such as #N/A or #DIV/0!, but it does not rewrite formulas for you. Automatic fixes never change formula cells, and formulas are never executed as code. When you download an Excel file, the formulas you didn't edit are kept.",
+    a: "MyDataFixer points out cells that show formula errors such as #N/A or #DIV/0!, but it does not rewrite formulas for you. Automatic fixes never change formula cells, and formulas are never executed as code. When you download an Excel file, the formulas you didn't edit are kept.",
   },
   {
     q: "Does it work on phones and tablets?",
-    a: "DataFixer is tested in Chrome and other Chromium-based browsers (such as Edge, Samsung Internet and Brave) on Android phones and tablets and on desktop computers. Other modern browsers should work, but they have not been tested yet. Very large files need a computer or a recent phone with enough memory, and are easier to review on a bigger screen.",
+    a: "MyDataFixer is tested in Chrome and other Chromium-based browsers (such as Edge, Samsung Internet and Brave) on Android phones and tablets and on desktop computers. Other modern browsers should work, but they have not been tested yet. Very large files need a computer or a recent phone with enough memory, and are easier to review on a bigger screen.",
   },
 ];
 
@@ -157,7 +157,7 @@ export default function HomePage() {
             id="fix-heading"
             eyebrow="Common problems"
             title="What can you fix?"
-            description="DataFixer looks for the issues that most often cause wrong totals, failed imports and messy reports."
+            description="MyDataFixer looks for the issues that most often cause wrong totals, failed imports and messy reports."
           />
           <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {fixable.map(({ icon: Icon, title, text }) => (
@@ -237,7 +237,7 @@ export default function HomePage() {
             id="how-heading"
             eyebrow="How it works"
             title="Four steps to cleaner data"
-            description="No installation and no learning curve. If you can open a spreadsheet, you can use DataFixer."
+            description="No installation and no learning curve. If you can open a spreadsheet, you can use MyDataFixer."
           />
           <ol className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map(({ icon: Icon, title, text }, i) => (
@@ -263,15 +263,15 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* Why DataFixer */}
+      {/* Why MyDataFixer */}
       <section aria-labelledby="why-heading" className="border-y border-line bg-surface py-20 sm:py-24">
         <Container className="grid gap-12 lg:grid-cols-[1fr_1.4fr] lg:items-start">
           <SectionHeading
             id="why-heading"
             align="left"
-            eyebrow="Why DataFixer?"
+            eyebrow="Why MyDataFixer?"
             title="Built for real people with real spreadsheets"
-            description="Students, office teams, freelancers, accountants and business owners use spreadsheets every day. DataFixer makes fixing them quick and safe."
+            description="Students, office teams, freelancers, accountants and business owners use spreadsheets every day. MyDataFixer makes fixing them quick and safe."
           />
           <ul className="grid gap-4 sm:grid-cols-2">
             {reasons.map(({ icon: Icon, title, text }) => (

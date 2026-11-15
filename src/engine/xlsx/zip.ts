@@ -32,7 +32,7 @@ export interface ZipEntry {
 const unsupported = (detail: string) =>
   new EngineError(
     "unsupported-format",
-    "This Excel file uses a ZIP layout DataFixer can't rewrite safely (for example a very large ZIP64 package). Download it as CSV instead, or save it again in Excel and retry.",
+    "This Excel file uses a ZIP layout MyDataFixer can't rewrite safely (for example a very large ZIP64 package). Download it as CSV instead, or save it again in Excel and retry.",
     detail,
   );
 

@@ -43,7 +43,7 @@ export function Footer() {
           <p>
             © {year} {siteConfig.name}. All rights reserved.
           </p>
-          <p>Microsoft Excel is a trademark of Microsoft Corporation. DataFixer is not affiliated with Microsoft.</p>
+          <p>Microsoft Excel is a trademark of Microsoft Corporation. MyDataFixer is not affiliated with Microsoft.</p>
         </div>
       </Container>
     </footer>

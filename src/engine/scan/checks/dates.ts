@@ -287,7 +287,7 @@ function summarize(ctx: ScanContext, states: (ColumnState | null)[]): Finding[] 
         title: "Ambiguous dates",
         count: ambiguousCells.total,
         unit: "cells",
-        explanation: `${plural(ambiguousCells.total, "date")} such as 03/04/2024 could mean 3 April or 4 March, and nothing in the column shows which. DataFixer doesn't guess. Different programs (and different countries' settings) may read these differently.`,
+        explanation: `${plural(ambiguousCells.total, "date")} such as 03/04/2024 could mean 3 April or 4 March, and nothing in the column shows which. MyDataFixer doesn't guess. Different programs (and different countries' settings) may read these differently.`,
         howToFix:
           "Confirm with the source which order the file uses, then convert the dates to an unambiguous format such as 2024-04-03 (year-month-day), or to real Excel dates.",
         columns: ambCols,

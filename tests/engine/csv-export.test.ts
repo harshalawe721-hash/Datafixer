@@ -1,6 +1,6 @@
 /**
  * Stage 4, Step 6: CSV download.
- * Every export is verified by DataFixer's reader (as the website does) AND,
+ * Every export is verified by MyDataFixer's reader (as the website does) AND,
  * independently, by Python's csv module (owner-approved Option A, V3).
  */
 import { test } from "node:test";
@@ -51,7 +51,7 @@ function assertPythonMatches(rows: string[][], sheet: SheetModel, useDisplay: bo
   assert.equal(rows.length, sheet.grid.rowCount, "Python reads the same number of rows");
   for (let r = 0; r < rows.length; r++) {
     const want = expectedRow(sheet, r, useDisplay);
-    // Python reads an empty line as [] (DataFixer as [""]): both mean "no cells".
+    // Python reads an empty line as [] (MyDataFixer as [""]): both mean "no cells".
     assert.deepEqual(rows[r]!.length === 0 ? [] : rows[r], want.length === 1 && want[0] === "" ? (rows[r]!.length === 0 ? [] : [""]) : want, `row ${r + 1}`);
   }
 }
@@ -65,7 +65,7 @@ test("quoting: separators, quotes and line breaks are quoted; everything else is
   assert.equal(quoteField(" spaced ", ","), " spaced ");
 });
 
-test("1-problems.csv after all fixes and a manual edit: verified by DataFixer and by Python; summary counts are exact", async () => {
+test("1-problems.csv after all fixes and a manual edit: verified by MyDataFixer and by Python; summary counts are exact", async () => {
   const { core, sheet } = await openPack("1-problems.csv");
   core.applyFix(sheet, (await core.previewFixAll(sheet, { headerRow: true }, noop)).token);
   core.editCell(sheet, 7, 2, "person7@example.com");
@@ -92,7 +92,7 @@ test("1-problems.csv after all fixes and a manual edit: verified by DataFixer an
       manualEdits: 1,
       notPreserved: [],
       warnings: summary.warnings,
-      verification: { reader: "DataFixer's CSV reader", rows: 25, cells: summary.verification.cells },
+      verification: { reader: "MyDataFixer's CSV reader", rows: 25, cells: summary.verification.cells },
       version: core.editStats(sheet).version,
     },
   );
@@ -159,7 +159,7 @@ test("verification catches a damaged file (nothing would be offered)", async () 
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const i = bytes.indexOf(0x43); // "C" of "Changed"
   bytes[i] = 0x58;
-  await assert.rejects(verifyCsv(new Blob([bytes]), view, { delimiter: ",", useDisplay: false }), (e: unknown) => e instanceof EngineError && /didn't pass DataFixer's check/.test(e.message));
+  await assert.rejects(verifyCsv(new Blob([bytes]), view, { delimiter: ",", useDisplay: false }), (e: unknown) => e instanceof EngineError && /didn't pass MyDataFixer's check/.test(e.message));
   await assert.rejects(verifyCsv(new Blob([bytes.slice(3)]), view, { delimiter: ",", useDisplay: false }), /byte-order mark|didn't pass/);
   const truncated = bytes.slice(0, bytes.length - 40);
   await assert.rejects(verifyCsv(new Blob([truncated]), view, { delimiter: ",", useDisplay: false }));
@@ -187,7 +187,7 @@ test("Excel sheet as CSV: values as shown; the summary lists what a CSV can't ke
   assert.ok(text.includes(view.grid.display!(1, 6)), "dates written as shown");
 });
 
-test("larger data: 300,000 rows export and verify (DataFixer and Python)", async () => {
+test("larger data: 300,000 rows export and verify (MyDataFixer and Python)", async () => {
   const lines = ["id,name,city,amount"];
   for (let i = 0; i < 300_000; i++) lines.push(`${i},${i % 97 === 0 ? ` Name ${i}` : `Name ${i}`},"City, ${i % 50}",${(i * 7) % 1000}`);
   const { core, sheet } = await openFile("big.csv", lines.join("\n") + "\n");
@@ -210,7 +210,7 @@ test("memory: an export that wouldn't fit the device's budget is refused before 
   assert.equal(core.editStats(s.activeSheet).cellsEdited, 1);
 });
 
-test("tab-separated files: tabs, quotes, separators and line breaks inside values survive (DataFixer and Python)", async () => {
+test("tab-separated files: tabs, quotes, separators and line breaks inside values survive (MyDataFixer and Python)", async () => {
   const tsv = 'name\tnote\tcity\r\n"Ann\twith tab"\t"say ""hi"", ok"\tParis\r\n Bob\t"two\nlines"\tRome; Italy\r\nCy\t=1+1\t"Zürich, CH"\r\n';
   const { core, sheet } = await openFile("t.tsv", tsv);
   core.applyFix(sheet, (await core.previewFix(sheet, "extra-spaces", { headerRow: true }, noop)).token);

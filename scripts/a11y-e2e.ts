@@ -148,6 +148,8 @@ const minor: Record<string, number> = {};
 async function axe(label: string, dark = false) {
   if (dark) await page.evaluate(() => document.documentElement.classList.add("dark"));
   else await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  // Wait for colour transitions (e.g. the drop area's transition-colors) to finish, so contrast is measured on the final colours.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
   await page.waitForTimeout(150);
   if (!(await page.evaluate(() => "axe" in window))) await page.addScriptTag({ path: AXE });
   const violations = (await page.evaluate(async () => {

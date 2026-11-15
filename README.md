@@ -1,8 +1,8 @@
-# DataFixer
+# MyDataFixer
 
 **Find Spreadsheet Problems. Fix Them. Get Better Data.**
 
-DataFixer is a free, privacy-first website for finding and fixing problems in Excel (XLSX/XLS) and CSV files. All spreadsheet processing happens in the visitor's browser: file contents are never uploaded.
+MyDataFixer is a free, privacy-first website for finding and fixing problems in Excel (XLSX/XLS) and CSV files. All spreadsheet processing happens in the visitor's browser: file contents are never uploaded.
 
 ## Tech stack
 

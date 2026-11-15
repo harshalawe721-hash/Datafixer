@@ -19,7 +19,8 @@ The owner approved the plan (`docs/stage-7-plan.md`) on 14 November 2026 with de
 
 No new dependencies and no paid services were added. `next/og` is part of Next.js; axe-core was already installed (`eslint-config-next` → `eslint-plugin-jsx-a11y` → `axe-core` 4.14.0).
 
-## Link previews (WhatsApp, Facebook, LinkedIn, X)
+**Site name (15 November 2026, owner's request):** the site is now called **MyDataFixer** (logo, page titles, link previews, preview image, all page text and messages), to match the domain mydatafixer.com. Earlier stage reports keep the old name. Browser-test lookups that contain the name were updated to match; the accessibility check now waits for colour transitions to finish before measuring dark-mode contrast (it once measured the drop area mid-fade and failed intermittently). After the rename: tsc, lint, unit 382/382, smoke 114, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71 (3 runs in a row), seo 26, large 64 all pass.
+ (WhatsApp, Facebook, LinkedIn, X)
 
 Every page sends: `og:title`, `og:description`, `og:url` (absolute), `og:type`, `og:site_name`, `og:locale`, `og:image` (absolute URL), `og:image:type` (image/png), `og:image:width` (1200), `og:image:height` (630), `og:image:alt`, and `twitter:card` = `summary_large_image` with `twitter:image`. The image is an 81 KB PNG (WhatsApp handles images under about 300 KB reliably). Simulated Vercel builds confirmed the absolute addresses: preview builds use the branch address, production builds the production domain, and `NEXT_PUBLIC_SITE_URL` overrides both.
 

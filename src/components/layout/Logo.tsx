@@ -13,10 +13,10 @@ export function LogoMark({ className }: { className?: string }) {
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/" className={cn("flex items-center gap-2.5 rounded-lg", className)} aria-label="DataFixer home">
+    <Link href="/" className={cn("flex items-center gap-2.5 rounded-lg", className)} aria-label="MyDataFixer home">
       <LogoMark />
       <span className="text-lg font-bold tracking-tight">
-        Data<span className="text-primary">Fixer</span>
+        MyData<span className="text-primary">Fixer</span>
       </span>
     </Link>
   );

@@ -35,7 +35,7 @@ export default function OpengraphImage() {
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <img src={LOGO} width={96} height={96} alt="" />
           <div style={{ display: "flex", fontSize: 64, fontWeight: 800, letterSpacing: -1 }}>
-            <span>Data</span>
+            <span>MyData</span>
             <span style={{ color: "#1e40af" }}>Fixer</span>
           </div>
         </div>

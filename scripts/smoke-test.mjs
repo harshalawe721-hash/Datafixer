@@ -1,5 +1,5 @@
 /**
- * End-to-end smoke test for the DataFixer UI.
+ * End-to-end smoke test for the MyDataFixer UI.
  * Usage: start the app (npm run build && npm start), then `npm run test:smoke`.
  * BASE_URL defaults to http://localhost:3000. Set SCREENSHOT_DIR to save screenshots.
  */

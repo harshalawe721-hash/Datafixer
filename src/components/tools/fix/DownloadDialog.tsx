@@ -245,7 +245,7 @@ function Summary({ result }: { result: ExportResult }) {
       <p className="flex items-start gap-2 rounded-xl bg-success-soft px-4 py-3 text-sm" role="status">
         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
         <span>
-          Your download has started. Before it was offered, DataFixer read the new file back and checked all {fmt(s.verification.cells)} cells in{" "}
+          Your download has started. Before it was offered, MyDataFixer read the new file back and checked all {fmt(s.verification.cells)} cells in{" "}
           {fmt(s.verification.rows)} rows: every one matches your corrected data.
         </span>
       </p>

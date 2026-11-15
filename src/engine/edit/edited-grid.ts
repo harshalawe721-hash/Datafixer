@@ -3,7 +3,7 @@
  *
  * The original grid is never modified or copied. Edits live in a small layer
  * keyed by ORIGINAL cell positions, and deleted rows/columns are hidden through
- * index maps. Every other part of DataFixer (preview, search, sort, scan,
+ * index maps. Every other part of MyDataFixer (preview, search, sort, scan,
  * export) reads through this view, so it always sees the edited data.
  */
 import type { CellGrid } from "../grid.ts";

@@ -18,7 +18,7 @@ export function ToolInDevelopment({ toolName }: { toolName: string }) {
         <p className="mt-1 text-sm leading-relaxed text-muted">
           This tool is not available yet, so it cannot open files today. In the meantime, browse the{" "}
           <Link href="/#tools" className="font-medium text-primary hover:underline">
-            other DataFixer tools
+            other MyDataFixer tools
           </Link>
           .
         </p>

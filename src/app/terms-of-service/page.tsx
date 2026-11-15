@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "The terms that apply when you use DataFixer's free, browser-based tools for checking, cleaning and converting spreadsheets.",
+  description: "The terms that apply when you use MyDataFixer's free, browser-based tools for checking, cleaning and converting spreadsheets.",
   path: "/terms-of-service",
 });
 
@@ -15,18 +15,18 @@ export default function TermsPage() {
     <ProsePage
       title="Terms of Service"
       path="/terms-of-service"
-      intro="These terms apply when you use DataFixer. By using the site you agree to them."
+      intro="These terms apply when you use MyDataFixer. By using the site you agree to them."
       updated="10 November 2026"
     >
       <h2>1. The service</h2>
       <p>
-        DataFixer provides free, browser-based tools for checking, cleaning and converting spreadsheet files. No
+        MyDataFixer provides free, browser-based tools for checking, cleaning and converting spreadsheet files. No
         account is required. We may add, change or remove tools at any time.
       </p>
 
       <h2>2. Your files and your responsibility</h2>
       <p>
-        You keep all rights to the files you open with DataFixer. Files are processed on your device, as described in
+        You keep all rights to the files you open with MyDataFixer. Files are processed on your device, as described in
         our <Link href="/privacy-policy">Privacy Policy</Link>. Automated checks can miss problems or flag values that
         are actually correct, so please review results and keep a copy of your original file. You are responsible for
         verifying any output before relying on it, especially for financial, legal, medical or other important
@@ -42,19 +42,19 @@ export default function TermsPage() {
 
       <h2>4. No warranty</h2>
       <p>
-        DataFixer is provided &quot;as is&quot; and &quot;as available&quot;, without warranties of any kind, express or
+        MyDataFixer is provided &quot;as is&quot; and &quot;as available&quot;, without warranties of any kind, express or
         implied, including fitness for a particular purpose and accuracy of results.
       </p>
 
       <h2>5. Limitation of liability</h2>
       <p>
-        To the fullest extent permitted by law, DataFixer and its operators are not liable for any loss of data,
+        To the fullest extent permitted by law, MyDataFixer and its operators are not liable for any loss of data,
         profits or business, or for any indirect or consequential damages arising from your use of the service.
       </p>
 
       <h2>6. Trademarks</h2>
       <p>
-        Microsoft Excel is a trademark of Microsoft Corporation. DataFixer is an independent service and is not
+        Microsoft Excel is a trademark of Microsoft Corporation. MyDataFixer is an independent service and is not
         affiliated with or endorsed by Microsoft.
       </p>
 

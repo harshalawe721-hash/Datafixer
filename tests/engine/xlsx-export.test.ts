@@ -1,6 +1,6 @@
 /**
  * Stage 4, Step 7: Excel download.
- * Every export is verified by DataFixer's reader inside exportXlsx (V1/V2) and
+ * Every export is verified by MyDataFixer's reader inside exportXlsx (V1/V2) and
  * here, independently, with openpyxl (V4): untouched parts byte-identical (V5),
  * formulas, formatting, merged cells, charts and other features kept (V6).
  */
@@ -92,7 +92,7 @@ test("2-problems.xlsx: all fixes, a real date, a manual edit and a replaced form
   assert.equal(summary.downloadName, "2-problems-cleaned.xlsx");
   assert.equal(summary.rowsRemoved, 3, "duplicates and the empty row were removed (nothing refers to them)");
   assert.deepEqual(summary.notPreserved, []);
-  assert.equal(summary.verification.reader, "DataFixer's Excel reader");
+  assert.equal(summary.verification.reader, "MyDataFixer's Excel reader");
   const out = await save(blob, "a.xlsx");
   const srcPath = path.join(DIR, "a-src.xlsx");
   writeFileSync(srcPath, src);
@@ -334,7 +334,7 @@ test("text with special characters survives exactly (XML escaping and Excel's _x
   const { core, sheet } = await open("2-problems.xlsx", fixture(new URL("2-problems.xlsx", SCAN)));
   const tricky = `a & b < c > "q" 'x' _x0041_ tab\there ${String.fromCharCode(1)} end  `;
   core.editCell(sheet, 1, 7, tricky);
-  const { blob } = await core.exportXlsx(sheet, noop); // DataFixer's reader compared the value exactly
+  const { blob } = await core.exportXlsx(sheet, noop); // MyDataFixer's reader compared the value exactly
   const v = py(`import openpyxl, json, sys; ws = openpyxl.load_workbook(sys.argv[1]).active; print(json.dumps(ws["H2"].value))`, await save(blob, "tricky.xlsx")) as string;
   assert.ok(v.startsWith('a & b < c > "q" \'x\''), v);
   assert.equal(ooxmlText("_x0041_"), "_x005F_x0041_");

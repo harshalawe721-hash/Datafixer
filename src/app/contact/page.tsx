@@ -7,8 +7,8 @@ import { siteConfig } from "@/config/site";
 import { formatLimit } from "@/lib/file-validation";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact DataFixer",
-  description: "Get in touch with the DataFixer team to report a problem, request a feature or ask a question.",
+  title: "Contact MyDataFixer",
+  description: "Get in touch with the MyDataFixer team to report a problem, request a feature or ask a question.",
   path: "/contact",
 });
 
@@ -41,7 +41,7 @@ export default function ContactPage() {
           {formatLimit(siteConfig.maxFileSizeBytes)} or less.
         </li>
         <li>
-          For privacy questions, our <Link href="/privacy-policy">Privacy Policy</Link> explains how DataFixer handles
+          For privacy questions, our <Link href="/privacy-policy">Privacy Policy</Link> explains how MyDataFixer handles
           data.
         </li>
       </ul>

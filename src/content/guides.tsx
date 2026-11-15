@@ -7,7 +7,7 @@ import type { Guide } from "@/components/tools/ToolGuide";
 
 const privacyFaq = {
   q: "Is my file uploaded?",
-  a: "No. Your browser opens the file on your device and every check, fix and download happens there. The contents of your file are not sent to DataFixer's servers or to anyone else, and your original file is never changed.",
+  a: "No. Your browser opens the file on your device and every check, fix and download happens there. The contents of your file are not sent to MyDataFixer's servers or to anyone else, and your original file is never changed.",
 };
 
 export const detectorGuide: Guide = {
@@ -15,7 +15,7 @@ export const detectorGuide: Guide = {
     title: "How the Spreadsheet Error Detector works",
     steps: [
       "Open an Excel workbook (.xlsx or .xls) or a CSV file. It is read on your device, and a preview of the sheet appears.",
-      "DataFixer checks every row and column for eleven kinds of problem: duplicate rows, empty rows and columns, missing cells, extra spaces, inconsistent capitalization, numbers stored as text, inconsistent, impossible or ambiguous dates, invalid email addresses, invalid phone numbers, unusual values and formula errors such as #DIV/0! or #N/A.",
+      "MyDataFixer checks every row and column for eleven kinds of problem: duplicate rows, empty rows and columns, missing cells, extra spaces, inconsistent capitalization, numbers stored as text, inconsistent, impossible or ambiguous dates, invalid email addresses, invalid phone numbers, unusual values and formula errors such as #DIV/0! or #N/A.",
       "Each problem gets a card with a count, a plain explanation, examples and advice on how to fix it. “View affected data” filters the table to exactly the rows involved.",
       "Many problems have a Fix button. You always see a preview of every change first; nothing changes until you tap Apply. “Fix all safe problems” applies only fixes that need no decision.",
       "Undo, Redo and the change history work for every fix. Download the corrected file as CSV or, for Excel workbooks, as Excel. The file is checked cell by cell before it is offered.",
@@ -44,7 +44,7 @@ export const detectorGuide: Guide = {
     "Remove rows or columns that anything else in an Excel workbook refers to (formulas on other sheets, charts, named ranges). It offers to clear the cells instead.",
   ],
   limits: [
-    "Files up to 150 MB are accepted. Very large files need a computer or a recent phone with enough memory; if a file is too large for the device, DataFixer stops safely and says so.",
+    "Files up to 150 MB are accepted. Very large files need a computer or a recent phone with enough memory; if a file is too large for the device, MyDataFixer stops safely and says so.",
     "Excel workbooks are checked one sheet at a time. Old .xls files are downloaded in the newer .xlsx format, and the page lists what that format change can't keep.",
     "Automated checks can miss problems or flag values that are correct for your data. Review the results before relying on them.",
   ],
@@ -102,7 +102,7 @@ export const cleanerGuide: Guide = {
     "Convert values that could mean two different things.",
   ],
   limits: [
-    "Changes are kept only in the open browser tab until you download them. DataFixer asks before you leave the page with changes that haven't been downloaded.",
+    "Changes are kept only in the open browser tab until you download them. MyDataFixer asks before you leave the page with changes that haven't been downloaded.",
     "Excel workbooks are cleaned one sheet at a time.",
     "Very large files need a computer or a recent phone with enough memory.",
   ],
@@ -114,11 +114,11 @@ export const cleanerGuide: Guide = {
     },
     {
       q: "Can I edit cells myself?",
-      a: "Yes. Tap a cell in the table (or move to it with the arrow keys and press Enter) to open the editor. Column names can be renamed with the pencil next to each name. If a cell holds a formula, DataFixer warns you first, because saving a value replaces the formula.",
+      a: "Yes. Tap a cell in the table (or move to it with the arrow keys and press Enter) to open the editor. Column names can be renamed with the pencil next to each name. If a cell holds a formula, MyDataFixer warns you first, because saving a value replaces the formula.",
     },
     {
       q: "Which spelling is kept when capitalization differs?",
-      a: "The most common one in that column. When two spellings are equally common, DataFixer asks which to use.",
+      a: "The most common one in that column. When two spellings are equally common, MyDataFixer asks which to use.",
     },
     {
       q: "Will removing duplicates keep the first row?",
@@ -135,7 +135,7 @@ export const validatorGuide: Guide = {
   how: {
     title: "How the CSV Validator works",
     steps: [
-      "Open a CSV, TSV or TXT file. DataFixer detects the text encoding and the column separator; both can be changed if the file was read wrongly.",
+      "Open a CSV, TSV or TXT file. MyDataFixer detects the text encoding and the column separator; both can be changed if the file was read wrongly.",
       "Nine checks run: text encoding, column separator, the number of fields in every row, column names, quotes, line endings and blank lines, hidden control characters, Excel and Google Sheets limits, and extra separators at line ends.",
       "The verdict says whether the file is valid and whether it will import cleanly. Each problem card shows the exact line as written in the file, with its line number.",
       "Repairs are offered with a preview: add empty cells to short rows, remove empty extra fields, fix column names, remove spaces around names, remove blank lines, remove hidden characters, and add apostrophes before values that start like formulas.",

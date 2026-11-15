@@ -185,7 +185,7 @@ function Done({ result, values, onAgain }: { result: { kind: "sheet"; r: ExportR
               {result.kind === "zip" ? "ZIP file created" : "CSV file created"}
             </h2>
             <p className="text-sm" role="status">
-              Your download has started. Before it was offered, DataFixer {checked}.
+              Your download has started. Before it was offered, MyDataFixer {checked}.
             </p>
           </div>
         </div>
