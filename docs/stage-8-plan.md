@@ -109,3 +109,10 @@ Bring visitors from Google by answering the questions people actually search for
 - **Guides 2–6 written:** remove duplicate rows; keep leading zeros; fix dates (numbers like 45292, mixed formats); remove extra spaces and hidden characters; convert Excel to CSV. Every statement about MyDataFixer was checked against the tools (button names such as “Remove duplicate rows” and “Remove extra spaces”, “Exact copy of row N”, spaces between words kept, leading zeros and 15+ digit numbers kept as text, dates never guessed, Excel to CSV options).
 - **Tests:** tsc and lint; unit 386/386; with guides shown: SEO 34/34 (all 6 guides and the list), axe-core on the list and 6 guides in light and dark: 0 findings, no console errors, phone width 412 px; as live today (nothing published): smoke 114, engine 62, a11y 71, seo 27, `/guides` answers 404.
 - **Not checked:** Excel and Google Sheets steps are written from their documentation and couldn't be run here.
+
+### Change of plan (owner, 20 November 2026): longer guides and a fixed schedule
+
+- **Length:** 1,000–1,500 words per guide, still in simple language.
+- **Schedule:** 15 guides, one per day at **12:30 am India time**, starting **20 November 2026**; guide 15 on **4 December 2026** (15 days from 20 November; the owner wrote “to 5 December”, which would be a 16th day, so the end date was reported to the owner). `GUIDES_START_DATE = "2026-11-20"`; publish time 00:30 India time. This replaces decision 2A (start after approval). The owner asked for publishing to start before the stage report.
+- **Guide 1 (long version, 1,022 words)** went live with this change. Tests on the build as live on 20 November (guide 1 published, guides 2–6 hidden): tsc, lint, unit 386/386 (schedule tests updated to 12:30 am and 20 November–4 December), smoke 115, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71, seo 29, large 64; axe-core on the list and guide 1, light and dark: 0 findings.
+- Every guide must be finished before its publish time; guides 2–15 are written next, in publishing order.
