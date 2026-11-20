@@ -4,10 +4,10 @@ const DAY = 86_400_000;
 /** India Standard Time has a fixed offset (no daylight saving). */
 const IST_OFFSET_MS = 5.5 * 3_600_000;
 
-/** When the guide at this position goes live: 00:30 India time (owner, 20 November 2026), `index` days after `start` (YYYY-MM-DD). null if not scheduled. */
+/** When the guide at this position goes live: 12:30 pm India time (owner, 20 November 2026; first set to 12:30 am the same day), `index` days after `start` (YYYY-MM-DD). null if not scheduled. */
 export function publishTime(index: number, start: string | null): number | null {
   if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
-  const t = Date.parse(`${start}T00:30:00+05:30`);
+  const t = Date.parse(`${start}T12:30:00+05:30`);
   return Number.isNaN(t) ? null : t + index * DAY;
 }
 

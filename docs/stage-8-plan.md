@@ -121,3 +121,7 @@ Bring visitors from Google by answering the questions people actually search for
 - **All 15 guides:** 1,040–1,151 words each (all text, questions included); every “related guides” link points to a real guide. With all guides shown: SEO 43/43, axe-core 0 findings on every guide (light and dark), phone width 412 px, no console errors. Schedule on real dates: 25 November 00:29 → 5 guides, 00:30 → 6; 4 December 00:30 → all 15 (list, sitemap and pages agree). Live build on 20 November (guide 1 only): unit 386/386, smoke 115, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71, seo 29, large 64.
 - **Step 4 (20 November 2026):** “Guides for this tool” on the five tool pages, loaded from `/guides/feed.json` (rebuilt hourly, fetched without a stored copy so reloads don't leave a request open). Tested with guide 1 only and with all guides; all suites pass (see the completion report).
 - **Steps 5–6:** final testing and the completion report: `docs/stage-8-test-report.md`. **The owner approved Stage 8 on 20 November 2026; the stage is complete.**
+
+### Publish time changed to 12:30 pm (owner, 20 November 2026)
+
+- Guides go live at 12:30 pm India time (was 12:30 am). Deployed after 12:30 pm on 20 November so guide 1 stayed online. Details and tests in the completion report.

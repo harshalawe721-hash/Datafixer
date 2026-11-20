@@ -1,11 +1,11 @@
 /**
  * Stage 8 guides and their publishing schedule. Owner, 20 November 2026: 15 guides, one per day
- * at 12:30 am India time, starting on 20 November 2026 (guide 15 on 4 December 2026).
+ * at 12:30 pm India time, starting on 20 November 2026 (guide 15 on 4 December 2026).
  *
  * A guide that isn't published yet doesn't exist on the site: its page answers 404 and it is
  * left out of the Guides list, the sitemap, the menus and every "Related guides" list. Pages
  * that show guides are rebuilt every hour (revalidate = 3600), so each guide appears within an
- * hour after its publish time (12:30 am India time) without anyone posting it.
+ * hour after its publish time (12:30 pm India time) without anyone posting it.
  */
 import type { HowToGuide } from "./types";
 import { csvOpensInOneColumn } from "./csv-opens-in-one-column";

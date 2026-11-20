@@ -4,6 +4,8 @@
 
 **Status:** ✅ **COMPLETE.** Approved by the owner on 20 November 2026. Publishing runs until guide 15 on 4 December 2026.
 
+**Publish time changed (owner, 20 November 2026, after approval):** guides now go live at **12:30 pm** India time instead of 12:30 am. Guide 1 was already live; the change was deployed after 12:30 pm on 20 November so guide 1 and the “Guides” menu link stayed online. Guide 2 appears on 21 November at 12:30 pm, guide 15 on 4 December at 12:30 pm. Checked: unit tests (12:29 pm hidden, 12:30 pm live), and builds at 21 Nov 00:30 (1 guide), 12:29 (1), 12:30 (2), 4 Dec 12:29 (14), 12:30 (15), with the list, sitemap and tool-page feed agreeing; full regression on the live build after 12:30 pm.
+
 The owner approved the plan (`docs/stage-8-plan.md`) on 20 November 2026 with decisions **A for all**, then changed it the same day: 15 guides, simple language, **1,000–1,500 words each**, published **one per day at 12:30 am India time from 20 November 2026** (guide 15 on 4 December 2026).
 
 ## Changes
