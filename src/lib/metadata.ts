@@ -20,10 +20,13 @@ export function pageMetadata({
   title,
   description,
   path,
+  article,
 }: {
   title: string;
   description: string;
   path: string;
+  /** Guides (Stage 8) are marked as articles, with their publish date (YYYY-MM-DD). */
+  article?: { publishedTime: string };
 }): Metadata {
   return {
     title,
@@ -34,9 +37,11 @@ export function pageMetadata({
       description,
       url: path,
       siteName: siteConfig.name,
-      type: "website",
       locale: "en_US",
       images: [SHARE_IMAGE],
+      ...(article
+        ? { type: "article" as const, publishedTime: article.publishedTime, modifiedTime: article.publishedTime }
+        : { type: "website" as const }),
     },
     twitter: { card: "summary_large_image", title, description, images: [SHARE_IMAGE] },
   };

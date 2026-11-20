@@ -8,7 +8,7 @@ import { tools } from "@/config/tools";
 import { mainNav } from "@/config/navigation";
 
 /** Collapsible navigation for small screens. */
-export function MobileMenu() {
+export function MobileMenu({ showGuides }: { showGuides: boolean }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const pathname = usePathname();
@@ -65,10 +65,11 @@ export function MobileMenu() {
           </ul>
           <div className="my-3 border-t border-line" />
           <ul className="space-y-1">
-            {mainNav.map((item) => (
+            {mainNav(showGuides).map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  prefetch={item.href.startsWith("/guides") ? false : undefined}
                   className="block rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-surface-muted"
                   onClick={() => setOpen(false)}
                 >

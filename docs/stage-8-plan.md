@@ -1,6 +1,6 @@
 # Stage 8 plan: Guides
 
-**Status:** plan prepared on 20 November 2026; updated the same day at the owner's request (15 guides, one published per day). Waiting for the owner's decisions. Nothing is built until the owner approves the plan and says "Start Stage 8".
+**Status:** plan prepared on 20 November 2026; updated the same day at the owner's request (15 guides, one published per day). **The owner approved the plan on 20 November 2026 with decisions A for all (1A–8A) and said “Start Stage 8”.** Progress is recorded under “Progress” below. Nothing is built until the owner approves the plan and says "Start Stage 8".
 
 ## Goal
 
@@ -89,3 +89,15 @@ Bring visitors from Google by answering the questions people actually search for
 - Excel and Google Sheets steps are checked against documentation, not run in those apps (see Accuracy rules).
 - The schedule ends after guide 15 (about two weeks). More guides can be added later in the same format and schedule.
 - A guide appears within an hour after midnight India time (the hourly rebuild), not at exactly 00:00.
+
+## Progress
+
+### Step 1: guides framework, schedule and guide 1 (20 November 2026), built and tested
+
+- **Pages:** `/guides` (list) and `/guides/[slug]` (guide page: H1, byline “By the MyDataFixer team · Updated …”, short answer, the guide, “Fix it in your browser” tool links, questions and answers, related guides). Example tables are plain HTML (decision 5A).
+- **Search setup:** title, description, canonical, Open Graph type `article` with publish date, Twitter card, `Article` + `BreadcrumbList` + `FAQPage` structured data on guides, `ItemList` on the list; sitemap entries for the list and each published guide.
+- **Schedule:** guides are in `src/content/howto/`, in publishing order; `GUIDES_START_DATE` stays `null` (nothing published) until the owner approves Stage 8. Unpublished guides answer 404 and are left out of the list, sitemap and menus; the guide pages, the list and the sitemap are rebuilt every hour, so each guide appears within an hour after 00:00 India time on its day. Local test switches (`GUIDES_CLOCK`, `GUIDES_START`, `GUIDES_SHOW_ALL`) are ignored on Vercel.
+- **Guide 1:** “Why a CSV file opens in one column, and how to fix it” (about 1,000 words): causes, example, three Excel methods, Google Sheets, MyDataFixer (CSV to Excel, CSV Validator), common mistakes, five questions.
+- **Design change found in testing:** first, every page was set to rebuild hourly (so the header link could appear by itself). On the local server, reloading a page then left Next.js's background link prefetches to those pages unfinished, which made the Stage 2 engine test time out (the page itself worked). Because the behaviour on Vercel can't be verified from here, the hourly rebuild was limited to the guide pages and the sitemap, and links to guide pages don't prefetch. All other pages stay exactly as before. Consequence: the header and footer “Guides” link is added when the site is deployed, so **guide 1 should go live on the day Stage 8 is approved** (not the day after, as decision 2A said) and the following guides one per day at 00:00 India time. Owner to confirm at the end of the stage. The “Related guides” lists on tool pages (Step 4) will be loaded from an hourly-rebuilt list so they stay current.
+- **Tests:** tsc and lint pass; unit tests 386/386 (4 new schedule tests, including all 15 days across a month end). With no guide published (as live today) and with guides shown: smoke 114/115, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71, seo 27/29 (the SEO check now also covers the guide list and guide pages, which are `article` pages), large 64, all passing. axe-core on the guide list and guide 1, light and dark: 0 findings. Phone width 412 px, no sideways scrolling. Schedule time-travel test (refresh shortened to 10 s for the test only): before 00:00 India time the list, the guide and the sitemap entries are absent; after it they appear without a new deploy. Reloading guide pages and other pages leaves no unfinished requests.
+- **Not checked:** the Excel and Google Sheets steps were written from their documentation and couldn't be run here.

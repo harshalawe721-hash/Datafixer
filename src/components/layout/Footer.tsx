@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { tools } from "@/config/tools";
-import { companyLinks, legalLinks } from "@/config/navigation";
+import { companyNav, legalLinks } from "@/config/navigation";
+import { publishedGuides } from "@/content/howto";
 import { siteConfig } from "@/config/site";
 import { Logo } from "./Logo";
 
@@ -12,7 +13,7 @@ function FooterColumn({ title, links }: { title: string; links: readonly { label
       <ul className="mt-4 space-y-3">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="text-sm text-muted transition-colors hover:text-foreground">
+            <Link href={link.href} prefetch={link.href.startsWith("/guides") ? false : undefined} className="text-sm text-muted transition-colors hover:text-foreground">
               {link.label}
             </Link>
           </li>
@@ -36,7 +37,7 @@ export function Footer() {
             </p>
           </div>
           <FooterColumn title="All Tools" links={tools.map((t) => ({ label: t.name, href: t.href }))} />
-          <FooterColumn title="Company" links={companyLinks} />
+          <FooterColumn title="Company" links={companyNav(publishedGuides().length > 0)} />
           <FooterColumn title="Legal" links={legalLinks} />
         </div>
         <div className="mt-10 flex flex-col gap-2 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">

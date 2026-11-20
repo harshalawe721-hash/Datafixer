@@ -25,7 +25,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                   </span>
                 ) : (
                   <>
-                    <Link href={crumb.href} className="hover:text-foreground hover:underline">
+                    <Link href={crumb.href} prefetch={crumb.href.startsWith("/guides") ? false : undefined} className="hover:text-foreground hover:underline">
                       {crumb.label}
                     </Link>
                     <ChevronRight className="size-3.5" aria-hidden="true" />

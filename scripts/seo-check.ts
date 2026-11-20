@@ -18,7 +18,11 @@ const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
 const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
 const paths = urls.map((u) => new URL(u).pathname);
 console.log("\nSitemap and robots");
-check(paths.length === 10, `sitemap lists 10 pages (${paths.join(", ")})`);
+// 10 fixed pages, plus the Guides list and each published guide (Stage 8; the schedule decides how many).
+const guidePaths = paths.filter((p) => p.startsWith("/guides/"));
+const expected = 10 + (guidePaths.length ? 1 + guidePaths.length : 0);
+check(paths.length === expected, `sitemap lists ${expected} pages (${paths.join(", ")})`);
+check(guidePaths.length === 0 || paths.includes("/guides"), "the Guides list is in the sitemap whenever a guide is");
 check(!paths.includes("/diagnostics"), "the diagnostics page is not in the sitemap");
 const robots = await (await fetch(`${BASE}/robots.txt`)).text();
 check(/Allow: \//.test(robots) && /Sitemap: .*\/sitemap\.xml/.test(robots), "robots.txt allows crawling and points to the sitemap");
@@ -74,7 +78,7 @@ for (const p of paths) {
     (info.description?.length ?? 0) >= 70 &&
     (info.description?.length ?? 0) <= 160 &&
     info.canonical === abs &&
-    info.og.title && info.og.description && info.og.url === abs && info.og.type === "website" && info.og.site === "MyDataFixer" &&
+    info.og.title && info.og.description && info.og.url === abs && info.og.type === (p.startsWith("/guides/") ? "article" : "website") && info.og.site === "MyDataFixer" &&
     info.og.image === `${BASE}/opengraph-image` && info.og.width === "1200" && info.og.height === "630" && info.og.alt &&
     info.twitter.card === "summary_large_image" && info.twitter.image === `${BASE}/opengraph-image` &&
     !info.robots?.includes("noindex") &&
