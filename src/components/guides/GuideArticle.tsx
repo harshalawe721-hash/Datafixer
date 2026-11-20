@@ -16,7 +16,7 @@ const PROSE =
   "space-y-4 leading-relaxed text-foreground/90 [&_a]:font-medium [&_a]:text-primary [&_a:hover]:underline " +
   "[&_h2]:mt-10 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-foreground [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground " +
   "[&_li]:mt-1.5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 " +
-  "[&_code]:rounded [&_code]:bg-surface-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em] [&_pre_code]:bg-transparent [&_pre_code]:p-0";
+  "[&_code]:rounded [&_code]:[overflow-wrap:anywhere] [&_code]:bg-surface-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em] [&_pre_code]:bg-transparent [&_pre_code]:p-0";
 
 /** A Stage 8 guide page: heading, byline, short answer, the guide, tools, questions, related guides, structured data. */
 export function GuideArticle({ guide }: { guide: HowToGuide }) {

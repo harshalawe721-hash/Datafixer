@@ -14,6 +14,15 @@ import { keepLeadingZerosInCsv } from "./keep-leading-zeros-in-csv";
 import { fixDatesInSpreadsheets } from "./fix-dates-in-spreadsheets";
 import { removeExtraSpaces } from "./remove-extra-spaces";
 import { convertExcelToCsv } from "./convert-excel-to-csv";
+import { excelFormulaErrors } from "./excel-formula-errors";
+import { numbersStoredAsText } from "./numbers-stored-as-text";
+import { csvEncodingStrangeCharacters } from "./csv-encoding-strange-characters";
+import { checkCsvBeforeImport } from "./check-csv-before-import";
+import { findBlankCells } from "./find-blank-cells";
+import { removeEmptyRowsAndColumns } from "./remove-empty-rows-and-columns";
+import { fixInconsistentCapitalization } from "./fix-inconsistent-capitalization";
+import { checkEmailsAndPhoneNumbers } from "./check-emails-and-phone-numbers";
+import { excelRowLimit } from "./excel-row-limit";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -26,6 +35,15 @@ export const GUIDES: readonly HowToGuide[] = [
   fixDatesInSpreadsheets,
   removeExtraSpaces,
   convertExcelToCsv,
+  excelFormulaErrors,
+  numbersStoredAsText,
+  csvEncodingStrangeCharacters,
+  checkCsvBeforeImport,
+  findBlankCells,
+  removeEmptyRowsAndColumns,
+  fixInconsistentCapitalization,
+  checkEmailsAndPhoneNumbers,
+  excelRowLimit,
 ];
 
 /**
