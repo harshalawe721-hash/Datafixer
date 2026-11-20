@@ -9,12 +9,24 @@
  */
 import type { HowToGuide } from "./types";
 import { csvOpensInOneColumn } from "./csv-opens-in-one-column";
+import { removeDuplicateRows } from "./remove-duplicate-rows";
+import { keepLeadingZerosInCsv } from "./keep-leading-zeros-in-csv";
+import { fixDatesInSpreadsheets } from "./fix-dates-in-spreadsheets";
+import { removeExtraSpaces } from "./remove-extra-spaces";
+import { convertExcelToCsv } from "./convert-excel-to-csv";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
 
 /** Every guide, in publishing order: guide n is published n − 1 days after the start date. */
-export const GUIDES: readonly HowToGuide[] = [csvOpensInOneColumn];
+export const GUIDES: readonly HowToGuide[] = [
+  csvOpensInOneColumn,
+  removeDuplicateRows,
+  keepLeadingZerosInCsv,
+  fixDatesInSpreadsheets,
+  removeExtraSpaces,
+  convertExcelToCsv,
+];
 
 /**
  * First publishing day (YYYY-MM-DD, India time). null = not scheduled yet: no guide is
