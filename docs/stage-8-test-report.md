@@ -2,7 +2,7 @@
 
 **Date:** 20 November 2026
 
-**Status:** ⏳ **Built and tested; awaiting the owner's approval.** Publishing already runs, at the owner's request (guide 1 has been live since 20 November 2026).
+**Status:** ✅ **COMPLETE.** Approved by the owner on 20 November 2026. Publishing runs until guide 15 on 4 December 2026.
 
 The owner approved the plan (`docs/stage-8-plan.md`) on 20 November 2026 with decisions **A for all**, then changed it the same day: 15 guides, simple language, **1,000–1,500 words each**, published **one per day at 12:30 am India time from 20 November 2026** (guide 15 on 4 December 2026).
 
@@ -51,4 +51,4 @@ No new dependencies and no paid services.
 
 ## Approval
 
-Stage 8 will be marked complete only after the owner approves it.
+The owner approved Stage 8 on 20 November 2026 (“Stage 8 approved”).
