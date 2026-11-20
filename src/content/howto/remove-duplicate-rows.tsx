@@ -15,17 +15,35 @@ export const removeDuplicateRows: HowToGuide = {
   related: ["remove-extra-spaces", "remove-empty-rows-and-columns", "fix-inconsistent-capitalization"],
   quickAnswer: (
     <p>
-      A duplicate row is a row that is the same as another row in every column. In Excel use <strong>Data → Remove Duplicates</strong>, in Google
-      Sheets <strong>Data → Data cleanup → Remove duplicates</strong>. Both keep the first copy. Make a copy of your file first.
+      A duplicate row is a row that is the same as another row in every column. In Excel, use <strong>Data → Remove Duplicates</strong>. In
+      Google Sheets, use <strong>Data → Data cleanup → Remove duplicates</strong>. Both keep the first copy and delete the others. Always keep a
+      copy of the original file before you remove anything.
     </p>
   ),
   body: (
     <>
+      <h2>Why duplicate rows are a problem</h2>
+      <p>
+        One extra copy of a row may not look like much, but it changes every number that uses it. A sale counted twice makes your total too
+        high. A customer listed twice gets two emails. A product listed twice can show the wrong stock. Charts, pivot tables and reports all
+        include the extra rows without telling you.
+      </p>
+
       <h2>Why duplicates happen</h2>
       <ul>
-        <li>The same data was pasted or imported twice.</li>
-        <li>Two exports were combined and some rows were in both.</li>
-        <li>A form was submitted twice.</li>
+        <li>
+          <strong>Copy and paste.</strong> The same block of data was pasted twice, often without noticing.
+        </li>
+        <li>
+          <strong>Joining files.</strong> Two exports were combined, and some rows were in both, for example a January and a February report
+          that both include 31 January.
+        </li>
+        <li>
+          <strong>Forms and apps.</strong> Someone pressed “submit” twice, or an app saved the same record again after a connection problem.
+        </li>
+        <li>
+          <strong>Imports run twice.</strong> A file was imported into a system, and then imported again.
+        </li>
       </ul>
 
       <h2>Example</h2>
@@ -38,50 +56,132 @@ export const removeDuplicateRows: HowToGuide = {
           ["4", "Asha Patil", "asha@example.com", "500"],
         ]}
       />
-      <p>The total looks like 1,300, but the real total is 800.</p>
+      <p>
+        The total of the amount column looks like 1,300, but the real total is 800. After removing row 4, the sheet has two customers and the
+        right total.
+      </p>
+
+      <h2>Step 1: find the duplicates first</h2>
+      <p>
+        It&apos;s a good idea to look at the duplicates before you delete them. Sometimes two rows look the same but are both real, for example
+        two separate orders of the same amount on the same day. If your sheet has an order number or ID column, rows with different IDs are
+        usually not duplicates.
+      </p>
 
       <h2>Fix it in Excel</h2>
       <ExcelNote />
+      <h3>See the duplicates</h3>
       <ol>
-        <li>Click any cell in your data.</li>
+        <li>Select the column you want to check, for example the email column.</li>
+        <li>
+          Go to <strong>Home</strong> → <strong>Conditional Formatting</strong> → <strong>Highlight Cells Rules</strong> →{" "}
+          <strong>Duplicate Values</strong>.
+        </li>
+        <li>
+          Click <strong>OK</strong>. Every value that appears more than once is coloured.
+        </li>
+      </ol>
+      <h3>Remove the duplicate rows</h3>
+      <ol>
+        <li>Save a copy of your file.</li>
+        <li>Click any cell inside your data.</li>
         <li>
           Go to <strong>Data</strong> → <strong>Remove Duplicates</strong>.
         </li>
         <li>
-          Keep all columns ticked (so only rows that match in every column count as duplicates) and click <strong>OK</strong>. Excel says how many
-          rows it removed.
+          Tick <strong>My data has headers</strong> if the first row holds column names.
+        </li>
+        <li>
+          Keep <strong>all columns ticked</strong>. Then only rows that match in every column are removed.
+        </li>
+        <li>
+          Click <strong>OK</strong>. Excel tells you how many duplicate rows it removed and how many unique rows are left.
         </li>
       </ol>
-      <p>
-        To see duplicates before removing them, select the column and use <strong>Home</strong> → <strong>Conditional Formatting</strong> →{" "}
-        <strong>Highlight Cells Rules</strong> → <strong>Duplicate Values</strong>.
-      </p>
 
       <h2>Fix it in Google Sheets</h2>
       <ol>
-        <li>Select your data.</li>
+        <li>Make a copy of the sheet (right-click the sheet tab → Duplicate).</li>
+        <li>Select your data, including the column names.</li>
         <li>
           Go to <strong>Data</strong> → <strong>Data cleanup</strong> → <strong>Remove duplicates</strong>.
         </li>
         <li>
-          Tick <em>Data has header row</em> if the first row holds column names, keep all columns selected and click{" "}
-          <strong>Remove duplicates</strong>.
+          Tick <strong>Data has header row</strong> if the first row holds column names.
+        </li>
+        <li>
+          Keep all columns selected and click <strong>Remove duplicates</strong>. Google Sheets tells you how many rows were removed.
         </li>
       </ol>
 
       <h2>Fix it with MyDataFixer</h2>
+      <p>MyDataFixer works in your browser, also on a phone or tablet, and your file never leaves your device.</p>
+      <ol>
+        <li>
+          Open your Excel or CSV file in the <Link href="/spreadsheet-cleaner">Spreadsheet Cleaner</Link>.
+        </li>
+        <li>
+          Choose <strong>Remove duplicate rows</strong>. You see a preview of every row that will be removed, each marked “Exact copy of row N”,
+          so you know which row it repeats.
+        </li>
+        <li>Apply the change. The first copy is kept. If you change your mind, use Undo.</li>
+        <li>Download the clean file as CSV, or as Excel if you opened an Excel file.</li>
+      </ol>
       <p>
-        Open your Excel or CSV file in the <Link href="/spreadsheet-cleaner">Spreadsheet Cleaner</Link> and choose <strong>Remove duplicate rows</strong>.
-        You see every row that will be removed, listed as “Exact copy of row N”, before anything changes. The first copy is kept, you can undo, and
-        the file never leaves your device. The <Link href="/spreadsheet-error-detector">Error Detector</Link> finds duplicates together with other
-        problems.
+        If you want to check for other problems at the same time, such as empty rows, bad dates or extra spaces, open the file in the{" "}
+        <Link href="/spreadsheet-error-detector">Error Detector</Link> instead. It finds duplicates together with ten other kinds of problem.
       </p>
 
-      <h2>Good to know</h2>
+      <h2>Rows that almost match</h2>
+      <p>
+        Excel, Google Sheets and MyDataFixer remove rows that match exactly. Rows that differ in a small way are not removed, for example:
+      </p>
+      <ul>
+        <li>“Asha Patil” and “Asha Patil ” (a space at the end)</li>
+        <li>“asha@example.com” and “ASHA@example.com” (capital letters)</li>
+        <li>“500” and “500.00” in a CSV file</li>
+      </ul>
+      <p>
+        To catch these, clean the data first: remove extra spaces and make capitalization the same, then remove duplicates. MyDataFixer&apos;s
+        Cleaner has a tool for each of these steps.
+      </p>
+
+      <h2>How to avoid duplicates next time</h2>
       <ul>
         <li>
-          Rows that differ only by a space or capital letters (“Asha ” and “asha”) aren&apos;t exact copies. Remove extra spaces and fix
-          capitalization first, then remove duplicates.
+          <strong>Give every row an ID.</strong> An order number, invoice number or customer ID makes real duplicates easy to spot, because two
+          rows with the same ID are almost always a mistake.
+        </li>
+        <li>
+          <strong>Check before you combine files.</strong> When you join two exports, look at the date range of each one so the same days
+          aren&apos;t included twice.
+        </li>
+        <li>
+          <strong>Import once.</strong> Write down when a file was imported into a system, so it isn&apos;t imported again by someone else.
+        </li>
+        <li>
+          <strong>Clean regularly.</strong> Checking a shared sheet once a week takes a minute and stops small problems from growing.
+        </li>
+      </ul>
+
+      <h2>Quick summary</h2>
+      <p>
+        Duplicate rows make totals and counts wrong. Look at them first, keep a copy of the original, then remove them with Remove Duplicates in
+        Excel, Data cleanup in Google Sheets, or the Spreadsheet Cleaner in your browser. Clean spaces and capitalization first if rows only
+        almost match.
+      </p>
+
+      <h2>Common mistakes</h2>
+      <ul>
+        <li>
+          <strong>Removing duplicates by one column only.</strong> If you only compare the email column, two different orders from the same
+          customer count as duplicates, and one of them is deleted.
+        </li>
+        <li>
+          <strong>Not keeping a copy.</strong> Once you save, the removed rows are gone. Keep the original file.
+        </li>
+        <li>
+          <strong>Forgetting the header row.</strong> Without “has header row”, the column names are treated as data.
         </li>
       </ul>
     </>
@@ -93,7 +193,15 @@ export const removeDuplicateRows: HowToGuide = {
     },
     {
       q: "Can I remove rows with the same email even if other columns differ?",
-      a: "In Excel and Google Sheets, untick the other columns so only the email column is compared. Be careful: you may lose rows that had different details.",
+      a: "Yes: in Excel or Google Sheets, untick every column except email. Be careful, because you may delete rows that had different and useful details.",
+    },
+    {
+      q: "Is it safe to remove duplicates from a file with formulas?",
+      a: "Removing rows can break formulas that refer to them. MyDataFixer never removes rows that contain formulas or that formulas elsewhere in the workbook refer to.",
+    },
+    {
+      q: "Can I do this on my phone?",
+      a: "The Excel phone app doesn't have Remove Duplicates. MyDataFixer's Spreadsheet Cleaner works in the browser on phones and tablets.",
     },
     {
       q: "Does MyDataFixer upload my file?",
