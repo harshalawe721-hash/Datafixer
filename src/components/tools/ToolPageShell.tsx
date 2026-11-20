@@ -6,6 +6,7 @@ import { IconBadge } from "@/components/ui/Card";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getTool, relatedTools, type ToolId } from "@/config/tools";
 import { absoluteUrl, siteConfig } from "@/config/site";
+import { ToolGuidesList } from "@/components/guides/ToolGuidesList";
 
 /**
  * Shared layout for every tool page: breadcrumb, single H1, intro, the
@@ -48,6 +49,10 @@ export function ToolPageShell({
       <Container className="py-10 sm:py-12">{children}</Container>
 
       {content && <Container className="pb-4">{content}</Container>}
+
+      <Container>
+        <ToolGuidesList toolId={toolId} />
+      </Container>
 
       <section aria-labelledby="related-heading" className="border-t border-line bg-surface">
         <Container className="py-12">

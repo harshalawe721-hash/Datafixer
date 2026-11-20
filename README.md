@@ -93,5 +93,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 5 | CSV Validator: structural checks, repairs with preview, download options | **Complete** (approved by the project owner on 13 November 2026). See `docs/stage-5-test-report.md` |
 | 6 | Excel ↔ CSV converters | **Complete** (approved by the project owner on 14 November 2026). See `docs/stage-6-test-report.md` |
 | 7 | SEO content, accessibility, performance, testing | **Complete** (approved 15 November 2026; live at https://mydatafixer.com): decisions 1A, 2A, 3A, 4A, 5A, 6A, 7A. See `docs/stage-7-test-report.md` |
+| 8 | Guides: 15 how-to guides, one published per day (20 Nov – 4 Dec 2026, 12:30 am India time) | **Built and tested, awaiting the owner's approval**; publishing runs. See `docs/stage-8-test-report.md` |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.
