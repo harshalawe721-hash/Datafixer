@@ -15,7 +15,7 @@ export const detectorGuide: Guide = {
     title: "How the Spreadsheet Error Detector works",
     steps: [
       "Open an Excel workbook (.xlsx or .xls) or a CSV file. It is read on your device, and a preview of the sheet appears.",
-      "MyDataFixer checks every row and column for eleven kinds of problem: duplicate rows, empty rows and columns, missing cells, extra spaces, inconsistent capitalization, numbers stored as text, inconsistent, impossible or ambiguous dates, invalid email addresses, invalid phone numbers, unusual values and formula errors such as #DIV/0! or #N/A.",
+      "MyDataFixer checks every row and column for eleven kinds of problem: duplicate rows, empty rows and columns, missing cells, extra spaces, inconsistent capitalization, numbers stored as text, inconsistent, impossible or ambiguous dates, invalid email addresses, invalid phone numbers, unusual values and formula errors such as #DIV/0! or #N/A. It also notes name and city columns written entirely in capitals or small letters, which “Change case” can tidy.",
       "Each problem gets a card with a count, a plain explanation, examples and advice on how to fix it. “View affected data” filters the table to exactly the rows involved.",
       "Many problems have a Fix button. You always see a preview of every change first; nothing changes until you tap Apply. “Fix all safe problems” applies only fixes that need no decision.",
       "Undo, Redo and the change history work for every fix. Download the corrected file as CSV or, for Excel workbooks, as Excel. The file is checked cell by cell before it is offered.",
@@ -78,7 +78,7 @@ export const cleanerGuide: Guide = {
     title: "How the Spreadsheet Cleaner works",
     steps: [
       "Open an Excel workbook (.xlsx or .xls) or a CSV file. It is read on your device.",
-      "The cleaning tools list shows what each tool would fix in your sheet: extra spaces, duplicate rows, empty rows, empty columns, numbers stored as text, capitalization, date formats and phone number layouts.",
+      "The cleaning tools list shows what each tool would fix in your sheet: extra spaces, duplicate rows, empty rows, empty columns, numbers stored as text, capitalization, date formats and phone number layouts. “Change case” writes the columns you choose in Proper Case, UPPER CASE or lower case.",
       "Tap a tool to see a preview of every change. Tools that need a decision (a date format, a phone layout, a spelling) ask for it in the preview.",
       "Tap any cell in the table to edit it by hand, for values no tool can fix, such as a wrong email address.",
       "Undo or redo any change, see the full history, and download a clean copy as CSV or Excel. The file is checked before it is offered.",
@@ -119,6 +119,10 @@ export const cleanerGuide: Guide = {
     {
       q: "Which spelling is kept when capitalization differs?",
       a: "The most common one in that column. When two spellings are equally common, MyDataFixer asks which to use.",
+    },
+    {
+      q: "Can I write names in Proper Case, like Ravi Kumar?",
+      a: "Yes. “Change case” writes the columns you choose in Proper Case, UPPER CASE or lower case, with a preview first. Proper Case handles names such as O'Brien and McDonald; email addresses, web addresses and values with numbers are never changed.",
     },
     {
       q: "Will removing duplicates keep the first row?",

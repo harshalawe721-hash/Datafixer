@@ -10,7 +10,7 @@ export const fixInconsistentCapitalization: HowToGuide = {
   description:
     "Paris, paris and PARIS counted as three cities? Learn how to make capitalization consistent with PROPER, UPPER and LOWER, or free with MyDataFixer.",
   summary: "The same value written in different capitals splits your filters and reports. Here's how to make it consistent.",
-  updated: "2026-11-20",
+  updated: "2026-11-23",
   tools: ["spreadsheet-cleaner"],
   related: ["remove-extra-spaces", "remove-duplicate-rows", "fix-dates-in-spreadsheets"],
   quickAnswer: (
@@ -97,6 +97,13 @@ export const fixInconsistentCapitalization: HowToGuide = {
         When two spellings are equally common, MyDataFixer asks you which one to use instead of guessing. You see every change before it is
         applied, you can undo, and your file stays on your device.
       </p>
+      <p>
+        If a whole column is written in capitals or small letters (“RAVI KUMAR”, “delhi”), there is no better spelling to copy. For that, use{" "}
+        <strong>Change case</strong>, also in the Spreadsheet Cleaner: choose the columns and Proper Case, UPPER CASE or lower case. Its Proper
+        Case knows common name patterns: “o&apos;brien” becomes “O&apos;Brien”, “mcdonald” becomes “McDonald”, “anne-marie” becomes “Anne-Marie”, and
+        small words such as “van”, “de” or “of” stay small in the middle of a name. Email addresses, web addresses and values with numbers are
+        never changed. The Error Detector points out name and city columns written this way and opens Change case for you.
+      </p>
 
       <h2>Watch out for special names</h2>
       <p>PROPER is quick, but it doesn&apos;t know names. It changes:</p>
@@ -106,8 +113,10 @@ export const fixInconsistentCapitalization: HowToGuide = {
         <li>“o&apos;brien” correctly, but “van der Berg” to “Van Der Berg”.</li>
       </ul>
       <p>
-        Check brand names, short forms and family names by hand after using PROPER. MyDataFixer avoids this problem because it only chooses
-        between spellings that already exist in your column; it doesn&apos;t invent new ones.
+        Check brand names, short forms and family names by hand after using PROPER. MyDataFixer&apos;s Fix capitalization avoids this problem
+        because it only chooses between spellings that already exist in your column. Its Change case tool handles O&apos;Brien, McDonald and “van
+        der Berg”, and keeps short forms like “HDFC” in values such as “HDFC Bank”, but it can&apos;t know every brand name either, so check its
+        preview.
       </p>
 
       <h2>Which style should you use?</h2>
@@ -141,7 +150,8 @@ export const fixInconsistentCapitalization: HowToGuide = {
       <h2>Quick summary</h2>
       <p>
         Different capitals split reports and imports. Use PROPER, UPPER or LOWER for whole columns, Find and Replace with Match case for a few
-        values, or Fix capitalization in MyDataFixer, which uses the most common spelling and asks when it&apos;s a tie.
+        values, or MyDataFixer: Fix capitalization uses the most common spelling and asks when it&apos;s a tie, and Change case writes whole
+        columns in Proper Case, UPPER CASE or lower case.
       </p>
     </>
   ),
@@ -157,6 +167,10 @@ export const fixInconsistentCapitalization: HowToGuide = {
     {
       q: "Why does PROPER change iPhone to Iphone?",
       a: "PROPER capitalises the first letter of every word and makes the rest small. Fix brand names and short forms by hand afterwards.",
+    },
+    {
+      q: "Can MyDataFixer turn RAVI KUMAR into Ravi Kumar?",
+      a: "Yes, with Change case in the Spreadsheet Cleaner: choose the column and Proper Case. You see every change before it's applied, and emails and codes are never changed.",
     },
     {
       q: "Which spelling does MyDataFixer keep?",
