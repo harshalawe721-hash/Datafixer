@@ -12,7 +12,7 @@ export const fixInconsistentCapitalization: HowToGuide = {
   summary: "The same value written in different capitals splits your filters and reports. Here's how to make it consistent.",
   updated: "2026-11-23",
   tools: ["spreadsheet-cleaner"],
-  related: ["remove-extra-spaces", "remove-duplicate-rows", "fix-dates-in-spreadsheets"],
+  related: ["change-case-proper-case", "remove-extra-spaces", "remove-duplicate-rows", "fix-dates-in-spreadsheets"],
   quickAnswer: (
     <p>
       When the same value is written as “Paris”, “paris” and “PARIS”, filters, pivot tables and duplicate checks may treat them as different. Pick

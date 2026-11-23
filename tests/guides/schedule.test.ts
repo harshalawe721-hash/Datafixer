@@ -32,3 +32,9 @@ test("indiaDate gives the India calendar date, which is ahead of UTC in the even
   assert.equal(indiaDate(at("2026-11-24T18:30:00Z")), "2026-11-25");
   assert.equal(indiaDate(at("2026-11-24T18:29:59Z")), "2026-11-24");
 });
+
+test("guide 16 (Change case) follows on 5 December 2026 at 12:30 pm", () => {
+  assert.equal(indiaDate(publishTime(15, "2026-11-20")!), "2026-12-05");
+  assert.equal(isPublished(15, "2026-11-20", at("2026-12-05T12:29:00+05:30")), false);
+  assert.equal(isPublished(15, "2026-11-20", at("2026-12-05T12:30:00+05:30")), true);
+});

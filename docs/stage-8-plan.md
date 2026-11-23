@@ -125,3 +125,7 @@ Bring visitors from Google by answering the questions people actually search for
 ### Publish time changed to 12:30 pm (owner, 20 November 2026)
 
 - Guides go live at 12:30 pm India time (was 12:30 am). Deployed after 12:30 pm on 20 November so guide 1 stayed online. Details and tests in the completion report.
+
+### Guide 16 (owner, 23 November 2026)
+
+- “How to change text to Proper Case, UPPER CASE or lower case” (`/guides/change-case-proper-case`, 1,371 words) about the Stage 9 Change case tool, scheduled as the 16th guide: **5 December 2026 at 12:30 pm** India time. Every Change case result shown in the guide was checked against the real tool. Added to the capitalization guide's related guides (shown once published). Checks: unit 404/404 (schedule: hidden at 12:29 pm, live at 12:30 pm on 5 December); with all guides shown: SEO 44/44, axe-core 0 findings light and dark, phone width 412 px; builds at 5 Dec 12:29 (15 guides) and 12:30 (16 guides) with the list, sitemap and page agreeing; live build on 23 November: smoke, a11y, seo and case pass, guide 16 answers 404.

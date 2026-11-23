@@ -23,6 +23,7 @@ import { removeEmptyRowsAndColumns } from "./remove-empty-rows-and-columns";
 import { fixInconsistentCapitalization } from "./fix-inconsistent-capitalization";
 import { checkEmailsAndPhoneNumbers } from "./check-emails-and-phone-numbers";
 import { excelRowLimit } from "./excel-row-limit";
+import { changeCaseProperCase } from "./change-case-proper-case";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -44,6 +45,8 @@ export const GUIDES: readonly HowToGuide[] = [
   fixInconsistentCapitalization,
   checkEmailsAndPhoneNumbers,
   excelRowLimit,
+  // Guide 16 (owner, 23 November 2026): published 5 December 2026 at 12:30 pm India time.
+  changeCaseProperCase,
 ];
 
 /**
