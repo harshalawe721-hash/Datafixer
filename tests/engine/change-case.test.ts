@@ -1,0 +1,145 @@
+/** Stage 9, Step 1: Change case (Proper Case, UPPER CASE, lower case) with name rules. */
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { changeCase, caseSkipReason, type CaseStyle } from "../../src/engine/fix/change-case.ts";
+
+const proper = (v: string) => {
+  const r = changeCase(v, "proper");
+  return "value" in r ? r.value : `SKIP:${r.skip}`;
+};
+
+test("Proper Case: everyday names and places", () => {
+  const cases: [string, string][] = [
+    ["ravi k", "Ravi K"],
+    ["MEERA SHAH", "Meera Shah"],
+    ["MEERA s", "Meera S"],
+    ["asha rao", "Asha Rao"],
+    ["aSHA rAO", "Asha Rao"],
+    ["DELHI", "Delhi"],
+    ["mumbai", "Mumbai"],
+    ["new delhi", "New Delhi"],
+    ["Ravi Kumar", "Ravi Kumar"],
+    ["a.k. sharma", "A.K. Sharma"],
+    ["st. louis", "St. Louis"],
+    ["pune/mumbai", "Pune/Mumbai"],
+    ["(head office)", "(Head Office)"],
+    ["ravi & sons", "Ravi & Sons"],
+    ["müller", "Müller"],
+    ["ÉLODIE DURAND", "Élodie Durand"],
+  ];
+  for (const [input, want] of cases) assert.equal(proper(input), want, input);
+});
+
+test("Proper Case: apostrophes, hyphens and Mc names", () => {
+  const cases: [string, string][] = [
+    ["o'brien", "O'Brien"],
+    ["O'BRIEN", "O'Brien"],
+    ["d'souza", "D'Souza"],
+    ["d’souza", "D’Souza"],
+    ["don't stop", "Don't Stop"],
+    ["anne-marie", "Anne-Marie"],
+    ["JEAN-PAUL SARTRE", "Jean-Paul Sartre"],
+    ["mcdonald", "McDonald"],
+    ["MCDONALD", "McDonald"],
+    ["mc", "Mc"],
+  ];
+  for (const [input, want] of cases) assert.equal(proper(input), want, input);
+});
+
+test("Proper Case: linking words stay small in the middle, Roman numerals become capitals", () => {
+  const cases: [string, string][] = [
+    ["ludwig VAN beethoven", "Ludwig van Beethoven"],
+    ["vincent van gogh", "Vincent van Gogh"],
+    ["van gogh", "Van Gogh"],
+    ["rio de janeiro", "Rio de Janeiro"],
+    ["DE SOUZA", "De Souza"],
+    ["leonardo da vinci", "Leonardo da Vinci"],
+    ["mohammed bin salman", "Mohammed bin Salman"],
+    ["henry viii", "Henry VIII"],
+    ["louis xiv", "Louis XIV"],
+    ["pope john xxiii", "Pope John XXIII"],
+    ["state bank of india", "State Bank of India"],
+    ["tata sons and co", "Tata Sons and Co"],
+    ["ravi v", "Ravi V"],
+    ["the oberoi", "The Oberoi"],
+  ];
+  for (const [input, want] of cases) assert.equal(proper(input), want, input);
+});
+
+test("Proper Case: short all-capital words are kept only next to a normally written word", () => {
+  assert.equal(proper("HDFC Bank"), "HDFC Bank");
+  assert.equal(proper("State Bank of INDIA"), "State Bank of INDIA");
+  assert.equal(proper("HDFC BANK"), "Hdfc Bank", "an all-capital value has no normal word, so everything converts");
+  assert.equal(proper("ASHA rao"), "Asha Rao");
+});
+
+test("never changed: emails, web addresses, values with digits; values without letters are returned as they are", () => {
+  for (const style of ["proper", "upper", "lower"] as CaseStyle[]) {
+    assert.deepEqual(changeCase("Asha.Rao@Example.com", style), { skip: "email" });
+    assert.deepEqual(changeCase("https://MyDataFixer.com/Guides", style), { skip: "url" });
+    assert.deepEqual(changeCase("www.Example.com", style), { skip: "url" });
+    assert.deepEqual(changeCase("mydatafixer.com", style), { skip: "url" });
+    assert.deepEqual(changeCase("MH12AB1234", style), { skip: "digits" });
+    assert.deepEqual(changeCase("sku-a12", style), { skip: "digits" });
+    assert.deepEqual(changeCase("flat 4, mg road", style), { skip: "digits" });
+    assert.deepEqual(changeCase("", style), { value: "" });
+    assert.deepEqual(changeCase("—", style), { value: "—" });
+  }
+  assert.equal(caseSkipReason("Ravi Kumar"), null);
+});
+
+test("scripts without capital letters are left unchanged", () => {
+  for (const style of ["proper", "upper", "lower"] as CaseStyle[]) {
+    assert.deepEqual(changeCase("रवि कुमार", style), { value: "रवि कुमार" });
+    assert.deepEqual(changeCase("சென்னை", style), { value: "சென்னை" });
+  }
+});
+
+test("UPPER CASE and lower case", () => {
+  assert.deepEqual(changeCase("Ravi Kumar", "upper"), { value: "RAVI KUMAR" });
+  assert.deepEqual(changeCase("o'Brien-Smith", "upper"), { value: "O'BRIEN-SMITH" });
+  assert.deepEqual(changeCase("RAVI Kumar", "lower"), { value: "ravi kumar" });
+  assert.deepEqual(changeCase("Müller", "upper"), { value: "MÜLLER" });
+});
+
+test("spaces are kept exactly (removing extra spaces is a separate tool)", () => {
+  assert.equal(proper("  ravi   kumar "), "  Ravi   Kumar ");
+  assert.equal(proper("ravi\tkumar"), "Ravi\tKumar");
+});
+
+// ---------------------------------------------------------------- generated names
+
+const FIRST = ["asha", "ravi", "meera", "kiran", "priya", "arjun", "neha", "vikram", "sneha", "rahul", "anita", "rohan", "kavya", "sanjay", "fatima", "john", "maria", "chen", "olga", "ahmed"];
+const LAST = ["rao", "kumar", "shah", "das", "iyer", "patil", "nair", "singh", "khan", "gupta", "sharma", "reddy", "smith", "garcia", "wang", "ivanova", "hassan", "fernandes", "joshi", "menon"];
+const cap = (w: string) => w[0]!.toUpperCase() + w.slice(1);
+const variants = (s: string) => [s, s.toUpperCase(), s.replace(/\b\w/g, (c) => c.toUpperCase()), [...s].map((c, i) => (i % 2 ? c.toUpperCase() : c)).join("")];
+
+test("generated: 1,600 name spellings give the right Proper Case, UPPER and lower results", () => {
+  let n = 0;
+  for (const f of FIRST)
+    for (const l of LAST) {
+      const want = `${cap(f)} ${cap(l)}`;
+      for (const input of variants(`${f} ${l}`)) {
+        assert.equal(proper(input), want, input);
+        assert.deepEqual(changeCase(input, "upper"), { value: want.toUpperCase() });
+        assert.deepEqual(changeCase(input, "lower"), { value: want.toLowerCase() });
+        n++;
+      }
+    }
+  assert.equal(n, 1600);
+});
+
+test("generated: running a style twice changes nothing more, and only capital/small letters ever change", () => {
+  const samples = [
+    ...FIRST.flatMap((f) => LAST.slice(0, 5).map((l) => `${f} ${l}`)),
+    "o'brien", "anne-marie", "mcdonald", "ludwig van beethoven", "HDFC Bank", "a.k. sharma", "rio de janeiro", "henry viii", "Élodie Durand",
+  ];
+  for (const s of samples)
+    for (const style of ["proper", "upper", "lower"] as CaseStyle[]) {
+      const once = changeCase(s, style);
+      assert.ok("value" in once, s);
+      const twice = changeCase(once.value, style);
+      assert.deepEqual(twice, once, `${style}(${s}) is stable`);
+      assert.equal(once.value.toLowerCase(), s.toLowerCase(), `${style}(${s}) only changes case`);
+    }
+});

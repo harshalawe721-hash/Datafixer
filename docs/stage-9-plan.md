@@ -1,6 +1,6 @@
 # Stage 9 plan: Proper case tool
 
-**Status:** plan prepared on 23 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves the plan and says "Start Stage 9".
+**Status:** plan prepared on 23 November 2026. **The owner approved it the same day with decisions A for all (1A–5A) and said “Start Stage 9”.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -62,3 +62,12 @@ No new dependencies. The original file is never changed; everything runs in the 
 5. **Content**
    - **A (recommended):** after the tool is built, update the homepage example to show “ravi k → Ravi K” and similar, plus the related guides.
    - B: leave the homepage and guides as they are.
+
+## Progress
+
+### Step 1: case conversion engine (23 November 2026), built and tested
+
+- `src/engine/fix/change-case.ts`: Proper Case, UPPER CASE, lower case. Proper Case rules: capital after spaces, hyphens, full stops, slashes and brackets; after an apostrophe only when one letter comes before it (O'Brien, D'Souza, but Don't); Mc names (McDonald); linking words small in the middle (van, von, der, den, de, da, del, di, du, la, bin, al, of, and, the); Roman numerals II–XXXIX after the first word in capitals (Henry VIII, Louis XIV; single letters like “V” are initials).
+- **Refinement of decision 4A (short all-capital words):** a 2–5-letter all-capital word is kept only when the same value also has a normally written word (“HDFC Bank” stays). Otherwise the whole value converts (“MEERA s” → “Meera S”, “HDFC BANK” → “Hdfc Bank”), because a value written entirely in capitals gives no sign of which words are short forms. Applying 4A literally would have left “MEERA s” as “MEERA S”.
+- **Never changed:** email addresses, web addresses, values containing digits (codes, addresses with numbers). Values without letters (and scripts without capitals such as Hindi or Tamil) come back unchanged. Spaces are kept exactly.
+- **Tests:** `tests/engine/change-case.test.ts`, 10 tests: about 50 hand-picked cases (names, places, apostrophes, hyphens, Mc, linking words, Roman numerals, short forms, emails, web addresses, codes, accented letters, Hindi and Tamil), 1,600 generated name spellings in four casings checked for all three styles, and stability checks (applying a style twice changes nothing more; only capital/small letters ever change). Unit tests 397/397; tsc and lint pass.
