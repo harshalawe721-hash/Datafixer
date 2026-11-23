@@ -93,8 +93,8 @@ test("formula errors in Excel: the formula behind each error is shown", async ()
   assert.ok(!r.issues.some((i) => i.id === "unusual-values"), "only 4 rows: too few values to judge");
 });
 
-test("all 12 check families are registered", () => {
-  assert.equal(ALL_CHECKS.length, 12);
+test("all 13 check families are registered (12 from Stage 3, plus the Stage 9 note on names in capitals or small letters)", () => {
+  assert.equal(ALL_CHECKS.length, 13);
 });
 
 test("large columns: sampled statistics, but every outlier is found (even unsampled ones)", async () => {

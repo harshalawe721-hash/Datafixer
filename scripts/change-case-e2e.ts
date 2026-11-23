@@ -136,6 +136,36 @@ async function axe(page: Page, dark: boolean) {
   await page.close();
 }
 
+// ---------------------------------------------------------------- Error Detector note (Step 3)
+{
+  console.log("\nError Detector: note on names in capitals or small letters");
+  const page: Page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  page.on("pageerror", (e: Error) => errors.push(String(e)));
+  page.on("console", (m: { type(): string; text(): string }) => m.type() === "error" && errors.push(m.text()));
+  await page.goto(`${BASE}/spreadsheet-error-detector`, { waitUntil: "networkidle" });
+  const caps = ["customer name,city,status", "RAVI KUMAR,delhi,ACTIVE", "meera shah,PUNE,ACTIVE", "Asha Rao,mumbai,ACTIVE", "KIRAN DAS,Chennai,ACTIVE"].join("\n");
+  await page.locator("input[type=file]").setInputFiles({ name: "customers.csv", mimeType: "text/csv", buffer: Buffer.from(caps) });
+  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  const note = page.locator("article", { has: page.getByRole("heading", { name: "Names written in capitals or small letters", exact: true }) });
+  check(await visible(note), "note “Names written in capitals or small letters” shown");
+  check(/customer name/.test(await note.innerText()) && /in Proper Case: “Ravi Kumar”/.test(await note.innerText()), "note names the column and shows a Proper Case example");
+  await note.getByRole("button", { name: "Change case" }).click();
+  const dlg = page.getByRole("dialog");
+  check(await visible(dlg.getByText("6 cells will change")), "opens Change case with a ready preview (6 cells)");
+  check(await dlg.getByRole("radio", { name: /Proper Case/ }).isChecked(), "Proper Case already chosen");
+  check((await dlg.getByRole("checkbox", { name: /^customer name/ }).isChecked()) && (await dlg.getByRole("checkbox", { name: /^city/ }).isChecked()), "the two flagged columns already ticked");
+  check(!(await dlg.getByRole("checkbox", { name: /^status/ }).isChecked()), "other columns not ticked");
+  await dlg.getByRole("button", { name: /^Apply fix/ }).click();
+  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  let goneNote = false;
+  for (let i = 0; i < 40 && !goneNote; i++) {
+    goneNote = (await note.count()) === 0;
+    if (!goneNote) await page.waitForTimeout(250);
+  }
+  check(goneNote, "after applying, the note is gone (re-check)");
+  await page.close();
+}
+
 await browser.close();
 rmSync(DL, { recursive: true, force: true });
 check(errors.length === 0, `no browser errors${errors.length ? `: ${errors.slice(0, 3).join(" | ")}` : ""}`);

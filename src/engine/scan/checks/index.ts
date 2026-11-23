@@ -4,7 +4,7 @@
  */
 import type { CheckFactory } from "../scan.ts";
 import { duplicateRows, emptyColumns, emptyRows, missingCells } from "./structure.ts";
-import { extraSpaces, inconsistentCase, numbersAsText } from "./text.ts";
+import { extraSpaces, inconsistentCase, numbersAsText, uniformCaseNames } from "./text.ts";
 import { inconsistentDates } from "./dates.ts";
 import { invalidEmails, invalidPhones } from "./contacts.ts";
 import { formulaErrors, unusualValues } from "./values.ts";
@@ -27,4 +27,6 @@ export const ALL_CHECKS: CheckFactory[] = [
   // Step 6: values (K–L)
   unusualValues,
   formulaErrors,
+  // Stage 9: names in capitals or small letters (a note)
+  uniformCaseNames,
 ];

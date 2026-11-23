@@ -11,7 +11,7 @@ import type { ProgressEvent } from "@/engine/types";
 import { EngineError } from "@/engine/errors";
 import { columnLetter } from "@/engine/query/query";
 
-export type FixRequest = { kind: "one"; fixId: AnyFixId } | { kind: "all"; set?: "detector" | "validator" };
+export type FixRequest = { kind: "one"; fixId: AnyFixId; initial?: Omit<FixOptions, "headerRow"> } | { kind: "all"; set?: "detector" | "validator" };
 
 type Choices = Omit<FixOptions, "headerRow">;
 
@@ -50,7 +50,8 @@ export function FixDialog({
   columnName: (index: number) => string;
   onClose: () => void;
 }) {
-  const [choices, setChoices] = useState<Choices>({});
+  const initialChoices: Choices = (request.kind === "one" && request.initial) || {};
+  const [choices, setChoices] = useState<Choices>(initialChoices);
   const [state, setState] = useState<DialogState>({ status: "loading", progress: null });
   const seq = useRef(0);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -85,10 +86,10 @@ export function FixDialog({
     run(next);
   };
 
-  // First preview (the initial state is already "loading").
+  // First preview (the initial state is already "loading"), with any choices the caller made.
   useEffect(() => {
-    run({});
-  }, [run]);
+    run(request.kind === "one" && request.initial ? request.initial : {});
+  }, [run, request]);
 
   // Focus the dialog, close on Escape, and give focus back afterwards.
   useEffect(() => {

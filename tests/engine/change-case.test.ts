@@ -237,3 +237,32 @@ test("fix: works on Excel workbooks and the corrected workbook passes the downlo
   assert.ok(out.blob.size > 0);
   assert.equal(out.summary.verification.cells > 0, true);
 });
+
+// ---------------------------------------------------------------- Step 3: detector note
+
+test("detector note: name and place columns mostly in capitals or small letters; not other columns, emails or codes", async () => {
+  const csv = [
+    "customer name,city,status,email,code",
+    "RAVI KUMAR,delhi,ACTIVE,ravi@example.com,AB12",
+    "meera shah,PUNE,ACTIVE,meera@example.com,CD34",
+    "Asha Rao,mumbai,ACTIVE,asha@example.com,EF56",
+    "KIRAN DAS,Chennai,ACTIVE,kiran@example.com,GH78",
+  ].join("\n");
+  const { core, sheet } = await openCsv(csv);
+  const scan = await core.scan(sheet, { headerRow: true }, noop);
+  const issue = scan.issues.find((i) => i.id === "change-case");
+  assert.ok(issue, "note shown");
+  assert.equal(issue.severity, "note");
+  assert.deepEqual((issue.columns ?? []).map((c) => [c.name, c.count]), [["customer name", 3], ["city", 3]], "status (not a name column), email and code are ignored");
+  assert.equal(issue.count, 6);
+  assert.match(issue.examples?.[0]?.note ?? "", /All capital letters; in Proper Case: “Ravi Kumar”/);
+});
+
+test("detector note: not shown when names are mostly written normally, or for columns without a name-like header", async () => {
+  const fine = ["name,city", "Ravi Kumar,Delhi", "Meera Shah,Pune", "ASHA RAO,Mumbai", "Kiran Das,Chennai"].join("\n");
+  const a = await openCsv(fine);
+  assert.equal((await a.core.scan(a.sheet, { headerRow: true }, noop)).issues.find((i) => i.id === "change-case"), undefined, "1 of 4 is less than half");
+  const noHeader = ["RAVI KUMAR,DELHI", "MEERA SHAH,PUNE", "ASHA RAO,MUMBAI"].join("\n");
+  const b = await openCsv(noHeader);
+  assert.equal((await b.core.scan(b.sheet, { headerRow: false }, noop)).issues.find((i) => i.id === "change-case"), undefined);
+});

@@ -7,6 +7,7 @@ import { Cat } from "../classify.ts";
 import type { CheckFactory, ColumnProfile, Finding, ScanIssue } from "../scan.ts";
 import { CellList, RowList } from "../hits.ts";
 import { columnLabel } from "./structure.ts";
+import { caseSkipReason, changeCase } from "../../fix/change-case.ts";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 const colName = (p: ColumnProfile) => p.name ?? `Column ${p.letter}`;
@@ -300,3 +301,102 @@ export const numbersAsText: CheckFactory = (ctx) => {
   };
 };
 
+
+// ---------------------------------------------------------------- Stage 9: names in capitals or small letters
+
+/** Column names that suggest names of people or places (decision 3A: only such columns are checked). */
+const NAME_LIKE_COLUMN = /\b(?:name|names|first|last|surname|customer|client|contact|person|employee|student|city|town|village|district|state|country|place|location|region)\b/i;
+
+/**
+ * Note (not a warning): name and place columns where at least half of the plain text values are
+ * written entirely in capitals or entirely in small letters. Emails, web addresses, values with
+ * numbers and values with fewer than two letters are not counted. The fix is “Change case”.
+ */
+const SKIP = 0;
+const NORMAL = 1;
+const UNIFORM = 2;
+const CASE_CACHE_LIMIT = 50_000;
+const TWO_LETTERS = /\p{L}[^]*\p{L}/u;
+const ANY_DIGIT = /\p{Nd}/u;
+
+/** SKIP (not counted), NORMAL (mixed capitals and small letters) or UNIFORM (all capitals or all small letters). */
+function classifyCase(raw: string): number {
+  if (ANY_DIGIT.test(raw) || !TWO_LETTERS.test(raw)) return SKIP;
+  const upper = raw.toUpperCase();
+  const lower = raw.toLowerCase();
+  if (upper === lower) return SKIP; // no capital letters in this script
+  if (raw !== upper && raw !== lower) return raw.includes("@") ? SKIP : NORMAL;
+  return caseSkipReason(raw) ? SKIP : UNIFORM; // emails and web addresses are usually all small letters
+}
+
+export const uniformCaseNames: CheckFactory = (ctx) => {
+  const seen = new Map<string, number>();
+  const watched = ctx.profiles.filter((p) => p.name && NAME_LIKE_COLUMN.test(p.name)).map((p) => p.index);
+  const watch = new Set(watched);
+  const checked = new Float64Array(ctx.columnCount);
+  const flaggedCount = new Float64Array(ctx.columnCount);
+  // One capped list per watched column (memory stays bounded on very large files; counts stay exact).
+  const hits = new Map<number, CellList>(watched.map((c) => [c, new CellList()]));
+  return {
+    cell(r, c, cat, v) {
+      if (cat !== Cat.Text || !watch.has(c)) return;
+      const raw = v as string;
+      let kind = seen.get(raw);
+      if (kind === undefined) {
+        kind = classifyCase(raw);
+        if (seen.size < CASE_CACHE_LIMIT) seen.set(raw, kind);
+      }
+      if (kind === SKIP) return;
+      checked[c]!++;
+      if (kind === UNIFORM) {
+        flaggedCount[c]!++;
+        hits.get(c)!.add(cellKey(r, c));
+      }
+    },
+    finish(): Finding[] {
+      const cols = watched.filter((c) => flaggedCount[c]! >= 2 && flaggedCount[c]! * 2 >= checked[c]!);
+      if (cols.length === 0) return [];
+      const parts = cols.map((c) => hits.get(c)!.toArray());
+      const merged = new Float64Array(parts.reduce((n, a) => n + a.length, 0));
+      let at = 0;
+      for (const a of parts) {
+        merged.set(a, at);
+        at += a.length;
+      }
+      merged.sort(); // row-major order, as every other check reports cells
+      const cells = new CellList();
+      for (const key of merged) cells.add(key);
+      const arr = cells.toArray();
+      const g = ctx.sheet.grid;
+      const examples: ScanIssue["examples"] = [];
+      for (const key of arr) {
+        if (examples.length >= 5) break;
+        const row = Math.floor(key / MAX_COLUMNS);
+        const col = key % MAX_COLUMNS;
+        const value = String(g.get(row, col)).trim();
+        const proper = changeCase(value, "proper");
+        const style = value === value.toUpperCase() ? "All capital letters" : "All small letters";
+        examples.push({ row, col, value, note: "value" in proper ? `${style}; in Proper Case: “${proper.value}”` : style });
+      }
+      const total = cols.reduce((n, c) => n + flaggedCount[c]!, 0);
+      return [
+        {
+          issue: {
+            id: "change-case",
+            severity: "note",
+            title: "Names written in capitals or small letters",
+            count: total,
+            unit: "cells",
+            explanation: `${plural(total, "value")} in name or place ${cols.length === 1 ? "column" : "columns"} ${cols.map((c) => `“${colName(ctx.profiles[c]!)}”`).join(", ")} ${total === 1 ? "is" : "are"} written entirely in capitals or entirely in small letters. This isn't an error, but names usually look tidier in Proper Case (Ravi Kumar, New Delhi).`,
+            howToFix:
+              "Use “Change case” to write the column in Proper Case and check the preview for special spellings (iPhone, HDFC, McDonald). In Excel or Google Sheets, =PROPER(A2) in a helper column does the same.",
+            columns: cols.map((index) => ({ index, name: colName(ctx.profiles[index]!), count: flaggedCount[index]! })),
+            examples,
+          },
+          rows: rowsOf(arr),
+          cells: arr,
+        },
+      ];
+    },
+  };
+};

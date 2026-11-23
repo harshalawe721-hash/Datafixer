@@ -210,7 +210,18 @@ export function ScanPanel({ api, variant = "detector" }: { api: ToolApi; variant
           active={api.activeIssueId === issue.id}
           onView={api.viewIssue}
           fix={
-            offered(issue.id) ? { label: FIX_LABELS[issue.id as FixId], onFix: () => setFixRequest({ kind: "one", fixId: issue.id as FixId }) } : undefined
+            offered(issue.id)
+              ? {
+                  label: FIX_LABELS[issue.id as FixId],
+                  onFix: () =>
+                    setFixRequest({
+                      kind: "one",
+                      fixId: issue.id as FixId,
+                      // Stage 9: the names note opens Change case with Proper Case and its columns already chosen.
+                      initial: issue.id === "change-case" ? { caseStyle: "proper", caseColumns: (issue.columns ?? []).map((c) => c.index) } : undefined,
+                    }),
+                }
+              : undefined
           }
         />
       ))}
