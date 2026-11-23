@@ -23,7 +23,8 @@ import { duplicateGroups, emptyColumnProfiles, rowFingerprints } from "../scan/c
 import { columnLetter } from "../query/query.ts";
 import type { ChangeRequest } from "../edit/session.ts";
 import { invalidPhones } from "../scan/checks/contacts.ts";
-import { planCase, planDates, planPhones } from "./choice-fixes.ts";
+import { planCase, planChangeCase, planDates, planPhones } from "./choice-fixes.ts";
+import type { CaseStyle } from "./change-case.ts";
 
 export { SAFE_FIX_IDS, CHOICE_FIX_IDS, FIX_IDS, FIX_LABELS, type FixId } from "./fix-ids.ts";
 import { FIX_LABELS, type AnyFixId, type FixId } from "./fix-ids.ts";
@@ -63,6 +64,14 @@ export type FixChoice =
       layouts: { template: string; example: string; count: number }[];
       suggested: string;
       chosen: string | null;
+    }
+  | {
+      /** Stage 9: Change case. Columns that contain text, and the user's choices. */
+      kind: "case-style";
+      columns: { index: number; name: string; example: string }[];
+      chosenColumns: number[];
+      styles: { id: CaseStyle; label: string; example: string }[];
+      chosenStyle: CaseStyle | null;
     };
 
 export interface FixOptions {
@@ -81,6 +90,9 @@ export interface FixOptions {
   dateChoices?: Record<number, { target: DateTarget; order?: "dmy" | "mdy" }>;
   /** Phone columns (view index) → layout template (from the preview's choices). */
   phoneChoices?: Record<number, string>;
+  /** Stage 9, Change case: the style and the columns (view indexes) to change. */
+  caseStyle?: CaseStyle;
+  caseColumns?: number[];
   /**
    * Excel files where removing rows/columns would break references (S2): clear
    * the cells instead, so every position stays where it is.
@@ -228,6 +240,8 @@ export async function planFix(sheet: SheetModel, fixId: FixId, options: FixOptio
       return planDates(ctx, options, !options.textOnly && typeof sheet.grid.formatNumber === "function");
     case "phone-formats":
       return planPhones(ctx, options, findings.find((f) => f.issue.id === "phone-formats"));
+    case "change-case":
+      return planChangeCase(ctx, options);
     case "numbers-as-text":
       return planNumbers(ctx, findings.find((f) => f.issue.id === "numbers-as-text")?.cells ?? null, findings.find((f) => f.issue.id === "numbers-as-text")?.issue.count ?? 0, options.textOnly ?? false);
     default:

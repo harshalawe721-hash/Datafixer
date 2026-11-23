@@ -510,6 +510,49 @@ function ChoiceList({ choices, onChoose }: { choices: FixChoice[]; onChoose: (c:
             </fieldset>
           );
         }
+        if (ch.kind === "case-style") {
+          const toggle = (index: number, on: boolean) =>
+            onChoose({ caseColumns: on ? [...ch.chosenColumns, index].sort((a, b) => a - b) : ch.chosenColumns.filter((c) => c !== index) });
+          return (
+            <div key="case-style" className="space-y-3">
+              <fieldset className="rounded-xl border border-line px-4 py-3">
+                <legend className="px-1 text-sm font-semibold">Style</legend>
+                <div className="mt-1 flex flex-wrap gap-x-5">
+                  {ch.styles.map((st) => (
+                    <label key={st.id} className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm">
+                      <input type="radio" className="size-5 accent-[var(--primary)]" name="case-style" checked={ch.chosenStyle === st.id} onChange={() => onChoose({ caseStyle: st.id })} />
+                      <span className="font-medium">{st.label}</span>
+                      <span className="text-muted">({st.example})</span>
+                    </label>
+                  ))}
+                </div>
+                {ch.chosenStyle === "proper" && (
+                  <p className="mt-1 text-xs text-muted">
+                    Proper Case can&apos;t know every special spelling: check names such as iPhone, HDFC or MacDonald in the changes below.
+                  </p>
+                )}
+              </fieldset>
+              <fieldset className="rounded-xl border border-line px-4 py-3">
+                <legend className="px-1 text-sm font-semibold">Columns</legend>
+                <p className="text-xs text-muted">Emails, web addresses and values with numbers are never changed.</p>
+                <div className="mt-1 space-y-0.5">
+                  {ch.columns.map((c) => (
+                    <label key={c.index} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="size-5 accent-[var(--primary)]"
+                        checked={ch.chosenColumns.includes(c.index)}
+                        onChange={(e) => toggle(c.index, e.target.checked)}
+                      />
+                      <span className="font-medium">{c.name}</span>
+                      {c.example && <span className="truncate text-muted">(e.g. {c.example})</span>}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          );
+        }
         return (
           <fieldset key={ch.column} className="rounded-xl border border-line px-4 py-3">
             <legend className="px-1 text-sm font-semibold">Phone layout for “{ch.columnName}”</legend>

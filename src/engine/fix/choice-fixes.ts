@@ -23,6 +23,7 @@ import { FAMILY_LABEL, ORDER_FAMILIES, familyOf, orderParts, type Family } from 
 import { EXTENSION, phoneProblem } from "../scan/checks/contacts.ts";
 import type { FixChoice, FixOptions, FixPlan, FixPreview, DateTarget } from "./fixes.ts";
 import { FIX_LABELS, type FixId } from "./fix-ids.ts";
+import { CASE_SKIP_REASONS, CASE_STYLE_LABELS, changeCase, type CaseStyle } from "./change-case.ts";
 
 const MAX_EXAMPLES = 20;
 const MAX_CHOICES = 200;
@@ -573,5 +574,75 @@ export function planPhones(ctx: ScanContext, options: FixOptions, phoneFinding: 
     ch,
     skips,
     choices,
+  );
+}
+
+// ---------------------------------------------------------------- change case (Stage 9)
+
+const CASE_STYLE_EXAMPLES: Record<CaseStyle, string> = { proper: "Ravi Kumar", upper: "RAVI KUMAR", lower: "ravi kumar" };
+
+/**
+ * Change case: the user picks the columns and a style (Proper Case, UPPER CASE, lower case).
+ * Only text cells in the chosen columns change; emails, web addresses, values with digits and
+ * formula cells are left alone and counted with the reason. Nothing changes until both a style
+ * and at least one column are chosen.
+ */
+export function planChangeCase(ctx: ScanContext, options: FixOptions): FixPlan {
+  const g = ctx.sheet.grid;
+  const formulas = ctx.sheet.formulas;
+  const columns = ctx.profiles
+    .filter((p) => p.counts.text > 0)
+    .map((p) => {
+      let example = "";
+      for (let r = ctx.startRow; r < ctx.rowCount && !example; r++) {
+        const v = g.get(r, p.index);
+        if (typeof v === "string" && /\p{L}/u.test(v) && v.trim()) example = v.trim().slice(0, 40);
+      }
+      return { index: p.index, name: colName(p), example };
+    });
+  const valid = new Set(columns.map((c) => c.index));
+  const chosenColumns = (options.caseColumns ?? []).filter((c) => valid.has(c));
+  const style = options.caseStyle ?? null;
+  const choice: FixChoice = {
+    kind: "case-style",
+    columns,
+    chosenColumns,
+    styles: (Object.keys(CASE_STYLE_LABELS) as CaseStyle[]).map((id) => ({ id, label: CASE_STYLE_LABELS[id], example: CASE_STYLE_EXAMPLES[id] })),
+    chosenStyle: style,
+  };
+  const ch = newChanges();
+  const skips = new Skips();
+  if (!style || chosenColumns.length === 0) {
+    const how = columns.length ? "Choose a style and at least one column to see the changes." : "This sheet has no text columns to change.";
+    return finishPlan("change-case", `Changes the capital and small letters of text in the columns you choose; nothing else in the cells changes. ${how}`, ch, skips, [choice]);
+  }
+  let formulaSkipped = 0;
+  for (const c of chosenColumns) {
+    for (let r = ctx.startRow; r < ctx.rowCount; r++) {
+      const v = g.get(r, c);
+      if (typeof v !== "string" || !v.trim()) continue;
+      const key = cellKey(r, c);
+      if (formulas.size && formulas.has(key)) {
+        formulaSkipped++;
+        continue;
+      }
+      const res = changeCase(v, style);
+      if ("skip" in res) {
+        skips.add(CASE_SKIP_REASONS[res.skip]);
+        continue;
+      }
+      if (res.value === v) continue;
+      ch.keys.push(key);
+      ch.values.push(res.value);
+      if (ch.before.length < MAX_EXAMPLES) ch.before.push(v);
+    }
+  }
+  skips.add(FORMULA_CELLS_SKIPPED, formulaSkipped);
+  return finishPlan(
+    "change-case",
+    `Writes ${plural(ch.keys.length, "cell")} in ${CASE_STYLE_LABELS[style]}. Only capital and small letters change; spaces, punctuation and letters stay the same.`,
+    ch,
+    skips,
+    [choice],
   );
 }

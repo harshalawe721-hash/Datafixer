@@ -229,6 +229,7 @@ const TOOL_HINTS: Record<FixId, string> = {
   "inconsistent-case": "The same value written as “Paris”, “paris” or “PARIS”",
   "inconsistent-dates": "Dates in mixed formats (you choose the format)",
   "phone-formats": "Phone numbers in mixed layouts (you choose the layout)",
+  "change-case": "Write names and text in Proper Case, UPPER CASE or lower case (you choose the columns)",
 };
 
 function CleaningTools({ result, onFix }: { result: ScanResult; onFix: (fixId: FixId) => void }) {
@@ -239,13 +240,19 @@ function CleaningTools({ result, onFix }: { result: ScanResult; onFix: (fixId: F
       <ul className="mt-3 divide-y divide-line">
         {(FIX_IDS as readonly FixId[]).map((id) => {
           const n = result.issues.find((i) => i.id === id)?.count ?? 0;
+          // Change case isn't triggered by a problem: it is offered whenever the sheet has text.
+          const always = id === "change-case" && result.profiles.some((p) => p.counts.text > 0);
           return (
             <li key={id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="font-medium">{FIX_LABELS[id]}</p>
                 <p className="text-sm text-muted">{TOOL_HINTS[id]}</p>
               </div>
-              {n > 0 ? (
+              {always ? (
+                <Button size="sm" className="h-10 shrink-0" onClick={() => onFix(id)}>
+                  <Wand2 className="size-4" aria-hidden="true" /> Choose columns · Preview<span className="sr-only"> ({FIX_LABELS[id]})</span>
+                </Button>
+              ) : n > 0 ? (
                 <Button size="sm" className="h-10 shrink-0" onClick={() => onFix(id)}>
                   <Wand2 className="size-4" aria-hidden="true" /> {n.toLocaleString("en-US")} found · Preview<span className="sr-only"> ({FIX_LABELS[id]})</span>
                 </Button>

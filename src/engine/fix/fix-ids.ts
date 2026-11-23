@@ -5,7 +5,7 @@
 /** Fixes that need no choice (Step 2). */
 export const SAFE_FIX_IDS = ["extra-spaces", "duplicate-rows", "empty-rows", "empty-columns", "numbers-as-text"] as const;
 /** Fixes that may need the user's choice (Step 3). */
-export const CHOICE_FIX_IDS = ["inconsistent-case", "inconsistent-dates", "phone-formats"] as const;
+export const CHOICE_FIX_IDS = ["inconsistent-case", "inconsistent-dates", "phone-formats", "change-case"] as const;
 export const FIX_IDS = [...SAFE_FIX_IDS, ...CHOICE_FIX_IDS] as const;
 export type FixId = (typeof FIX_IDS)[number];
 
@@ -18,6 +18,7 @@ export const FIX_LABELS: Record<FixId, string> = {
   "inconsistent-case": "Fix capitalization",
   "inconsistent-dates": "Make date formats consistent",
   "phone-formats": "Make phone number layouts consistent",
+  "change-case": "Change case",
 };
 
 /** Stage 5: CSV Validator repairs (CSV files only). */

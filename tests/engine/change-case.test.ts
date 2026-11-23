@@ -143,3 +143,97 @@ test("generated: running a style twice changes nothing more, and only capital/sm
       assert.equal(once.value.toLowerCase(), s.toLowerCase(), `${style}(${s}) only changes case`);
     }
 });
+
+// ---------------------------------------------------------------- Step 2: the fix
+
+import { EngineCore } from "../../src/engine/core.ts";
+import { planFix } from "../../src/engine/fix/fixes.ts";
+import { ArrayGrid } from "../../src/engine/grid.ts";
+import { cellKey, createSheet, type CellValue } from "../../src/engine/types.ts";
+
+const noop = () => {};
+const CSV = [
+  "name,city,email,code",
+  "ravi k,DELHI,Ravi.K@Example.com,MH12AB1234",
+  "MEERA s, mumbai,meera@example.com,sku-a12",
+  "Asha Rao,Pune,asha@example.com,none",
+  "o'brien,new delhi,,",
+].join("\n");
+
+async function openCsv(text = CSV) {
+  const core = new EngineCore();
+  const sheet = (await core.open(new File([text], "people.csv"), "csv", {}, noop)).activeSheet;
+  return { core, sheet };
+}
+
+test("fix: nothing changes until a style and a column are chosen; the choice lists the text columns", async () => {
+  const { core, sheet } = await openCsv();
+  const p = await core.previewFix(sheet, "change-case", { headerRow: true }, noop);
+  assert.equal(p.cellsChanged, 0);
+  assert.equal(p.choices.length, 1);
+  const ch = p.choices[0]!;
+  assert.equal(ch.kind, "case-style");
+  if (ch.kind !== "case-style") return;
+  assert.deepEqual(ch.columns.map((c) => c.name), ["name", "city", "email", "code"]);
+  assert.deepEqual(ch.styles.map((s) => s.id), ["proper", "upper", "lower"]);
+  assert.deepEqual(p.skipped, []);
+  assert.match(p.description, /Choose a style and at least one column/);
+  const onlyStyle = await core.previewFix(sheet, "change-case", { headerRow: true, caseStyle: "proper" }, noop);
+  assert.equal(onlyStyle.cellsChanged, 0);
+});
+
+test("fix: Proper Case on the chosen columns only; emails and codes are left alone with the reason; undo restores", async () => {
+  const { core, sheet } = await openCsv();
+  const p = await core.previewFix(sheet, "change-case", { headerRow: true, caseStyle: "proper", caseColumns: [0, 1, 2, 3] }, noop);
+  assert.deepEqual(
+    p.examples.map((e) => [e.row, e.col, e.before, e.after]),
+    [
+      [1, 0, "ravi k", "Ravi K"],
+      [2, 0, "MEERA s", "Meera S"],
+      [4, 0, "o'brien", "O'Brien"],
+      [1, 1, "DELHI", "Delhi"],
+      [2, 1, " mumbai", " Mumbai"],
+      [4, 1, "new delhi", "New Delhi"],
+      [3, 3, "none", "None"],
+    ],
+  );
+  assert.deepEqual(p.skipped, [
+    { reason: "Email addresses are never changed.", count: 3 },
+    { reason: "Values that contain numbers (such as codes) are never changed.", count: 2 },
+  ]);
+  core.applyFix(sheet, p.token);
+  const text = async () => (await (await core.exportCsv(sheet, noop)).blob.text()).replace(/^﻿/, "");
+  assert.match(await text(), /Ravi K,Delhi,Ravi\.K@Example\.com,MH12AB1234/);
+  core.undo(sheet);
+  assert.match(await text(), /ravi k,DELHI,Ravi\.K@Example\.com,MH12AB1234/);
+  const onlyCity = await core.previewFix(sheet, "change-case", { headerRow: true, caseStyle: "upper", caseColumns: [1] }, noop);
+  assert.deepEqual(onlyCity.examples.map((e) => e.after), [" MUMBAI", "PUNE", "NEW DELHI"]);
+});
+
+test("fix: formula cells and the header row are never changed", async () => {
+  const rows: CellValue[][] = [["name"], ["ravi k"], ["asha rao"]];
+  const s = createSheet("S");
+  s.grid = new ArrayGrid(rows);
+  s.columnCount = 1;
+  s.formulas.set(cellKey(2, 0), 'LOWER("Asha Rao")');
+  const p = (await planFix(s, "change-case", { headerRow: true, caseStyle: "upper", caseColumns: [0] })).preview;
+  assert.deepEqual(p.examples.map((e) => [e.row, e.after]), [[1, "RAVI K"]]);
+  assert.deepEqual(p.skipped, [{ reason: "Formula cells are never changed automatically. Edit them by hand if needed.", count: 1 }]);
+});
+
+test("fix: works on Excel workbooks and the corrected workbook passes the download check", async () => {
+  const { readFileSync } = await import("node:fs");
+  const name = "2-problems.xlsx";
+  const core = new EngineCore();
+  const sheet = (await core.open(new File([readFileSync(new URL(`../fixtures/scan/${name}`, import.meta.url))], name), "xlsx", {}, noop)).activeSheet;
+  const first = await core.previewFix(sheet, "change-case", { headerRow: true }, noop);
+  const ch = first.choices[0]!;
+  assert.ok(ch.kind === "case-style" && ch.columns.length > 0, "text columns are offered");
+  if (ch.kind !== "case-style") return;
+  const p = await core.previewFix(sheet, "change-case", { headerRow: true, caseStyle: "upper", caseColumns: ch.columns.map((c) => c.index) }, noop);
+  assert.ok(p.cellsChanged > 0, `${p.cellsChanged} cells change`);
+  core.applyFix(sheet, p.token);
+  const out = await core.exportXlsx(sheet, noop); // reads the new workbook back and compares every cell
+  assert.ok(out.blob.size > 0);
+  assert.equal(out.summary.verification.cells > 0, true);
+});
