@@ -145,7 +145,15 @@ async function axe(page: Page, dark: boolean) {
   await page.goto(`${BASE}/spreadsheet-error-detector`, { waitUntil: "networkidle" });
   const caps = ["customer name,city,status", "RAVI KUMAR,delhi,ACTIVE", "meera shah,PUNE,ACTIVE", "Asha Rao,mumbai,ACTIVE", "KIRAN DAS,Chennai,ACTIVE"].join("\n");
   await page.locator("input[type=file]").setInputFiles({ name: "customers.csv", mimeType: "text/csv", buffer: Buffer.from(caps) });
-  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  try {
+    await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  } catch (e) {
+    // Diagnostics for a rare timeout seen once (23 November 2026) and not reproduced since.
+    const shot = path.join(tmpdir(), "change-case-detector-timeout.png");
+    await page.screenshot({ path: shot, fullPage: true });
+    console.log(`DIAGNOSTICS (screenshot ${shot}):\n${(await page.locator("main").innerText()).slice(0, 1500)}\nBrowser errors: ${errors.join(" | ") || "none"}`);
+    throw e;
+  }
   const note = page.locator("article", { has: page.getByRole("heading", { name: "Names written in capitals or small letters", exact: true }) });
   check(await visible(note), "note “Names written in capitals or small letters” shown");
   check(/customer name/.test(await note.innerText()) && /in Proper Case: “Ravi Kumar”/.test(await note.innerText()), "note names the column and shows a Proper Case example");
