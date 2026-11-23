@@ -18,11 +18,13 @@ import {
   UserX,
   Eye,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Card, IconBadge } from "@/components/ui/Card";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { HeroActions, HeroDropzone } from "@/components/home/HeroUpload";
+import { BeforeAfter } from "@/components/home/BeforeAfter";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { tools } from "@/config/tools";
 import { siteConfig, absoluteUrl } from "@/config/site";
@@ -138,7 +140,11 @@ export default function HomePage() {
             <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
               Find and Fix Spreadsheet Problems in <span className="text-primary">Seconds.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted">
+            <p className="mt-5 flex max-w-xl items-start gap-2.5 text-lg leading-relaxed font-medium text-foreground">
+              <ShieldCheck className="mt-1 size-5 shrink-0 text-success" aria-hidden="true" />
+              <span>Your file never leaves your device. Nothing is uploaded.</span>
+            </p>
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-pretty text-muted">
               Clean your Excel and CSV files, detect hidden data issues, and get organized spreadsheets without
               complicated software.
             </p>
@@ -149,6 +155,9 @@ export default function HomePage() {
           </div>
         </Container>
       </section>
+
+      {/* Before/after example */}
+      <BeforeAfter />
 
       {/* What can you fix */}
       <section aria-labelledby="fix-heading" className="py-20 sm:py-24">
