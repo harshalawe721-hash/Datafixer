@@ -30,7 +30,7 @@ No new dependencies. Files are still processed only in the browser.
 | Earlier suites | ✅ smoke 117, engine 62, detector 33, fix 126, validator 106, converter 45, a11y 71, seo 32 (43 with all guides shown), large 64 |
 | Homepage | ✅ 375 px and 1280 px, light and dark: no sideways scrolling, axe-core 0 findings |
 | Speed of the new detector check | ✅ worst case measured (500,000 rows, every name different, two name columns all in capitals): about 0.5 s more per million name cells; other columns cost nothing |
-| Large files, fixing (`test:export-perf`) | ⏳ running at the time of writing; the result is added here when it finishes |
+| Large files, fixing (`test:export-perf`) | ✅ all ok, originals unchanged, downloads verified. 50 MB: check 4.4 s, Fix all 14.2 s; 100 MB: 8.4 s, 28.4 s; 150 MB: check 13.5 s, Fix all 40.6 s, download 8.3 s, peak extra memory 993 MB. Stage 4 measured 9.9 s and 37.2 s at 150 MB (Stage 7: Fix all 31.5 s). An A/B on the same data shape (1.2M rows, three runs each) gave 6.0/5.9/6.1 s with the new check and 5.7/6.5/5.2 s without it, so the difference comes mainly from run-to-run speed of this machine; “Fix all” doesn't run the new check. |
 
 **Failed:** one intermittent failure in the final run: `test:case` timed out once at the Error Detector step (the check results didn't appear within 30 s after the file was chosen). Reproduced once more in 3 runs right after `test:seo`, then not in 17 further runs, including 3 full a11y → seo → case rounds. The cause is not proven; the likely explanation is the test choosing the file a moment before the page finished starting up. The test now saves a screenshot and the page text if it ever happens again.
 
