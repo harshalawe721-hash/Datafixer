@@ -1,6 +1,6 @@
 # Stage 9 plan: Proper case tool
 
-**Status:** plan prepared on 23 November 2026. **The owner approved it the same day with decisions A for all (1A–5A) and said “Start Stage 9”.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 23 November 2026. **The owner approved it the same day with decisions A for all (1A–5A) and said “Start Stage 9”.** Progress is recorded under “Progress” below. **The owner approved Stage 9 on 23 November 2026; the stage is complete.**
 
 ## Why
 

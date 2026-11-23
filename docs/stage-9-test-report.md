@@ -2,7 +2,7 @@
 
 **Date:** 23 November 2026
 
-**Status:** ⏳ **Built and tested; awaiting the owner's approval.** Stage 9 is not complete until the owner approves it.
+**Status:** ✅ **COMPLETE.** Approved by the owner on 23 November 2026.
 
 The owner approved the plan (`docs/stage-9-plan.md`) on 23 November 2026 with decisions **A for all**: the tool in the Spreadsheet Cleaner (1A); Proper Case, UPPER CASE and lower case (2A); an Error Detector hint (3A); smart name rules (4A); homepage and guides updated afterwards (5A).
 
@@ -51,4 +51,4 @@ No new dependencies. Files are still processed only in the browser.
 
 ## Approval
 
-Stage 9 will be marked complete only after the owner approves it.
+The owner approved Stage 9 on 23 November 2026 (“Stage 9 approved”).
