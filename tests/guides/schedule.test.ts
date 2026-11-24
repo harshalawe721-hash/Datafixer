@@ -38,3 +38,10 @@ test("guide 16 (Change case) follows on 5 December 2026 at 12:30 pm", () => {
   assert.equal(isPublished(15, "2026-11-20", at("2026-12-05T12:29:00+05:30")), false);
   assert.equal(isPublished(15, "2026-11-20", at("2026-12-05T12:30:00+05:30")), true);
 });
+
+test("guides 17–26 follow daily: guide 17 on 6 December, guide 26 on 15 December 2026 at 12:30 pm", () => {
+  assert.equal(indiaDate(publishTime(16, "2026-11-20")!), "2026-12-06");
+  assert.equal(indiaDate(publishTime(25, "2026-11-20")!), "2026-12-15");
+  assert.equal(isPublished(25, "2026-11-20", at("2026-12-15T12:29:00+05:30")), false);
+  assert.equal(isPublished(25, "2026-11-20", at("2026-12-15T12:30:00+05:30")), true);
+});

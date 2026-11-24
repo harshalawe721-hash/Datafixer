@@ -24,6 +24,16 @@ import { fixInconsistentCapitalization } from "./fix-inconsistent-capitalization
 import { checkEmailsAndPhoneNumbers } from "./check-emails-and-phone-numbers";
 import { excelRowLimit } from "./excel-row-limit";
 import { changeCaseProperCase } from "./change-case-proper-case";
+import { csvVsExcel } from "./csv-vs-excel";
+import { fixWrongNumberOfColumns } from "./fix-wrong-number-of-columns";
+import { fixBrokenQuotesInCsv } from "./fix-broken-quotes-in-csv";
+import { changeCsvSeparator } from "./change-csv-separator";
+import { utf8BomExplained } from "./utf-8-bom-explained";
+import { stopExcelChangingData } from "./stop-excel-changing-data";
+import { fixColumnNames } from "./fix-column-names";
+import { findUnusualValues } from "./find-unusual-values";
+import { standardisePhoneNumbers } from "./standardise-phone-numbers";
+import { csvFormulaInjection } from "./csv-formula-injection";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -47,6 +57,17 @@ export const GUIDES: readonly HowToGuide[] = [
   excelRowLimit,
   // Guide 16 (owner, 23 November 2026): published 5 December 2026 at 12:30 pm India time.
   changeCaseProperCase,
+  // Guides 17–26 (owner, 24 November 2026): 6–15 December 2026, one a day at 12:30 pm India time.
+  csvVsExcel,
+  fixWrongNumberOfColumns,
+  fixBrokenQuotesInCsv,
+  changeCsvSeparator,
+  utf8BomExplained,
+  stopExcelChangingData,
+  fixColumnNames,
+  findUnusualValues,
+  standardisePhoneNumbers,
+  csvFormulaInjection,
 ];
 
 /**
