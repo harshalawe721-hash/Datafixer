@@ -52,9 +52,9 @@ export const removeEmptyRowsAndColumns: HowToGuide = {
         caption="Row 3 is empty, so a sort may stop at row 2"
         headers={["Row", "name", "city", "amount"]}
         rows={[
-          ["2", "Asha Patil", "Pune", "500"],
+          ["2", "Asha Patil", "Lyon", "500"],
           ["3", "", "", ""],
-          ["4", "Ravi Kumar", "Delhi", "300"],
+          ["4", "Ravi Kumar", "Berlin", "300"],
         ]}
       />
 

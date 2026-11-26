@@ -37,8 +37,8 @@ export const csvOpensInOneColumn: HowToGuide = {
       <ul>
         <li>
           <strong>Different country settings.</strong> In countries that write decimals with a comma (3,5 instead of 3.5), such as Germany,
-          France, Italy, Spain and Brazil, computers usually expect a semicolon between values. Computers set up for India, the US or the UK expect
-          a comma. So a file made in Germany often opens in one column in India, and the other way round.
+          France, Italy, Spain and Brazil, computers usually expect a semicolon between values. Computers set up for the US, the UK, Canada and many other
+          countries expect a comma. So a file made in Germany often opens in one column on a computer in the US, and the other way round.
         </li>
         <li>
           <strong>Tabs or pipes in a .csv file.</strong> Some programs save values separated by tabs or by the pipe sign (|) but still name the
@@ -46,18 +46,18 @@ export const csvOpensInOneColumn: HowToGuide = {
         </li>
         <li>
           <strong>Whole lines in quotes.</strong> Some exports put quotation marks around every line, for example{" "}
-          <code>&quot;1001,Asha,Pune&quot;</code>. The quotes tell Excel that the commas are part of the value, so the whole line stays in one
+          <code>&quot;1001,Asha,Lyon&quot;</code>. The quotes tell Excel that the commas are part of the value, so the whole line stays in one
           cell.
         </li>
       </ul>
 
       <h2>Example</h2>
       <p>This file was saved on a computer in Germany. It uses semicolons between values:</p>
-      <FileLines caption="sales.csv as plain text" lines={["id;name;city", "1001;Asha Patil;Pune", "1002;Ben Müller;Berlin"]} />
+      <FileLines caption="sales.csv as plain text" lines={["id;name;city", "1001;Asha Patil;Lyon", "1002;Ben Müller;Berlin"]} />
       <p>Double-clicked on a computer that expects commas, Excel finds no commas, so each line stays in column A:</p>
-      <ExampleTable caption="What Excel shows" headers={["A"]} rows={[["id;name;city"], ["1001;Asha Patil;Pune"], ["1002;Ben Müller;Berlin"]]} />
+      <ExampleTable caption="What Excel shows" headers={["A"]} rows={[["id;name;city"], ["1001;Asha Patil;Lyon"], ["1002;Ben Müller;Berlin"]]} />
       <p>Opened with the semicolon as the separator, the same file shows three proper columns:</p>
-      <ExampleTable caption="What it should look like" headers={["id", "name", "city"]} rows={[["1001", "Asha Patil", "Pune"], ["1002", "Ben Müller", "Berlin"]]} />
+      <ExampleTable caption="What it should look like" headers={["id", "name", "city"]} rows={[["1001", "Asha Patil", "Lyon"], ["1002", "Ben Müller", "Berlin"]]} />
 
       <h2>Fix it in Excel</h2>
       <ExcelNote />

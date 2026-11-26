@@ -27,8 +27,8 @@ export const fixBrokenQuotesInCsv: HowToGuide = {
         caption="Quote rules in CSV"
         headers={["Value", "Written in the file as", "Why"]}
         rows={[
-          ["Pune", "Pune", "no special characters, no quotes needed"],
-          ["Shop 4, MG Road", "\"Shop 4, MG Road\"", "contains a comma"],
+          ["Lyon", "Lyon", "no special characters, no quotes needed"],
+          ["Shop 4, Main Street", "\"Shop 4, Main Street\"", "contains a comma"],
           ["He said \"hi\"", "\"He said \"\"hi\"\"\"", "a quote inside is written twice"],
           ["Line one + line two", "\"Line one(line break)line two\"", "contains a line break"],
         ]}
@@ -45,7 +45,7 @@ export const fixBrokenQuotesInCsv: HowToGuide = {
       <p>
         A quote appears in the middle of a value that isn&apos;t wrapped in quotes, like <code>Monitor 5&quot; screen</code>. Different programs
         read these differently: one keeps the quote, another splits or joins values. (When text follows a closing quote, as in{" "}
-        <code>&quot;Pune&quot;x</code>, many readers lose track of where the value ends, which looks like the first kind.)
+        <code>&quot;Lyon&quot;x</code>, many readers lose track of where the value ends, which looks like the first kind.)
       </p>
 
       <h2>Example</h2>

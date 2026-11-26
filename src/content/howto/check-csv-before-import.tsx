@@ -31,7 +31,7 @@ export const checkCsvBeforeImport: HowToGuide = {
       <ul>
         <li>
           <strong>Rows with too many or too few values.</strong> Usually a comma inside a value that wasn&apos;t put in quotes, like an address
-          “Shop 4, MG Road”.
+          “Shop 4, Main Street”.
         </li>
         <li>
           <strong>Broken quotes.</strong> A quotation mark that opens but never closes makes the program read the rest of the file as one value.
@@ -56,11 +56,11 @@ export const checkCsvBeforeImport: HowToGuide = {
       <h2>Example</h2>
       <FileLines
         caption="customers.csv: line 3 has one value too many"
-        lines={["id,name,city,email", "1001,Asha Patil,Pune,asha@example.com", "1002,Ravi Kumar,Shop 4, MG Road,ravi@example.com"]}
+        lines={["id,name,city,email", "1001,Asha Patil,Lyon,asha@example.com", "1002,Ravi Kumar,Shop 4, Main Street,ravi@example.com"]}
       />
       <p>
-        Line 3 has five values instead of four, because of the comma in “Shop 4, MG Road”. Written correctly, the address is in quotes:{" "}
-        <code>&quot;Shop 4, MG Road&quot;</code>. An import tool would either reject this line or put “MG Road” in the email column.
+        Line 3 has five values instead of four, because of the comma in “Shop 4, Main Street”. Written correctly, the address is in quotes:{" "}
+        <code>&quot;Shop 4, Main Street&quot;</code>. An import tool would either reject this line or put “Main Street” in the email column.
       </p>
 
       <h2>A simple checklist</h2>

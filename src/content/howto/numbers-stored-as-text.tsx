@@ -39,7 +39,7 @@ export const numbersStoredAsText: HowToGuide = {
           <strong>An apostrophe in front.</strong> Typing <code>&apos;45</code> forces Excel to keep it as text.
         </li>
         <li>
-          <strong>Extra characters.</strong> Spaces, currency signs (₹, $), or thousands separators written as text, such as “1,250”.
+          <strong>Extra characters.</strong> Spaces, currency signs (€, $), or thousands separators written as text, such as “1,250”.
         </li>
         <li>
           <strong>The cell was formatted as Text</strong> before the number was typed.
@@ -120,14 +120,14 @@ export const numbersStoredAsText: HowToGuide = {
       <ul>
         <li>Clean imported data straight away: remove spaces, then convert numbers.</li>
         <li>Don&apos;t format amount columns as Text.</li>
-        <li>Type numbers without currency signs or spaces; use a number format to show ₹ or commas.</li>
+        <li>Type numbers without currency signs or spaces; use a number format to show €, $ or commas.</li>
       </ul>
 
       <h2>From start to finish: an example</h2>
       <p>
-        Priya downloads a sales report from her billing app. The total at the bottom says ₹45,000, but she knows sales were higher. She selects the
+        Priya downloads a sales report from her billing app. The total at the bottom says €45,000, but she knows sales were higher. She selects the
         amount column and sees green triangles on about a third of the cells: those amounts arrived as text. She removes extra spaces first, then
-        uses Convert to Number. The total jumps to ₹68,500, the right figure. The invoice number column also had green triangles, but she leaves it
+        uses Convert to Number. The total jumps to €68,500, the right figure. The invoice number column also had green triangles, but she leaves it
         alone: invoice numbers like 000451 are codes, and converting them would remove the zeros.
       </p>
 

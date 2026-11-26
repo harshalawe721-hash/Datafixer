@@ -25,7 +25,7 @@ export const csvEncodingStrangeCharacters: HowToGuide = {
       <h2>What an encoding is</h2>
       <p>
         A computer stores every letter as numbers. An encoding is the table that says which numbers mean which letter. For plain English letters,
-        almost all encodings agree. For letters like é, ü, ñ, symbols like ₹ and €, and scripts like Hindi or Tamil, they don&apos;t. If a file is
+        almost all encodings agree. For letters like é, ü, ñ, symbols like € and £, and scripts like Hindi or Tamil, they don&apos;t. If a file is
         written with one table and read with another, those characters turn into nonsense.
       </p>
       <p>
@@ -40,7 +40,7 @@ export const csvEncodingStrangeCharacters: HowToGuide = {
         rows={[
           ["CafÃ©", "Café", "UTF-8 file opened as Windows-1252"],
           ["donâ€™t", "don't (curly apostrophe)", "UTF-8 file opened as Windows-1252"],
-          ["â‚¹500", "₹500", "UTF-8 file opened as Windows-1252"],
+          ["â‚¬500", "€500", "UTF-8 file opened as Windows-1252"],
           ["M�ller", "Müller", "Windows-1252 file opened as UTF-8"],
         ]}
       />

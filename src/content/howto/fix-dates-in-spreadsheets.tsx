@@ -43,7 +43,7 @@ export const fixDatesInSpreadsheets: HowToGuide = {
           15.03.2024, 15 Mar 2024. Sorting puts them in the wrong order.
         </li>
         <li>
-          <strong>Dates that can be read two ways.</strong> 03/04/2024 means 3 April in India and the UK, but March 4 in the US. A computer can&apos;t
+          <strong>Dates that can be read two ways.</strong> 03/04/2024 means 3 April in most of the world, but March 4 in the US. A computer can&apos;t
           know which one was meant unless other dates in the column make it clear (13/04/2024 can only be day-first).
         </li>
       </ul>
@@ -109,7 +109,7 @@ export const fixDatesInSpreadsheets: HowToGuide = {
       </ol>
       <p>
         If dates are read the wrong way round, check the spreadsheet&apos;s country: <strong>File</strong> → <strong>Settings</strong> →{" "}
-        <strong>Locale</strong>. With India or the UK, 03/04/2024 is read as 3 April.
+        <strong>Locale</strong>. With most settings (for example the UK), 03/04/2024 is read as 3 April.
       </p>
 
       <h2>Fix it with MyDataFixer</h2>
@@ -134,7 +134,7 @@ export const fixDatesInSpreadsheets: HowToGuide = {
       <h2>Which date style should you use?</h2>
       <p>
         <strong>Year-month-day (2024-03-15)</strong> is the safest when files are shared or imported. It can&apos;t be misread in any country, and
-        it sorts correctly even as text. For reports read by people in one country, use the style they are used to, such as 15/03/2024 in India.
+        it sorts correctly even as text. For reports read by people in one country, use the style they are used to, such as 15/03/2024 in the UK.
       </p>
 
       <h2>How to avoid date problems next time</h2>

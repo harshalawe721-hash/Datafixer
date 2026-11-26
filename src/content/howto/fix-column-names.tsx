@@ -37,7 +37,7 @@ export const fixColumnNames: HowToGuide = {
           ["Duplicate name", "email, phone, email", "only one of the two columns is used, or the import fails"],
           ["Spaces around a name", "\"email \"", "a program looking for “email” doesn't find it"],
           ["Very long name", "a 90-character sentence", "some databases limit names to 64 characters"],
-          ["No header row at all", "1001, Asha, Pune", "the first record is treated as column names"],
+          ["No header row at all", "1001, Asha, Lyon", "the first record is treated as column names"],
         ]}
       />
 

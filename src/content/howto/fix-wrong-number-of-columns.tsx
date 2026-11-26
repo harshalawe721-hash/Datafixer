@@ -24,8 +24,8 @@ export const fixWrongNumberOfColumns: HowToGuide = {
       <h2>Why rows become uneven</h2>
       <ul>
         <li>
-          <strong>A separator inside a value.</strong> An address like “Shop 4, MG Road” in a comma-separated file splits into two values unless
-          it is written in quotes: <code>&quot;Shop 4, MG Road&quot;</code>. This is by far the most common cause.
+          <strong>A separator inside a value.</strong> An address like “Shop 4, Main Street” in a comma-separated file splits into two values unless
+          it is written in quotes: <code>&quot;Shop 4, Main Street&quot;</code>. This is by far the most common cause.
         </li>
         <li>
           <strong>Missing values at the end.</strong> Some programs leave off empty values at the end of a line, so the row is shorter.
@@ -44,19 +44,19 @@ export const fixWrongNumberOfColumns: HowToGuide = {
       <h2>Example</h2>
       <FileLines
         caption="customers.csv: 4 column names, but line 3 has 5 values"
-        lines={["id,name,city,email", "1001,Asha Patil,Pune,asha@example.com", "1002,Ravi Kumar,Shop 4, MG Road,ravi@example.com", "1003,Meera Shah,Mumbai"]}
+        lines={["id,name,city,email", "1001,Asha Patil,Lyon,asha@example.com", "1002,Ravi Kumar,Shop 4, Main Street,ravi@example.com", "1003,Meera Shah,Toronto"]}
       />
       <ExampleTable
         caption="What an import tool sees"
         headers={["Line", "Values", "Problem"]}
         rows={[
           ["2", "4", "fine"],
-          ["3", "5", "too many: the comma in “Shop 4, MG Road” splits it"],
+          ["3", "5", "too many: the comma in “Shop 4, Main Street” splits it"],
           ["4", "3", "too few: the email is missing"],
         ]}
       />
       <p>
-        If the tool doesn&apos;t stop, it is worse: “MG Road” ends up in the email column, and every value after it moves one place to the right.
+        If the tool doesn&apos;t stop, it is worse: “Main Street” ends up in the email column, and every value after it moves one place to the right.
       </p>
 
       <h2>How to find the uneven rows</h2>
@@ -138,7 +138,7 @@ export const fixWrongNumberOfColumns: HowToGuide = {
     },
     {
       q: "How do I put a value with a comma in a CSV?",
-      a: "Wrap the whole value in double quotes: \"Shop 4, MG Road\". A double quote inside such a value is written twice: \"He said \"\"hi\"\"\".",
+      a: "Wrap the whole value in double quotes: \"Shop 4, Main Street\". A double quote inside such a value is written twice: \"He said \"\"hi\"\"\".",
     },
     {
       q: "Can MyDataFixer fix uneven rows automatically?",

@@ -45,7 +45,7 @@ export const checkEmailsAndPhoneNumbers: HowToGuide = {
         ]}
       />
       <p>
-        Mixed phone layouts are a smaller problem: “+91 98765 43210”, “09876543210” and “98765-43210” may all be valid but are hard to sort,
+        Mixed phone layouts are a smaller problem: “+44 20 7946 0958”, “09876543210” and “98765-43210” may all be valid but are hard to sort,
         search and import.
       </p>
 
@@ -79,7 +79,7 @@ export const checkEmailsAndPhoneNumbers: HowToGuide = {
       <p>
         Count the digits with a formula that removes spaces, dashes, brackets and plus signs:{" "}
         <code>=LEN(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(A2,&quot; &quot;,&quot;&quot;),&quot;-&quot;,&quot;&quot;),&quot;(&quot;,&quot;&quot;),&quot;)&quot;,&quot;&quot;),&quot;+&quot;,&quot;&quot;))</code>.
-        Indian mobile numbers have 10 digits (12 with 91 in front). Sort by the result to bring numbers that are too short or too long to the top.
+        Many mobile numbers have 10 digits; with a country code in front, such as 91 (India) or 44 (UK), they are longer. Sort by the result to bring numbers that are too short or too long to the top.
         Make sure phone columns are stored as text, so leading zeros and + signs stay.
       </p>
 
@@ -113,7 +113,7 @@ export const checkEmailsAndPhoneNumbers: HowToGuide = {
       <ul>
         <li>One email address and one phone number per cell. Use extra columns for a second address.</li>
         <li>Leave a cell empty instead of typing “none” or “-”.</li>
-        <li>Store phone numbers as text, with the country code if you have international contacts (+91…).</li>
+        <li>Store phone numbers as text, with the country code if you have international contacts (+44…).</li>
         <li>Write email addresses in lower case.</li>
         <li>Remove extra spaces before checking.</li>
       </ul>
@@ -144,7 +144,7 @@ export const checkEmailsAndPhoneNumbers: HowToGuide = {
     },
     {
       q: "How many digits should a phone number have?",
-      a: "It depends on the country. Internationally, a number has at most 15 digits. Indian mobile numbers have 10 digits, plus the country code 91.",
+      a: "It depends on the country. Internationally, a number has at most 15 digits. Many mobile numbers have 10 digits, plus a country code such as 91 (India) or 44 (UK).",
     },
     {
       q: "Can MyDataFixer correct wrong email addresses?",

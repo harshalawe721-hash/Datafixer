@@ -33,7 +33,7 @@ export const csvFormulaInjection: HowToGuide = {
         rows={[
           ["=1+1", "shows 2 instead of the text =1+1"],
           ["-5% discount", "shows an error or a number"],
-          ["+91 98765 43210", "may show an error or treat it as a calculation"],
+          ["+44 20 7946 0958", "may show an error or treat it as a calculation"],
           ["@SUM(A1:A9)", "runs a function"],
           ["=HYPERLINK(\"http://…\",\"Click here\")", "shows a link that may lead somewhere harmful"],
         ]}
@@ -77,7 +77,7 @@ export const csvFormulaInjection: HowToGuide = {
       <h3>Find risky values</h3>
       <p>
         Open the CSV in the <Link href="/csv-validator">CSV Validator</Link>. The check “Values that start like formulas” lists every value that
-        starts with =, +, - or @, with its line. Phone numbers such as “+91 …” also start with +, so you&apos;ll see them in the list too.
+        starts with =, +, - or @, with its line. Phone numbers such as “+44 …” also start with +, so you&apos;ll see them in the list too.
       </p>
       <h3>Add apostrophes</h3>
       <p>
@@ -115,7 +115,7 @@ export const csvFormulaInjection: HowToGuide = {
     },
     {
       q: "Why are my phone numbers listed as risky?",
-      a: "Numbers like +91 98765 43210 start with +, one of the formula characters. They are usually harmless, but a spreadsheet may still treat them as a calculation.",
+      a: "Numbers like +44 20 7946 0958 start with +, one of the formula characters. They are usually harmless, but a spreadsheet may still treat them as a calculation.",
     },
     {
       q: "Will an apostrophe break my import?",

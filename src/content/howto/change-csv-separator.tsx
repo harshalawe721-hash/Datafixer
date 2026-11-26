@@ -30,11 +30,11 @@ export const changeCsvSeparator: HowToGuide = {
       </ul>
 
       <h2>Why Find and Replace breaks files</h2>
-      <FileLines caption="A semicolon file with a comma inside an address" lines={["name;address;amount", "Asha Patil;Shop 4, MG Road;1250,50"]} />
+      <FileLines caption="A semicolon file with a comma inside an address" lines={["name;address;amount", "Asha Patil;Shop 4, Main Street;1250,50"]} />
       <p>
-        Replacing every <code>;</code> with <code>,</code> gives <code>Asha Patil,Shop 4, MG Road,1250,50</code>: five values instead of three,
+        Replacing every <code>;</code> with <code>,</code> gives <code>Asha Patil,Shop 4, Main Street,1250,50</code>: five values instead of three,
         because the commas that were already there now look like separators too. A proper conversion writes{" "}
-        <code>Asha Patil,&quot;Shop 4, MG Road&quot;,&quot;1250,50&quot;</code>, putting values with commas in quotes.
+        <code>Asha Patil,&quot;Shop 4, Main Street&quot;,&quot;1250,50&quot;</code>, putting values with commas in quotes.
       </p>
 
       <h2>The three common separators</h2>
@@ -42,9 +42,9 @@ export const changeCsvSeparator: HowToGuide = {
         caption="Which separator to choose"
         headers={["Separator", "Looks like", "Use when"]}
         rows={[
-          ["Comma", "Asha,Pune,500", "most import tools, databases, the US, UK and India"],
-          ["Semicolon", "Asha;Pune;500", "Excel in countries that use a decimal comma"],
-          ["Tab", "Asha  Pune  500", "data with many commas; often saved as .tsv"],
+          ["Comma", "Asha,Lyon,500", "most import tools and databases, in the US, UK, Canada and Australia"],
+          ["Semicolon", "Asha;Lyon;500", "Excel in countries that use a decimal comma"],
+          ["Tab", "Asha  Lyon  500", "data with many commas; often saved as .tsv"],
         ]}
       />
 

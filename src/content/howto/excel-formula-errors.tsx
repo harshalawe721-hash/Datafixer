@@ -49,7 +49,7 @@ export const excelFormulaErrors: HowToGuide = {
       <h3>#N/A: nothing found</h3>
       <p>
         You see #N/A with VLOOKUP, XLOOKUP, MATCH and similar functions when the value you look for isn&apos;t in the list. Very often it
-        <em> is</em> there, but written slightly differently: an extra space (“Pune ” instead of “Pune”), a number stored as text (“123” instead of
+        <em> is</em> there, but written slightly differently: an extra space (“Lyon ” instead of “Lyon”), a number stored as text (“123” instead of
         123), or a different spelling. Clean both sides and try again.
       </p>
       <h3>#DIV/0!: dividing by zero</h3>

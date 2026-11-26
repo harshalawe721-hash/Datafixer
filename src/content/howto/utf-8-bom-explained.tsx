@@ -8,14 +8,14 @@ export const utf8BomExplained: HowToGuide = {
   seoTitle: "UTF-8 With or Without BOM: Which for CSV Files?",
   description:
     "What is a BOM, and should your CSV be UTF-8 with or without it? A simple explanation, with the right choice for Excel, Google Sheets and databases.",
-  summary: "A tiny invisible marker decides whether Excel shows é and ₹ correctly. Here's when to use it and when not.",
+  summary: "A tiny invisible marker decides whether Excel shows é and € correctly. Here's when to use it and when not.",
   updated: "2026-11-24",
   tools: ["csv-validator", "excel-to-csv"],
   related: ["csv-encoding-strange-characters", "convert-excel-to-csv", "change-csv-separator"],
   quickAnswer: (
     <p>
       A <strong>BOM</strong> (byte order mark) is an invisible marker at the start of a file that says “this is UTF-8”. Choose{" "}
-      <strong>UTF-8 with BOM</strong> when the CSV will be double-clicked in Excel, so letters like é and symbols like ₹ show correctly. Choose{" "}
+      <strong>UTF-8 with BOM</strong> when the CSV will be double-clicked in Excel, so letters like é and symbols like € show correctly. Choose{" "}
       <strong>UTF-8 without BOM</strong> for databases, scripts, web apps and most import tools, which often don&apos;t expect it.
     </p>
   ),
@@ -25,7 +25,7 @@ export const utf8BomExplained: HowToGuide = {
       <p>
         Computers store letters as numbers, and an encoding is the table that says which numbers mean which letter. UTF-8 is today&apos;s standard:
         it can store every language, from English and Hindi to Chinese and emoji. Plain English letters look the same in almost every encoding;
-        the differences show up with accented letters, symbols like ₹ and €, and non-English scripts.
+        the differences show up with accented letters, symbols like € and £, and non-English scripts.
       </p>
 
       <h2>What the BOM is</h2>
@@ -39,7 +39,7 @@ export const utf8BomExplained: HowToGuide = {
         caption="What different programs do"
         headers={["Program", "UTF-8 with BOM", "UTF-8 without BOM"]}
         rows={[
-          ["Excel (double-click the CSV)", "shows é and ₹ correctly", "may show Ã© and â‚¹"],
+          ["Excel (double-click the CSV)", "shows é and € correctly", "may show Ã© and â‚¬"],
           ["Excel (Data → From Text/CSV)", "correct", "correct if you choose UTF-8"],
           ["Google Sheets", "correct", "correct"],
           ["Databases and scripts", "may show ï»¿ in the first column name", "correct"],
@@ -99,7 +99,7 @@ export const utf8BomExplained: HowToGuide = {
           <strong>Removing “strange characters” by hand.</strong> If you see ï»¿ at the start, the file isn&apos;t broken; save it again without BOM.
         </li>
         <li>
-          <strong>Saving as plain “CSV” in Excel.</strong> The older “CSV (Comma delimited)” type doesn&apos;t use UTF-8 and can turn ₹ or Hindi
+          <strong>Saving as plain “CSV” in Excel.</strong> The older “CSV (Comma delimited)” type doesn&apos;t use UTF-8 and can turn € or Hindi
           letters into question marks. Use “CSV UTF-8”.
         </li>
       </ul>

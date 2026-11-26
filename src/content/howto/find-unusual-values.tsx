@@ -32,7 +32,7 @@ export const findUnusualValues: HowToGuide = {
       <ul>
         <li>An extra or missing zero (2,500 typed as 25,000 or 250).</li>
         <li>A wrong sign (-40 instead of 40).</li>
-        <li>The wrong unit: grams instead of kilograms, paise instead of rupees, monthly instead of yearly.</li>
+        <li>The wrong unit: grams instead of kilograms, cents instead of dollars, monthly instead of yearly.</li>
         <li>A value in the wrong column, such as a phone number in the amount column.</li>
         <li>A genuine but rare value: a very large order really can happen.</li>
       </ul>

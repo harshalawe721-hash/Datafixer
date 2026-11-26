@@ -16,7 +16,7 @@ export const convertExcelToCsv: HowToGuide = {
   quickAnswer: (
     <p>
       In Excel, use <strong>File → Save As → CSV UTF-8 (Comma delimited)</strong>. A CSV file keeps only one sheet and only values, so formulas,
-      formatting and the other sheets are not saved. Choose UTF-8 so letters like é and symbols like ₹ stay correct.
+      formatting and the other sheets are not saved. Choose UTF-8 so letters like é and symbols like € stay correct.
     </p>
   ),
   body: (
@@ -54,7 +54,7 @@ export const convertExcelToCsv: HowToGuide = {
         headers={["In Excel", "In the CSV file"]}
         rows={[
           ["=B2*C2 (shows 250)", "250"],
-          ["₹1,250.00 (formatted)", "₹1,250.00 or 1250, depending on how it's saved"],
+          ["$1,250.00 (formatted)", "$1,250.00 or 1250, depending on how it's saved"],
           ["15/03/2024 (a date)", "15/03/2024 or 2024-03-15"],
           ["Bold, red text", "plain text"],
         ]}
@@ -150,7 +150,7 @@ export const convertExcelToCsv: HowToGuide = {
       <h2>Common mistakes</h2>
       <ul>
         <li>
-          <strong>Choosing the wrong CSV type in Excel.</strong> Use CSV UTF-8 to keep letters like ü and symbols like ₹.
+          <strong>Choosing the wrong CSV type in Excel.</strong> Use CSV UTF-8 to keep letters like ü and symbols like €.
         </li>
         <li>
           <strong>Saving over the Excel file.</strong> Always save the CSV under a new name.

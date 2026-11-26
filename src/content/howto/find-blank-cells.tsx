@@ -49,9 +49,9 @@ export const findBlankCells: HowToGuide = {
         caption="Two missing values in an order list"
         headers={["order", "customer", "city", "amount"]}
         rows={[
-          ["1001", "Asha Patil", "Pune", "500"],
+          ["1001", "Asha Patil", "Lyon", "500"],
           ["1002", "Ravi Kumar", "", "300"],
-          ["1003", "Meera Shah", "Mumbai", ""],
+          ["1003", "Meera Shah", "Toronto", ""],
         ]}
       />
       <p>Order 1002 has no city, and order 1003 has no amount, so the total and the report by city are both wrong.</p>

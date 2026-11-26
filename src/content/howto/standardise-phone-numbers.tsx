@@ -7,7 +7,7 @@ export const standardisePhoneNumbers: HowToGuide = {
   title: "How to make phone numbers use one layout in a spreadsheet",
   seoTitle: "Make Phone Numbers One Format in a Spreadsheet",
   description:
-    "Phone numbers written as +91 98765 43210, 98765-43210 and (98765) 43210? Learn how to put them in one layout without changing a single digit.",
+    "Phone numbers written as +44 20 7946 0958, 98765-43210 and (98765) 43210? Learn how to put them in one layout without changing a single digit.",
   summary: "The same kind of phone number written in different ways is hard to search and import. Here's how to make them consistent.",
   updated: "2026-11-24",
   tools: ["spreadsheet-cleaner", "spreadsheet-error-detector"],
@@ -62,7 +62,7 @@ export const standardisePhoneNumbers: HowToGuide = {
         <li>Copy the results and paste them back as values over the original column.</li>
       </ol>
       <p>
-        Be careful with numbers that have a country code (+91…), an extension or a different number of digits: a formula built for 10 digits will
+        Be careful with numbers that have a country code (+44…), an extension or a different number of digits: a formula built for 10 digits will
         cut or mix them up. Check those rows by hand.
       </p>
 
@@ -95,7 +95,7 @@ export const standardisePhoneNumbers: HowToGuide = {
           <strong>For people to read:</strong> a layout with a space, such as 98765 43210.
         </li>
         <li>
-          <strong>For international lists:</strong> include the country code, such as +91 98765 43210.
+          <strong>For international lists:</strong> include the country code, such as +44 20 7946 0958.
         </li>
         <li>
           <strong>For an import tool:</strong> whatever its help page asks for; many want digits only, or the country code without spaces.
@@ -107,7 +107,7 @@ export const standardisePhoneNumbers: HowToGuide = {
         Swati manages 1,500 members of a fitness club, entered by three receptionists over two years. Before importing them into an SMS tool, she
         opens the list in the Error Detector, which finds 12 invalid numbers (letters typed by mistake, or only 5 or 6 digits) and mixed phone
         layouts. She corrects the invalid ones from the paper forms, then uses Make phone number layouts consistent and picks “##### #####”, the
-        most common layout. 1,431 numbers are rewritten; 57 with a +91 country code and a few with 9 digits are listed separately, because
+        most common layout. 1,431 numbers are rewritten; 57 with a +44 country code and a few with 9 digits are listed separately, because
         changing them would mean guessing. She checks those by hand, downloads the file and imports it.
       </p>
 
@@ -120,7 +120,7 @@ export const standardisePhoneNumbers: HowToGuide = {
           <strong>One formula for all numbers.</strong> A formula built for 10-digit numbers breaks numbers with country codes or extensions.
         </li>
         <li>
-          <strong>Adding country codes by guesswork.</strong> Only add +91 (or another code) when you know where each contact lives.
+          <strong>Adding country codes by guesswork.</strong> Only add a country code (such as +44 or +1) when you know where each contact lives.
         </li>
       </ul>
 
@@ -144,7 +144,7 @@ export const standardisePhoneNumbers: HowToGuide = {
       a: "No. Only spaces, dashes, brackets and similar punctuation change. The digits stay exactly the same.",
     },
     {
-      q: "Can it add +91 to numbers without a country code?",
+      q: "Can it add a country code to numbers that don't have one?",
       a: "No. Adding or removing a country code would be a guess, so those numbers are listed for you to handle by hand.",
     },
     {
@@ -157,7 +157,7 @@ export const standardisePhoneNumbers: HowToGuide = {
     },
     {
       q: "Which layout does WhatsApp or an SMS tool need?",
-      a: "Most need the full number with the country code, often without spaces, such as +919876543210. Check the tool's help page before you import.",
+      a: "Most need the full number with the country code, often without spaces, such as +442079460958. Check the tool's help page before you import.",
     },
     {
       q: "What about numbers with extensions, like 2345 6789 ext 12?",

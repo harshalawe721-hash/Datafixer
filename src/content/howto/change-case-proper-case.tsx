@@ -28,9 +28,9 @@ export const changeCaseProperCase: HowToGuide = {
         caption="The same name in each style"
         headers={["Style", "Example", "Good for"]}
         rows={[
-          ["Proper Case", "Ravi Kumar, New Delhi", "names of people, cities, products"],
-          ["UPPER CASE", "RAVI KUMAR, NEW DELHI", "codes, labels, forms that ask for capitals"],
-          ["lower case", "ravi kumar, new delhi", "email addresses, tags, usernames"],
+          ["Proper Case", "Ravi Kumar, New York", "names of people, cities, products"],
+          ["UPPER CASE", "RAVI KUMAR, NEW YORK", "codes, labels, forms that ask for capitals"],
+          ["lower case", "ravi kumar, new york", "email addresses, tags, usernames"],
         ]}
       />
       <p>
@@ -51,10 +51,10 @@ export const changeCaseProperCase: HowToGuide = {
         caption="A contact list before and after Change case (Proper Case on the name and city columns)"
         headers={["Before", "After"]}
         rows={[
-          ["ravi k · DELHI", "Ravi K · Delhi"],
-          ["MEERA SHAH · mumbai", "Meera Shah · Mumbai"],
-          ["o'brien · new delhi", "O'Brien · New Delhi"],
-          ["anne-marie · pune", "Anne-Marie · Pune"],
+          ["ravi k · BERLIN", "Ravi K · Berlin"],
+          ["MEERA SHAH · toronto", "Meera Shah · Toronto"],
+          ["o'brien · new york", "O'Brien · New York"],
+          ["anne-marie · lyon", "Anne-Marie · Lyon"],
           ["asha@example.com", "asha@example.com (never changed)"],
         ]}
       />
@@ -149,7 +149,7 @@ export const changeCaseProperCase: HowToGuide = {
       <p>The Spreadsheet Cleaner has two tools for capitals. They solve different problems:</p>
       <ul>
         <li>
-          <strong>Fix capitalization</strong> makes spellings match: if “Pune” appears 12 times and “PUNE” twice, the two become “Pune”. It only
+          <strong>Fix capitalization</strong> makes spellings match: if “Lyon” appears 12 times and “LYON” twice, the two become “Lyon”. It only
           uses spellings that are already in your column.
         </li>
         <li>

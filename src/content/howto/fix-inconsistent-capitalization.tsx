@@ -24,12 +24,12 @@ export const fixInconsistentCapitalization: HowToGuide = {
     <>
       <h2>Why capitalization matters</h2>
       <p>
-        Excel&apos;s own filters and most formulas ignore capital letters, so “Pune” and “PUNE” often look like one value inside Excel. But many
+        Excel&apos;s own filters and most formulas ignore capital letters, so “Lyon” and “LYON” often look like one value inside Excel. But many
         other places don&apos;t ignore them:
       </p>
       <ul>
         <li>Pivot tables and reports in other tools may show them as separate rows.</li>
-        <li>Databases, CRMs and online shops often treat “Pune” and “pune” as two different cities or categories.</li>
+        <li>Databases, CRMs and online shops often treat “Lyon” and “lyon” as two different cities or categories.</li>
         <li>Exact duplicate checks see two different rows.</li>
         <li>It simply looks untidy in a report sent to a customer or a manager.</li>
       </ul>
@@ -46,12 +46,12 @@ export const fixInconsistentCapitalization: HowToGuide = {
         caption="One city, three spellings"
         headers={["city", "orders"]}
         rows={[
-          ["Pune", "12"],
-          ["pune", "3"],
-          ["PUNE", "1"],
+          ["Lyon", "12"],
+          ["lyon", "3"],
+          ["LYON", "1"],
         ]}
       />
-      <p>A report by city in another tool might show three rows. After fixing, it shows “Pune” with 16 orders.</p>
+      <p>A report by city in another tool might show three rows. After fixing, it shows “Lyon” with 16 orders.</p>
 
       <h2>Fix it in Excel</h2>
       <ExcelNote />
@@ -59,8 +59,8 @@ export const fixInconsistentCapitalization: HowToGuide = {
       <ol>
         <li>Insert an empty helper column next to your column.</li>
         <li>
-          Type one of these in the first data row: <code>=PROPER(A2)</code> (Pune Kumar), <code>=UPPER(A2)</code> (PUNE KUMAR) or{" "}
-          <code>=LOWER(A2)</code> (pune kumar).
+          Type one of these in the first data row: <code>=PROPER(A2)</code> (Maria Lopez), <code>=UPPER(A2)</code> (MARIA LOPEZ) or{" "}
+          <code>=LOWER(A2)</code> (lyon kumar).
         </li>
         <li>Copy the formula down the column.</li>
         <li>
@@ -91,14 +91,14 @@ export const fixInconsistentCapitalization: HowToGuide = {
       <p>
         Open your file in the <Link href="/spreadsheet-cleaner">Spreadsheet Cleaner</Link> and choose <strong>Fix capitalization</strong>. It finds
         values in the same column that differ only in capital letters, and changes them to the most common spelling in that column. So if
-        “Pune” appears 12 times and “pune” 3 times, every “pune” becomes “Pune”.
+        “Lyon” appears 12 times and “lyon” 3 times, every “lyon” becomes “Lyon”.
       </p>
       <p>
         When two spellings are equally common, MyDataFixer asks you which one to use instead of guessing. You see every change before it is
         applied, you can undo, and your file stays on your device.
       </p>
       <p>
-        If a whole column is written in capitals or small letters (“RAVI KUMAR”, “delhi”), there is no better spelling to copy. For that, use{" "}
+        If a whole column is written in capitals or small letters (“RAVI KUMAR”, “berlin”), there is no better spelling to copy. For that, use{" "}
         <strong>Change case</strong>, also in the Spreadsheet Cleaner: choose the columns and Proper Case, UPPER CASE or lower case. Its Proper
         Case knows common name patterns: “o&apos;brien” becomes “O&apos;Brien”, “mcdonald” becomes “McDonald”, “anne-marie” becomes “Anne-Marie”, and
         small words such as “van”, “de” or “of” stay small in the middle of a name. Email addresses, web addresses and values with numbers are
@@ -122,7 +122,7 @@ export const fixInconsistentCapitalization: HowToGuide = {
       <h2>Which style should you use?</h2>
       <ul>
         <li>
-          <strong>Names and cities:</strong> each word with a capital (Asha Patil, New Delhi).
+          <strong>Names and cities:</strong> each word with a capital (Asha Patil, New York).
         </li>
         <li>
           <strong>Codes:</strong> all capitals (SKU-A12, MH12).
@@ -141,9 +141,9 @@ export const fixInconsistentCapitalization: HowToGuide = {
       <h2>From start to finish: an example</h2>
       <p>
         Arjun runs a small delivery business and keeps orders in a sheet filled in by three staff members. When he imports it into his new
-        delivery app, the city list shows “Bengaluru”, “bengaluru” and “BENGALURU” as three cities. He opens the sheet in the Spreadsheet Cleaner
-        and chooses Fix capitalization. The preview shows that “Bengaluru” is the most common spelling, used 340 times, so the 52 other spellings
-        will become “Bengaluru”. He applies it, downloads the file, and the app now shows one city. Next, he adds a drop-down list for the city
+        delivery app, the city list shows “Melbourne”, “melbourne” and “MELBOURNE” as three cities. He opens the sheet in the Spreadsheet Cleaner
+        and chooses Fix capitalization. The preview shows that “Melbourne” is the most common spelling, used 340 times, so the 52 other spellings
+        will become “Melbourne”. He applies it, downloads the file, and the app now shows one city. Next, he adds a drop-down list for the city
         column so the problem doesn&apos;t come back.
       </p>
 

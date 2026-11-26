@@ -15,8 +15,8 @@ export const removeExtraSpaces: HowToGuide = {
   related: ["remove-duplicate-rows", "fix-inconsistent-capitalization", "numbers-stored-as-text"],
   quickAnswer: (
     <p>
-      A space at the start or end of a cell, like <code>&quot;Pune &quot;</code>, is almost invisible, but Excel treats it as a different value
-      from <code>&quot;Pune&quot;</code>. Use the <strong>TRIM</strong> function in Excel, <strong>Data → Data cleanup → Trim whitespace</strong> in
+      A space at the start or end of a cell, like <code>&quot;Lyon &quot;</code>, is almost invisible, but Excel treats it as a different value
+      from <code>&quot;Lyon&quot;</code>. Use the <strong>TRIM</strong> function in Excel, <strong>Data → Data cleanup → Trim whitespace</strong> in
       Google Sheets, or <strong>Remove extra spaces</strong> in MyDataFixer&apos;s Spreadsheet Cleaner.
     </p>
   ),
@@ -24,15 +24,15 @@ export const removeExtraSpaces: HowToGuide = {
     <>
       <h2>Why a small space causes big problems</h2>
       <p>
-        To a person, “Pune” and “Pune ” look the same. To a spreadsheet they are two different pieces of text, because one has an extra
+        To a person, “Lyon” and “Lyon ” look the same. To a spreadsheet they are two different pieces of text, because one has an extra
         character at the end. That small difference breaks many everyday tasks:
       </p>
       <ul>
         <li>
-          <strong>Lookups fail.</strong> VLOOKUP and XLOOKUP return #N/A because “Pune ” isn&apos;t found in a list that contains “Pune”.
+          <strong>Lookups fail.</strong> VLOOKUP and XLOOKUP return #N/A because “Lyon ” isn&apos;t found in a list that contains “Lyon”.
         </li>
         <li>
-          <strong>Filters split values.</strong> The filter list shows “Pune” twice, and you only see half the rows when you pick one.
+          <strong>Filters split values.</strong> The filter list shows “Lyon” twice, and you only see half the rows when you pick one.
         </li>
         <li>
           <strong>Pivot tables and counts are wrong.</strong> The same city is counted as two different cities.
@@ -62,9 +62,9 @@ export const removeExtraSpaces: HowToGuide = {
         caption="The same city typed three ways (· marks a space)"
         headers={["city as typed", "what Excel sees"]}
         rows={[
-          ["Pune", "Pune"],
-          ["·Pune", "a different value"],
-          ["Pune··", "a different value"],
+          ["Lyon", "Lyon"],
+          ["·Lyon", "a different value"],
+          ["Lyon··", "a different value"],
         ]}
       />
       <p>A count of orders per city would show three cities instead of one.</p>
@@ -73,7 +73,7 @@ export const removeExtraSpaces: HowToGuide = {
       <ul>
         <li>Click a cell and look at the formula bar: a space at the end shows as a gap before the cursor.</li>
         <li>
-          Use <code>=LEN(A2)</code> to count characters. “Pune” has 4; if you see 5 or 6, there are extra spaces.
+          Use <code>=LEN(A2)</code> to count characters. “Lyon” has 4; if you see 5 or 6, there are extra spaces.
         </li>
         <li>
           Compare with <code>=A2=TRIM(A2)</code>. If the result is FALSE, the cell has extra spaces.
