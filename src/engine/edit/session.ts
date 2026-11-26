@@ -11,7 +11,7 @@
  *   unchanged original data, so they are not stored twice.
  */
 import { EngineError } from "../errors.ts";
-import { cellKey, splitCellKey, type CellRange, type CellValue, type ParseIssue, type SheetModel } from "../types.ts";
+import { MAX_COLUMNS, cellKey, splitCellKey, type CellRange, type CellValue, type ParseIssue, type SheetModel } from "../types.ts";
 import { columnLetter } from "../query/query.ts";
 import { EditedGrid, type EditLayer } from "./edited-grid.ts";
 
@@ -624,6 +624,15 @@ export class EditSession {
     for (let r = 0; r < this.rowDeleted.length; r++) if (this.rowDeleted[r]) deletedRows.push(r);
     const deletedCols: number[] = [];
     for (let c = 0; c < this.colDeleted.length; c++) if (this.colDeleted[c]) deletedCols.push(c);
+    // Stage 10: added columns are written after the original columns. Original column
+    // (width + k) lands at the added column's view position once removed columns are taken out.
+    const width = this.base.columnCount;
+    if (this.layer.added.length && width + this.layer.added.length > MAX_COLUMNS) {
+      throw new EngineError("unsupported-format", `With the added columns this sheet would need more than ${MAX_COLUMNS.toLocaleString("en-US")} columns in the Excel file. Download as CSV instead.`);
+    }
+    this.layer.added.forEach((m, k) => {
+      for (const [row, value] of m) if (!this.rowDeleted[row]) edits.set(cellKey(row, width + k), { value });
+    });
     return { edits, deletedRows, deletedCols, addedColumns: this.layer.added.length };
   }
 

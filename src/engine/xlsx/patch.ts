@@ -201,14 +201,15 @@ function rewriteCols(head: string, deletedCols: number[]): string {
   });
 }
 
-function rewriteDimension(head: string, rows: number[], cols: number[]): string {
-  if (!rows.length && !cols.length) return head;
+function rewriteDimension(head: string, rows: number[], cols: number[], lastEditCol = -1): string {
+  if (!rows.length && !cols.length && lastEditCol < 0) return head;
   return head.replace(/(<(?:\w+:)?dimension\b[^>]*\bref=")([^"]*)(")/, (_m, a: string, ref: string, b: string) => {
     const parts = ref.split(":");
     const last = parts[parts.length - 1]!;
     const m = /^([A-Z]+)(\d+)$/.exec(last);
     if (!m) return `${a}${ref}${b}`;
-    const c = colIndex(m[1]!);
+    // Cells written past the old last column (Stage 10 added columns) widen the range.
+    const c = Math.max(colIndex(m[1]!), lastEditCol);
     const r = Number(m[2]) - 1;
     // Last cell: minus the removed rows/columns at or before it.
     const end = `${columnLetter(Math.max(0, c - removedBefore(cols, c + 1)))}${Math.max(1, r - removedBefore(rows, r + 1) + 1)}`;
@@ -235,7 +236,11 @@ function sheetRewriter(input: PatchInput, styles: Styles): SheetRewrite {
     if (!list) byRow.set(row, (list = []));
     list.push([col, edit]);
   }
-  for (const list of byRow.values()) list.sort((a, b) => a[0] - b[0]);
+  let lastEditCol = -1;
+  for (const list of byRow.values()) {
+    list.sort((a, b) => a[0] - b[0]);
+    lastEditCol = Math.max(lastEditCol, list[list.length - 1]![0]);
+  }
   const pendingRows = [...byRow.keys()].sort((a, b) => a - b);
   let pendingIndex = 0;
   /** Multi-cell array formulas and data tables seen so far (editing inside them would corrupt the file). */
@@ -391,7 +396,7 @@ function sheetRewriter(input: PatchInput, styles: Styles): SheetRewrite {
         if (!m) return "";
         prefix = m[1]!;
         let head = buf.slice(0, m.index);
-        head = rewriteDimension(rewriteCols(head, deletedCols), deletedRows, deletedCols);
+        head = rewriteDimension(rewriteCols(head, deletedCols), deletedRows, deletedCols, lastEditCol);
         if (m[2] === "/") {
           // <sheetData/>: no rows at all; write the edited ones.
           out += `${head}<${prefix}sheetData>${flushPending(Number.POSITIVE_INFINITY)}</${prefix}sheetData>`;

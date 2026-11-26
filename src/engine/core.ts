@@ -37,6 +37,7 @@ import { estimateExcelMemory } from "./xlsx/read-workbook.ts";
 import { XLS_REBUILD_LOSSES, rebuildXlsAsXlsx } from "./export/xls-export.ts";
 import type { CellValue } from "./types.ts";
 import { familyOf } from "./scan/checks/dates.ts";
+import { planCombineColumns, planSplitColumn, type CombinePlanInput, type SplitCombinePlan, type SplitPlanInput } from "./fix/split-combine-plans.ts";
 
 interface OpenState {
   file: Blob;
@@ -195,6 +196,14 @@ export interface CellInfo {
 }
 
 /** A fix preview as sent to the page: the token must be passed back to apply exactly this preview. */
+/** Stage 10: preview of "Split a column" or "Combine columns". */
+export interface SplitCombinePreview extends Omit<SplitCombinePlan, "requests"> {
+  /** Pass to applyFix to apply exactly this preview; null when nothing would change. */
+  token: string | null;
+  /** Excel: removing the original column(s) would break these, so they are kept. */
+  originalsKept: string[];
+}
+
 export interface FixPreviewResult extends FixPreview {
   token: string;
   /** Rows or columns would be removed from an Excel file (workbook references must be checked before download). */
@@ -747,6 +756,53 @@ export class EngineCore {
     };
   }
 
+  /** Stage 10: preview "Split a column" (CSV and .xlsx). Apply with applyFix(token). */
+  async previewSplit(sheetName: string, input: Omit<SplitPlanInput, "sheet">, cancel?: CancelToken): Promise<SplitCombinePreview> {
+    this.requireSplitCombineFormat();
+    return this.stageSplitCombine(sheetName, planSplitColumn({ ...input, sheet: this.session(sheetName).view() }), cancel);
+  }
+
+  /** Stage 10: preview "Combine columns" (CSV and .xlsx). Apply with applyFix(token). */
+  async previewCombine(sheetName: string, input: Omit<CombinePlanInput, "sheet">, cancel?: CancelToken): Promise<SplitCombinePreview> {
+    this.requireSplitCombineFormat();
+    return this.stageSplitCombine(sheetName, planCombineColumns({ ...input, sheet: this.session(sheetName).view() }), cancel);
+  }
+
+  private requireSplitCombineFormat(): void {
+    if (this.requireState().format === "xls") {
+      throw new EngineError(
+        "unsupported-format",
+        "Split and Combine work on CSV and .xlsx files. Columns can't be added safely to old .xls files. Save the file as .xlsx in Excel, or convert it to CSV first.",
+      );
+    }
+  }
+
+  private async stageSplitCombine(sheetName: string, plan: SplitCombinePlan, cancel?: CancelToken): Promise<SplitCombinePreview> {
+    const st = this.requireState();
+    const session = this.session(sheetName);
+    let requests = plan.requests;
+    let originalsKept: string[] = [];
+    // The removal request's positions are valid after the add (added columns go at the right edge).
+    const removal = requests.find((r) => (r.deleteColumns?.length ?? 0) > 0);
+    if (removal && st.format === "xlsx") {
+      const g = session.grid();
+      const affected = await this.excelRemovalCheck(sheetName, [], removal.deleteColumns!.map((d) => g.baseCol(d.col)), cancel);
+      if (affected.length) {
+        requests = requests.filter((r) => r !== removal);
+        originalsKept = affected;
+      }
+    }
+    const { requests: _planned, ...rest } = plan;
+    void _planned;
+    if (!requests.length) {
+      this.pendingFix = null;
+      return { ...rest, token: null, originalsKept };
+    }
+    const token = `fix-${++this.fixSeq}`;
+    this.pendingFix = { token, sheet: sheetName, version: session.version, requests };
+    return { ...rest, token, originalsKept };
+  }
+
   /** Apply exactly the previewed fix (or fixes). Refused if anything changed since the preview. */
   applyFix(sheetName: string, token: string): EditResult {
     const p = this.pendingFix;
@@ -1133,9 +1189,6 @@ export class EngineCore {
     const part = st.inspection.sheets[sheetIndex]?.part;
     if (!part) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” could not be found in the workbook.`);
     const plan = session.exportPlan();
-    if (plan.addedColumns > 0) {
-      throw new EngineError("unsupported-format", "Columns added by Split or Combine can't be written into the original Excel file yet. Nothing was downloaded, and your changes are kept. Download as CSV instead.");
-    }
 
     // S2: never remove rows/columns that something in the workbook refers to.
     let referenceNotes: string[] = [];
