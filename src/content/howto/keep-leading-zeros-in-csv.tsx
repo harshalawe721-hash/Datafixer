@@ -5,12 +5,12 @@ import type { HowToGuide } from "./types";
 
 export const keepLeadingZerosInCsv: HowToGuide = {
   slug: "keep-leading-zeros-in-csv",
-  title: "How to keep leading zeros when opening a CSV file",
-  seoTitle: "How to Keep Leading Zeros in a CSV File",
+  title: "How to Keep Leading Zeros in Excel CSV Files (Opening a CSV)",
+  seoTitle: "How to Keep Leading Zeros in Excel CSV Files",
   description:
     "Excel turns 00123 into 123 when it opens a CSV. Learn how to keep leading zeros in codes, PIN codes and phone numbers in Excel and Google Sheets.",
   summary: "Excel removes the zeros at the start of codes like 00123. Here's how to keep them.",
-  updated: "2026-11-20",
+  updated: "2026-11-26",
   tools: ["csv-to-excel"],
   related: ["csv-opens-in-one-column", "numbers-stored-as-text", "convert-excel-to-csv"],
   quickAnswer: (
