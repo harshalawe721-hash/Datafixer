@@ -1,6 +1,6 @@
 # Stage 10 plan: Split a column and Combine columns
 
-**Status:** plan prepared on 26 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves the plan and says "Start Stage 10".
+**Status:** plan prepared on 26 November 2026. **The owner approved it with decisions A for all (1A–5A) and said “Start Stage 10”.** Progress is recorded under “Progress” below.
 
 ## Why
 
