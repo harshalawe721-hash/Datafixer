@@ -447,7 +447,20 @@ export class EditSession {
     }
     if (keys.length === 0 && rowSet.size === 0 && colSet.size === 0 && trims.size === 0 && added.length === 0) return null;
     addBytes += 200 + rowSet.size * 6 + colSet.size * 6 + trims.size * 40;
-    this.ensureBudget(addBytes, keys.length + rowSet.size + colSet.size + trims.size);
+    if (added.length) {
+      const cells = addedCells.reduce((n, c) => n + c, 0);
+      this.ensureBudget(
+        addBytes,
+        `This change adds ${added.length === 1 ? "a column" : `${added.length} columns`} with ${cells.toLocaleString("en-US")} filled cells, which needs more memory than this device allows.`,
+        "Use a computer or a device with more memory, or work on a smaller file.",
+      );
+    } else {
+      this.ensureBudget(
+        addBytes,
+        `This change (${(keys.length + rowSet.size + colSet.size + trims.size).toLocaleString("en-US")} cells or rows) needs more memory than this device allows.`,
+        "Try fixing one column at a time, or use a device with more memory.",
+      );
+    }
     const trimRows = Uint32Array.from([...trims.keys()].sort((a, b) => a - b));
 
     const rows = Uint32Array.from([...rowSet.keys()].sort((a, b) => a - b));
@@ -522,12 +535,12 @@ export class EditSession {
     }
   }
 
-  private ensureBudget(extra: number, items: number): void {
+  private ensureBudget(extra: number, what: string, hint: string): void {
     if (!this.budget) return;
     if (this.base.grid.approxBytes + this.bytes + extra > this.budget) {
       throw new EngineError(
         "out-of-memory",
-        `This change (${items.toLocaleString("en-US")} cells or rows) needs more memory than this device allows. Nothing was changed and your earlier changes are kept. Try fixing one column at a time, or use a device with more memory.`,
+        `${what} Nothing was changed and your earlier changes are kept. ${hint}`,
         `edit layer ${this.bytes} + ${extra} bytes`,
       );
     }

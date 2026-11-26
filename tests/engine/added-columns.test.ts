@@ -122,3 +122,13 @@ test("an added column with no values still adds the column", () => {
   assert.notEqual(s.apply({ operation: "split", label: "Split", addColumns: [{ values: [null, null, null], reason: "r" }] }), null);
   assert.equal(s.view().columnCount, 3);
 });
+
+test("adding columns beyond the memory budget is refused with a message about the added cells", () => {
+  const base = sheetOf([["name"], ["Asha Patil"], ["Ben Rome"]]);
+  const s = new EditSession(base, { memoryBudgetBytes: base.grid.approxBytes + 10 });
+  assert.throws(
+    () => s.apply({ operation: "split", label: "Split", addColumns: [{ values: ["n (1)", "Asha", "Ben"], reason: "r" }] }),
+    (e: unknown) => e instanceof EngineError && e.code === "out-of-memory" && /adds a column with 3 filled cells/.test(e.message) && /Nothing was changed/.test(e.message) && !/one column at a time/.test(e.message),
+  );
+  assert.equal(s.view().columnCount, 1);
+});
