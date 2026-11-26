@@ -2,7 +2,7 @@
 
 **Date:** 26 November 2026
 
-**Status:** draft. Step 5 final runs in progress.
+**Status:** ✅ **Steps 1–5 complete; waiting for the owner's approval.**
 
 The owner approved the plan (`docs/stage-10-plan.md`) on 26 November 2026 with decisions **A for all**: two separate tool pages (1A); split at a chosen separator, first or every (2A); combine keeps the originals by default (3A); a space by default between combined values, with comma, dash, none or custom (4A); one guide per tool after guide 16 (5A).
 
@@ -25,10 +25,10 @@ No new dependencies. Files are still processed only in the browser, and the orig
 | Suite | Result |
 |---|---|
 | Type check, lint | ✅ pass, 0 warnings |
-| Unit tests (`npm test`) | ✅ 453 / 453 (Stage 10 adds 50): split and combine text rules (15), added columns in the edit session (10), split and combine plans applied through the session (13), EngineCore previews, apply, stale previews, CSV and Excel round trips, reference check, .xls refused, dates joined as shown (9), guide schedule and order (2), plus the stats field in existing tests |
+| Unit tests (`npm test`) | ✅ 454 / 454 (Stage 10 adds 51): split and combine text rules (15), added columns in the edit session (10), split and combine plans applied through the session (13), EngineCore previews, apply, stale previews, CSV and Excel round trips, reference check, .xls refused, dates joined as shown (9), guide schedule and order (2), the memory message for added columns (1), plus the stats field in existing tests |
 | Split a Column in the browser (`test:split`, new) | ✅ 28 / 28 |
 | Combine Columns in the browser (`test:combine`, new) | ✅ 29 / 29 |
-| Earlier suites | _Pending: final run in progress._ |
+| Earlier suites (final build) | ✅ smoke 118, seo 39, a11y 71, change case 27, fix 126, detector 33, validator 106, converter 45, engine 62, large 64 |
 | Guides (clock set to 7 December, 1 pm) | ✅ both guides live and in the sitemap, the 8 December guide still hidden; SEO 50 / 50; link previews (title, description, image, article type, Twitter card; image loads); each tool page lists its guide; axe-core clean in light and dark; no sideways scrolling at 390 px. With today's date both guides are hidden. |
 | Large files (`test:split-combine-perf`, new) | ✅ all ok; every row in the downloaded file, originals unchanged (SHA-256). See below. |
 
@@ -47,7 +47,15 @@ Chromium, the whole workflow on each tool page: open, preview, apply, create + v
 | XLSX 12 MB (600,000 rows) | Split | 6.9 s | 0.8 s | 0.1 s | 25.1 s | 1,639 MB | 18.7 MB .xlsx, checked cell by cell |
 | | Combine | 6.9 s | 0.4 s | 0.1 s | 19.4 s | 1,429 MB | 17.3 MB .xlsx, checked cell by cell |
 
-**Low-memory run (JS heap capped at 512 MB):** _pending, run in progress._
+**Low-memory run (JS heap capped at 512 MB, imitating a low-memory phone or tablet):**
+
+| File | Outcome | Peak extra memory | Original unchanged |
+|---|---|---|---|
+| CSV 50 MB | ✅ both tools ok: preview 0.8 / 0.4 s, download 2.2 s, all rows | 393 / 377 MB | yes |
+| CSV 100 MB | stopped safely at Apply: “This change adds 2 columns with 3,302,958 filled cells, which needs more memory than this device allows. Nothing was changed and your earlier changes are kept.” (Combine: 1 column, 1,668,161 cells) | 349 / 348 MB | yes |
+| CSV 150 MB | stopped safely when opening (“too large to open safely … needs roughly 320 MB”), the known Stage 2 limit for this memory, as in Stage 4 | 360 / 379 MB | yes |
+
+No crashes. The Cleaner's “Fix all” completes the 100 MB file at this memory (Stage 4) because it changes far fewer cells; Split and Combine write a value into every row, so they need more. The first low-memory run showed a wrong message at 100 MB (“This change (0 cells or rows)… Try fixing one column at a time”); it now says what the change adds and suggests a computer or a smaller file.
 
 The first measurement found memory use too high (150 MB split: 1,878 MB; 600,000-row Excel split: 1,922 MB). Two changes brought it down (above): added columns are stored as plain lists instead of one map entry per cell, and the split preview counts the parts first and writes them straight into the new columns. Apply on 150 MB went from 1.4 s to 0.2 s.
 
@@ -58,6 +66,7 @@ The first measurement found memory use too high (150 MB split: 1,878 MB; 600,000
 - Combining an Excel date gave its serial number (45366); values are now joined as shown.
 - With trim on, a value starting with a space gave an empty first part; the whole value is trimmed first.
 - Memory use on large files (see above).
+- The low-memory message for split and combine counted “0 cells or rows” and suggested fixing one column at a time; now it says how many columns and cells the change adds.
 
 ## Remaining limitations
 
@@ -67,7 +76,7 @@ The first measurement found memory use too high (150 MB split: 1,878 MB; 600,000
 - A separator that also appears inside a value splits it too (the preview shows this; quoted values can be protected).
 - The combined column holds text, so sums and date filters don't work on it.
 - Peak memory on the largest files is higher than for the Cleaner's “Fix all” (about 1.4 GB extra at 150 MB CSV, 1.6 GB for a 600,000-row Excel download), so very large files need a computer or a recent phone with enough memory.
-- The quick site-wide check (`test:smoke`) finds a slightly different number of links from run to run (119–122), because some guide links load after the page opens; nothing fails in any run.
+- The quick site-wide check (`test:smoke`) finds a slightly different number of links from run to run (118–122), because some guide links load after the page opens; nothing fails in any run.
 
 ## Approval
 
