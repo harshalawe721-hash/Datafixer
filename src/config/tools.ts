@@ -1,12 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
   | "spreadsheet-cleaner"
   | "csv-validator"
   | "excel-to-csv"
-  | "csv-to-excel";
+  | "csv-to-excel"
+  | "split-column";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -76,6 +77,16 @@ export const tools: readonly ToolDefinition[] = [
     summary: "Turn a CSV file into a clean XLSX workbook: numbers and dates become real Excel values, codes keep their zeros.",
     icon: Sheet,
     accepts: [".csv", ".tsv", ".txt"],
+    featured: false,
+  },
+  {
+    id: "split-column",
+    name: "Split a Column",
+    shortName: "Split column",
+    href: "/split-column",
+    summary: "Split one column into several at a space, comma or other separator, such as full names into first and last names.",
+    icon: Split,
+    accepts: [".xlsx", ".csv", ".tsv", ".txt"],
     featured: false,
   },
 ];

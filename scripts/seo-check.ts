@@ -18,9 +18,9 @@ const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
 const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
 const paths = urls.map((u) => new URL(u).pathname);
 console.log("\nSitemap and robots");
-// 10 fixed pages, plus the Guides list and each published guide (Stage 8; the schedule decides how many).
+// 11 fixed pages (Split a Column added in Stage 10), plus the Guides list and each published guide (Stage 8; the schedule decides how many).
 const guidePaths = paths.filter((p) => p.startsWith("/guides/"));
-const expected = 10 + (guidePaths.length ? 1 + guidePaths.length : 0);
+const expected = 11 + (guidePaths.length ? 1 + guidePaths.length : 0);
 check(paths.length === expected, `sitemap lists ${expected} pages (${paths.join(", ")})`);
 check(guidePaths.length === 0 || paths.includes("/guides"), "the Guides list is in the sitemap whenever a guide is");
 check(!paths.includes("/diagnostics"), "the diagnostics page is not in the sitemap");
@@ -121,7 +121,7 @@ const phone = await ctx.newPage();
 const cdp = await ctx.newCDPSession(phone);
 await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
 const perf: { path: string; fcp: number; lcp: number; cls: number; js: number }[] = [];
-for (const p of ["/", "/spreadsheet-error-detector", "/csv-validator", "/csv-to-excel", "/about"]) {
+for (const p of ["/", "/spreadsheet-error-detector", "/csv-validator", "/csv-to-excel", "/split-column", "/about"]) {
   let js = 0;
   const onResponse = async (r: { url(): string; request(): { resourceType(): string }; body(): Promise<Buffer> }) => {
     if (r.request().resourceType() === "script") js += (await r.body().catch(() => Buffer.alloc(0))).length;

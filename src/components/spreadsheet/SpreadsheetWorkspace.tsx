@@ -15,6 +15,7 @@ import { CellEditor } from "@/components/tools/fix/CellEditor";
 import type { ScanIssue } from "@/engine/scan/scan";
 import type { EditResult } from "@/engine/core";
 import type { EditStats } from "@/engine/edit/session";
+import { MAX_PAGE_COLUMNS, columnLetter } from "@/engine/query/query";
 
 const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, columnsAdded: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
@@ -208,6 +209,16 @@ export function SpreadsheetWorkspace({
     previewFix: (fixId, options, onProgress) => engine.previewFix(sheetName, fixId, { ...options, headerRow: current.headerRow }, onProgress),
     previewFixAll: (onProgress, set) => engine.previewFixAll(sheetName, { headerRow: current.headerRow, set }, onProgress),
     lastChange,
+    previewSplit: (input) => engine.previewSplit(sheetName, { ...input, headerRow: current.headerRow }),
+    previewCombine: (input) => engine.previewCombine(sheetName, { ...input, headerRow: current.headerRow }),
+    columns: async () => {
+      const page = await getRows(sheetName, { offset: 0, limit: 50, headerRow: current.headerRow, columnLimit: MAX_PAGE_COLUMNS });
+      return Array.from({ length: Math.min(page.columnCount, MAX_PAGE_COLUMNS) }, (_, c) => ({
+        index: c,
+        name: (current.headerRow ? page.header?.[c]?.trim() : "") || `Column ${columnLetter(c)}`,
+        example: page.rows.map((r) => r.cells[c] ?? "").find((t) => t.trim() !== "") ?? "",
+      }));
+    },
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
     exportCsv: (onProgress, options) => engine.exportCsv(sheetName, onProgress, options),
     csvDownloadOptions: csvTools,

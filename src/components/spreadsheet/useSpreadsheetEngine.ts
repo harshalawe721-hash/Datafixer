@@ -1,5 +1,6 @@
 "use client";
 
+import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EngineClient } from "@/engine/client";
 import { EngineError } from "@/engine/errors";
@@ -128,6 +129,8 @@ export function useSpreadsheetEngine() {
     (sheet: string, options: { headerRow: boolean; set?: "detector" | "validator" }, onProgress?: (p: ProgressEvent) => void) => client().previewFixAll(sheet, options, onProgress),
     [client],
   );
+  const previewSplit = useCallback((sheet: string, input: Omit<SplitPlanInput, "sheet">) => client().previewSplit(sheet, input), [client]);
+  const previewCombine = useCallback((sheet: string, input: Omit<CombinePlanInput, "sheet">) => client().previewCombine(sheet, input), [client]);
   const applyFix = useCallback((sheet: string, token: string) => client().applyFix(sheet, token), [client]);
   const cellInfo = useCallback((sheet: string, row: number, col: number) => client().cellInfo(sheet, row, col), [client]);
   const editCell = useCallback(
@@ -147,5 +150,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }

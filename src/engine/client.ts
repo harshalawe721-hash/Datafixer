@@ -15,7 +15,8 @@ import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
-import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "./core";
+import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview } from "./core";
+import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans";
 import type { FixOptions } from "./fix/fixes";
 import type { AnyFixId } from "./fix/fix-ids";
 import type { HistoryItem, HistorySummary } from "./edit/session";
@@ -112,6 +113,14 @@ export class EngineClient {
 
   previewFixAll(sheet: string, options: { headerRow: boolean; set?: "detector" | "validator" }, onProgress?: (p: ProgressEvent) => void): Promise<FixAllPreview> {
     return this.request<"previewFixAll">({ type: "previewFixAll", sheet, options }, onProgress);
+  }
+
+  previewSplit(sheet: string, input: Omit<SplitPlanInput, "sheet">): Promise<SplitCombinePreview> {
+    return this.request<"previewSplit">({ type: "previewSplit", sheet, input });
+  }
+
+  previewCombine(sheet: string, input: Omit<CombinePlanInput, "sheet">): Promise<SplitCombinePreview> {
+    return this.request<"previewCombine">({ type: "previewCombine", sheet, input });
   }
 
   applyFix(sheet: string, token: string): Promise<EditResult> {

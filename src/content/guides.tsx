@@ -310,3 +310,61 @@ export const csvToExcelGuide: Guide = {
     },
   ],
 };
+
+export const splitGuide: Guide = {
+  how: {
+    title: "How Split a Column works",
+    steps: [
+      "Open a CSV file or an Excel workbook (.xlsx). It is read on your device.",
+      "Choose the column to split and where to split it: at a space, comma, semicolon, dash, tab or any other text you type.",
+      "Choose whether to split only at the first separator (two parts, such as first name and the rest) or at every separator, and how many parts to keep.",
+      "The preview shows the first rows with their new columns. Nothing changes until you tap Apply.",
+      "The new columns are added at the right of the sheet, named after the column: “name (1)”, “name (2)”. Undo takes them away again. Download the result as CSV or, for .xlsx files, as Excel.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A column “name” holds “Asha Patil” and “Ben Rome”. Split at the first space, it gives “name (1)” with Asha and Ben, and “name (2)” with Patil
+        and Rome. A value without a space, such as “Cher”, goes into “name (1)” and leaves “name (2)” empty. Split at every comma, “Pune,
+        Maharashtra, India” gives three columns.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or change the original. The split is made on a copy in your browser; the download is a new file.",
+    "Split a formula cell. Formula cells are left as they are and counted in the preview.",
+    "Lose data: the original column is kept unless you tick “Remove the original column”, and values without the separator are kept in the first new column.",
+    "Remove a column from an Excel workbook when a filter, name or formula refers to it. The original column is kept and the preview says why.",
+  ],
+  limits: [
+    "Works with CSV and .xlsx files. Old .xls files can't have columns added safely: save them as .xlsx in Excel first.",
+    "A separator that also appears inside a value (such as “Lee, Jr, Ahmed”) splits that value too. Check the preview, or tick “Don't split inside double quotes” when such values are quoted.",
+    "An Excel sheet holds at most 16,384 columns; a split that would need more is refused with the reason.",
+    "Very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    privacyFaq,
+    {
+      q: "How do I split first and last names?",
+      a: "Choose the name column, “Space” and “At the first separator only”. The first word goes into one column and the rest of the name into the next, so “Mary Ann Lopez” becomes “Mary” and “Ann Lopez”.",
+    },
+    {
+      q: "Where do the new columns go?",
+      a: "At the right of the sheet, after the last column, named after the column you split: “name (1)”, “name (2)” and so on. Your other columns don't move.",
+    },
+    {
+      q: "Is the original column removed?",
+      a: "Not unless you tick “Remove the original column”. Either way, Undo brings everything back as it was.",
+    },
+    {
+      q: "Will my Excel formatting be kept?",
+      a: "Yes, when you download an .xlsx file as Excel: the new cells are written into your original workbook, and formatting, formulas and other sheets stay as they were.",
+    },
+    {
+      q: "Is this the same as Text to Columns in Excel?",
+      a: "It does the same job, with a preview first and Undo afterwards, and it works in any browser, also on a phone. Excel's Text to Columns replaces the columns to the right; this tool adds new columns instead.",
+    },
+  ],
+};

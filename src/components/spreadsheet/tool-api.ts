@@ -1,7 +1,8 @@
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { ScanIssue, ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview } from "@/engine/core";
+import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 
 /** The latest change, undo or redo, for the "Done" message. */
 export interface LastChange {
@@ -47,6 +48,11 @@ export interface ToolApi {
   previewFix(fixId: AnyFixId, options: Omit<FixOptions, "headerRow">, onProgress?: (p: ProgressEvent) => void): Promise<FixPreviewResult>;
   /** `set`: "validator" for the CSV Validator's safe repairs. */
   previewFixAll(onProgress?: (p: ProgressEvent) => void, set?: "detector" | "validator"): Promise<FixAllPreview>;
+  /** Stage 10: preview Split a column / Combine columns (header setting comes from the table). Apply with applyFix. */
+  previewSplit(input: Omit<SplitPlanInput, "sheet" | "headerRow">): Promise<SplitCombinePreview>;
+  previewCombine(input: Omit<CombinePlanInput, "sheet" | "headerRow">): Promise<SplitCombinePreview>;
+  /** Stage 10: the current columns: name (header or letter) and the first non-empty value as an example. */
+  columns(): Promise<{ index: number; name: string; example: string }[]>;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */

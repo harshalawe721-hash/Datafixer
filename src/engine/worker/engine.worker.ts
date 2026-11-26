@@ -108,6 +108,17 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "previewSplit":
+      case "previewCombine": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = req.type === "previewSplit" ? await core.previewSplit(req.sheet, req.input, t) : await core.previewCombine(req.sheet, req.input, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "applyFix":
         result = core.applyFix(req.sheet, req.token);
         break;

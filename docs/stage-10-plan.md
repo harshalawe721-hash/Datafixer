@@ -70,3 +70,9 @@ No new dependencies. Files stay in the browser.
   - Removing originals from an .xlsx runs the existing reference check; if it would break a filter, name or formula, the originals are kept and the preview says why.
   - Engine API: `previewSplit` and `previewCombine`, applied with `applyFix`.
   - Tests: 450 unit tests pass (45 new); browser fix suite 126/126 (Excel downloads re-read with openpyxl).
+- **Step 2 (Split a column page): done, 26 November 2026.**
+  - New tool page `/split-column` (in the tools registry, so it appears in the menu, footer, homepage list, sitemap and related tools). Accepts CSV, TSV, TXT and .xlsx; .xls is refused by the upload box.
+  - Controls: column, separator (space, comma, semicolon, dash, tab, other text), first or every separator with parts to keep, trim spaces, don't split inside double quotes, remove the original column. The preview updates as choices change and is tied to the exact choices, so an older preview can never be applied.
+  - Apply adds the new columns at the right; the shared “Your changes” bar shows “columns added” with Undo, Redo, history and download (CSV, or Excel for .xlsx).
+  - Help content (how it works, example, never, limits, FAQs) describes only tested behaviour.
+  - Tests: new browser suite `npm run test:split`, 28/28 (CSV and Excel downloads, undo/redo, nothing to split, remove original, custom separator, keyboard, axe-core light and dark, phone 390 px). All other suites pass: smoke 121, SEO 37, a11y 71, change case 27, fix 126, detector 33, validator 106, converter 45, engine 62; unit 450. The smoke and SEO checks were updated for the sixth tool (menu 6 tools, sitemap 11 fixed pages).

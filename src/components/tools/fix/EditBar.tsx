@@ -53,6 +53,7 @@ export function EditBar({ api }: { api: ToolApi }) {
     edits.rowsRemoved ? `${plural(edits.rowsRemoved, "row")} removed` : null,
     edits.columnsRemoved ? `${plural(edits.columnsRemoved, "column")} removed` : null,
     edits.rowsShortened ? `${plural(edits.rowsShortened, "row")} shortened` : null,
+    edits.columnsAdded ? `${plural(edits.columnsAdded, "column")} added` : null,
   ].filter(Boolean);
 
   return (
