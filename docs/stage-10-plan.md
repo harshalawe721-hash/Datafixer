@@ -60,3 +60,13 @@ No new dependencies. Files stay in the browser.
 - Splitting on a separator that also appears inside a value (for example "Lee, Jr, Ahmed") can give unexpected parts; the preview shows this before anything changes.
 - .xls files are not supported for these tools.
 - Combined values that contain the separator are not quoted automatically in CSV output beyond what CSV already requires.
+
+## Progress
+
+- **Step 1 (engine): done, 26 November 2026.**
+  - Added columns in the edit session: they sit after the kept original columns, count in the view, CSV download, stats and history, and Undo/Redo removes and restores them. Cells in added columns can't be edited or removed.
+  - Excel (.xlsx) downloads write the added columns into the original file as new cells; the sheet range is widened. Old .xls files are refused for these tools.
+  - Split and combine plans: split keeps the original column by default (removing it is an option) and keeps values without the separator, and numbers, as the first part, so removing the original never loses data. Combine keeps the originals by default. Formula cells are never split. Refused with a reason past 16,384 columns; combined values over 32,767 characters are left empty and counted.
+  - Removing originals from an .xlsx runs the existing reference check; if it would break a filter, name or formula, the originals are kept and the preview says why.
+  - Engine API: `previewSplit` and `previewCombine`, applied with `applyFix`.
+  - Tests: 450 unit tests pass (45 new); browser fix suite 126/126 (Excel downloads re-read with openpyxl).
