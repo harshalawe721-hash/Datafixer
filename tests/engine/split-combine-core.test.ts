@@ -114,3 +114,12 @@ test("old .xls files are refused for split and combine", async () => {
   (core as unknown as { state: { format: string } | null }).state = { format: "xls" };
   await assert.rejects(core.previewSplit("S", { column: 0, headerRow: true, options: space }), /old \.xls files/);
 });
+
+test("Excel: combine joins dates and numbers as they appear in the sheet", async () => {
+  const cells = (r: number): OutCell[] =>
+    r === 0 ? [{ t: "s", v: "name" }, { t: "s", v: "joined" }, { t: "s", v: "amount" }] : [{ t: "s", v: "Asha" }, { t: "n", v: 45366, fmt: "yyyy-mm-dd" }, { t: "n", v: 12.5, fmt: "0.00" }];
+  const { blob } = await writeXlsx([{ name: "S", rowCount: 2, colCount: 3, header: false, row: cells }]);
+  const { core, sheet } = await openXlsx(new File([blob], "d.xlsx"));
+  const p = await core.previewCombine(sheet, { columns: [0, 1, 2], name: "all", headerRow: true, options: { separator: " ", skipEmpty: true } });
+  assert.deepEqual(p.examples[0]!.after, ["Asha 2024-03-15 12.50"]);
+});

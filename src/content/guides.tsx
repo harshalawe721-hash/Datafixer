@@ -368,3 +368,60 @@ export const splitGuide: Guide = {
     },
   ],
 };
+
+export const combineGuide: Guide = {
+  how: {
+    title: "How Combine Columns works",
+    steps: [
+      "Open a CSV file or an Excel workbook (.xlsx). It is read on your device.",
+      "Tick two or more columns. They are joined in the order you tick them; move a column up or down to change the order.",
+      "Choose what goes between the values: a space, a comma and space, a dash, nothing, or any text you type. Name the new column.",
+      "The preview shows the first rows with the combined value. Nothing changes until you tap Apply.",
+      "The new column is added at the right of the sheet, and the original columns are kept unless you tick “Remove the original columns”. Undo takes it away again. Download the result as CSV or, for .xlsx files, as Excel.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        Columns “first” and “last” hold “Asha” and “Patil”. Combined with a space, the new column “full name” holds “Asha Patil”. If a row has no last
+        name, it holds just “Asha”, without a space at the end, because empty values are skipped. Combining “city” and “state” with a comma and space
+        gives “Pune, Maharashtra”.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or change the original. Columns are combined on a copy in your browser; the download is a new file.",
+    "Change a formula cell. A formula's current value is used in the combined text, and the formula itself stays where it is.",
+    "Remove the original columns unless you ask, or from an Excel workbook when a filter, name or formula refers to them. Then they are kept and the preview says why.",
+    "Cut a value short: a combined value longer than an Excel cell holds (32,767 characters) is left empty and counted in the preview.",
+  ],
+  limits: [
+    "Works with CSV and .xlsx files. Old .xls files can't have columns added safely: save them as .xlsx in Excel first.",
+    "Numbers and dates are joined as they appear in the sheet (for example 2024-03-15 or 12.50). The combined column holds text, so it can't be used in sums or date filters.",
+    "Very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    privacyFaq,
+    {
+      q: "How do I combine first and last names?",
+      a: "Tick the first-name column, then the last-name column, choose “Space”, and name the new column, for example “full name”. Asha + Patil becomes “Asha Patil”.",
+    },
+    {
+      q: "Can I change the order of the columns?",
+      a: "Yes. They are joined in the order you tick them, and the Order list has buttons to move each column up or down.",
+    },
+    {
+      q: "What happens with empty cells?",
+      a: "With “Skip empty values” ticked (the default), empty values are left out without adding an extra separator. Untick it to keep a separator for every column, even when a value is empty.",
+    },
+    {
+      q: "Are the original columns removed?",
+      a: "Not unless you tick “Remove the original columns”. Either way, Undo brings everything back as it was.",
+    },
+    {
+      q: "Is this the same as CONCAT or the & operator in Excel?",
+      a: "It gives the same result as =A2&\" \"&B2 or TEXTJOIN, with a preview first and Undo afterwards. The new column holds plain values, not formulas, so it stays the same if you later delete the original columns.",
+    },
+  ],
+};

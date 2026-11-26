@@ -174,7 +174,8 @@ export function planCombineColumns(input: CombinePlanInput): SplitCombinePlan {
   let empty = 0;
   const examples: PlanExample[] = [];
   for (let r = start; r < rowCount; r++) {
-    const parts = columns.map((c) => g.get(r, c));
+    // Values as they appear in the sheet (an Excel date reads 2024-03-15, not its serial number).
+    const parts = columns.map((c) => (g.display ? g.display(r, c) : g.get(r, c)));
     const joined = combineValues(parts, options);
     if (tooLongForCell(joined)) {
       tooLong++;
