@@ -12,7 +12,7 @@ export const csvOpensInOneColumn: HowToGuide = {
   summary: "Everything squeezed into column A? The file uses a different separator than your computer expects. Here's how to open it correctly.",
   updated: "2026-11-20",
   tools: ["csv-to-excel", "csv-validator"],
-  related: ["keep-leading-zeros-in-csv", "csv-encoding-strange-characters", "check-csv-before-import"],
+  related: ["keep-leading-zeros-in-csv", "csv-encoding-strange-characters", "check-csv-before-import", "split-cells-in-excel"],
   quickAnswer: (
     <p>
       A CSV file is plain text. On each line, the values are separated by a character: usually a comma, sometimes a semicolon or a tab. When you

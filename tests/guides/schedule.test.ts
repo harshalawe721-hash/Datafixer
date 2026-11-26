@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { indiaDate, isPublished, publishTime } from "../../src/content/howto/schedule.ts";
@@ -39,9 +40,28 @@ test("guide 16 (Change case) follows on 5 December 2026 at 12:30 pm", () => {
   assert.equal(isPublished(15, "2026-11-20", at("2026-12-05T12:30:00+05:30")), true);
 });
 
-test("guides 17–26 follow daily: guide 17 on 6 December, guide 26 on 15 December 2026 at 12:30 pm", () => {
+test("guides 17–18 (Split, Combine) follow on 6 and 7 December; guides 19–28 on 8–17 December 2026 at 12:30 pm", () => {
   assert.equal(indiaDate(publishTime(16, "2026-11-20")!), "2026-12-06");
-  assert.equal(indiaDate(publishTime(25, "2026-11-20")!), "2026-12-15");
-  assert.equal(isPublished(25, "2026-11-20", at("2026-12-15T12:29:00+05:30")), false);
-  assert.equal(isPublished(25, "2026-11-20", at("2026-12-15T12:30:00+05:30")), true);
+  assert.equal(indiaDate(publishTime(17, "2026-11-20")!), "2026-12-07");
+  assert.equal(indiaDate(publishTime(18, "2026-11-20")!), "2026-12-08");
+  assert.equal(indiaDate(publishTime(27, "2026-11-20")!), "2026-12-17");
+  assert.equal(isPublished(27, "2026-11-20", at("2026-12-17T12:29:00+05:30")), false);
+  assert.equal(isPublished(27, "2026-11-20", at("2026-12-17T12:30:00+05:30")), true);
+});
+
+test("the guide list puts Split and Combine right after Change case, and every related slug exists", () => {
+  // The guide modules use JSX, so they are read as text here.
+  const dir = new URL("../../src/content/howto/", import.meta.url);
+  const index = readFileSync(new URL("index.ts", dir), "utf8");
+  const list = index.slice(index.indexOf("export const GUIDES"), index.indexOf("];", index.indexOf("export const GUIDES")));
+  const order = [...list.matchAll(/^\s+([A-Za-z0-9]+),$/gm)].map((m) => m[1]!);
+  assert.equal(order.length, 28);
+  assert.deepEqual(order.slice(15, 19), ["changeCaseProperCase", "splitCellsInExcel", "combineColumnsInExcel", "csvVsExcel"]);
+  const files = readdirSync(dir).filter((f) => f.endsWith(".tsx"));
+  const guides = files.map((f) => readFileSync(new URL(f, dir), "utf8"));
+  const slugs = new Set(guides.map((t) => /slug: "([^"]+)"/.exec(t)![1]!));
+  for (const t of guides) {
+    const related = /related: \[([^\]]*)\]/.exec(t)![1]!.match(/"[^"]+"/g)!.map((x) => x.slice(1, -1));
+    for (const r of related) assert.ok(slugs.has(r), `related guide ${r} exists`);
+  }
 });

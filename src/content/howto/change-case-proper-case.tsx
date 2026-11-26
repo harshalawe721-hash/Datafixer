@@ -12,7 +12,7 @@ export const changeCaseProperCase: HowToGuide = {
   summary: "Names typed in capitals or small letters? Here's how to write them as Ravi Kumar, RAVI KUMAR or ravi kumar in one go.",
   updated: "2026-11-23",
   tools: ["spreadsheet-cleaner", "spreadsheet-error-detector"],
-  related: ["fix-inconsistent-capitalization", "remove-extra-spaces", "remove-duplicate-rows"],
+  related: ["fix-inconsistent-capitalization", "remove-extra-spaces", "remove-duplicate-rows", "split-cells-in-excel", "combine-columns-in-excel"],
   quickAnswer: (
     <p>
       To write a whole column as <strong>Proper Case</strong> (Ravi Kumar), <strong>UPPER CASE</strong> (RAVI KUMAR) or{" "}

@@ -23,6 +23,8 @@ export interface ToolDefinition {
   accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt")[];
   /** Shown in "Popular tools" on the homepage. */
   featured: boolean;
+  /** Related tools shown on this tool's page, in order (default: the first other tools in the registry). */
+  related?: readonly ToolId[];
 }
 
 /**
@@ -89,6 +91,7 @@ export const tools: readonly ToolDefinition[] = [
     icon: Split,
     accepts: [".xlsx", ".csv", ".tsv", ".txt"],
     featured: false,
+    related: ["combine-columns", "spreadsheet-cleaner", "csv-to-excel"],
   },
   {
     id: "combine-columns",
@@ -99,6 +102,7 @@ export const tools: readonly ToolDefinition[] = [
     icon: Combine,
     accepts: [".xlsx", ".csv", ".tsv", ".txt"],
     featured: false,
+    related: ["split-column", "spreadsheet-cleaner", "csv-to-excel"],
   },
 ];
 
@@ -109,5 +113,7 @@ export function getTool(id: ToolId): ToolDefinition {
 }
 
 export function relatedTools(id: ToolId, count = 3): ToolDefinition[] {
+  const chosen = getTool(id).related;
+  if (chosen) return chosen.map(getTool).slice(0, count);
   return tools.filter((t) => t.id !== id).slice(0, count);
 }

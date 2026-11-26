@@ -24,6 +24,8 @@ import { fixInconsistentCapitalization } from "./fix-inconsistent-capitalization
 import { checkEmailsAndPhoneNumbers } from "./check-emails-and-phone-numbers";
 import { excelRowLimit } from "./excel-row-limit";
 import { changeCaseProperCase } from "./change-case-proper-case";
+import { splitCellsInExcel } from "./split-cells-in-excel";
+import { combineColumnsInExcel } from "./combine-columns-in-excel";
 import { csvVsExcel } from "./csv-vs-excel";
 import { fixWrongNumberOfColumns } from "./fix-wrong-number-of-columns";
 import { fixBrokenQuotesInCsv } from "./fix-broken-quotes-in-csv";
@@ -57,7 +59,10 @@ export const GUIDES: readonly HowToGuide[] = [
   excelRowLimit,
   // Guide 16 (owner, 23 November 2026): published 5 December 2026 at 12:30 pm India time.
   changeCaseProperCase,
-  // Guides 17–26 (owner, 24 November 2026): 6–15 December 2026, one a day at 12:30 pm India time.
+  // Guides 17–18 (Stage 10, owner decision 5A, 26 November 2026): right after guide 16, on 6 and 7 December 2026.
+  splitCellsInExcel,
+  combineColumnsInExcel,
+  // Guides 19–28 (owner, 24 November 2026; moved two days later by decision 5A): 8–17 December 2026, one a day at 12:30 pm India time.
   csvVsExcel,
   fixWrongNumberOfColumns,
   fixBrokenQuotesInCsv,
