@@ -57,6 +57,8 @@ function cutPositions(value: string, separator: string, respectQuotes: boolean):
 /** Splits one text value into parts. Returns a single part when the separator is not found. */
 export function splitText(value: string, o: SplitOptions): string[] {
   if (!o.separator) throw new Error("The separator must not be empty.");
+  // With trim on, spaces at the start or end of the value never make an empty first or last part.
+  if (o.trim) value = value.trim();
   let cuts = cutPositions(value, o.separator, o.respectQuotes);
   if (o.mode === "first") cuts = cuts.slice(0, 1);
   if (o.maxParts !== null && o.maxParts >= 1) cuts = cuts.slice(0, o.maxParts - 1);

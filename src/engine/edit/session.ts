@@ -102,8 +102,10 @@ interface Entry {
   cols: Uint32Array;
   colReason: Uint16Array;
   reasons: string[];
-  /** Stage 10: columns added at the right edge, one sparse map (original row → value) per column. */
-  added: Map<number, CellValue>[];
+  /** Stage 10: columns added at the right edge, each a list indexed by original row (null = empty). */
+  added: CellValue[][];
+  /** Non-empty cells in each added column. */
+  addedCells: number[];
   addedReason: string;
   /** Rows made shorter: original row, new and previous length in original columns (-1 = not shortened before). */
   trimRows: Uint32Array;
@@ -416,19 +418,31 @@ export class EditSession {
       const to = t.length === 0 ? 0 : g.baseCol(t.length - 1) + 1;
       trims.set(br, { to, from: this.baseLength(br), reason: reasonOf(t.reason) });
     }
-    // Stage 10: columns added after the last column shown (view row → original row).
-    const added: Map<number, CellValue>[] = [];
+    // Stage 10: columns added after the last column shown, stored by original row. When no rows
+    // are removed, view rows are original rows, so the planned list is kept as it is (no copy).
+    const added: CellValue[][] = [];
+    const addedCells: number[] = [];
     if (req.addColumns?.length) {
       if (keys.length || rowSet.size || colSet.size || trims.size) throw new EngineError("internal", "A change can't add columns and change cells at the same time.");
+      const baseRows = this.base.grid.rowCount;
       for (const col of req.addColumns) {
         if (col.values.length !== g.rowCount) throw new EngineError("internal", "An added column needs one value per row.");
-        const m = new Map<number, CellValue>();
-        for (let r = 0; r < col.values.length; r++) {
-          const v = col.values[r] ?? null;
-          if (v !== null && v !== "") m.set(g.baseRow(r), v);
-          addBytes += v === null ? 0 : cellBytes(v);
+        let list: CellValue[];
+        if (this.rowsRemoved === 0) list = col.values;
+        else {
+          list = new Array<CellValue>(baseRows).fill(null);
+          for (let r = 0; r < col.values.length; r++) list[g.baseRow(r)] = col.values[r] ?? null;
         }
-        added.push(m);
+        let cells = 0;
+        addBytes += baseRows * 8;
+        for (let r = 0; r < col.values.length; r++) {
+          const v = col.values[r];
+          if (v === null || v === undefined || v === "") continue;
+          cells++;
+          if (typeof v === "string") addBytes += 40 + v.length * 2;
+        }
+        added.push(list);
+        addedCells.push(cells);
       }
     }
     if (keys.length === 0 && rowSet.size === 0 && colSet.size === 0 && trims.size === 0 && added.length === 0) return null;
@@ -461,6 +475,7 @@ export class EditSession {
       trimFrom: Uint32Array.from(trimRows, (r) => trims.get(r)!.from),
       trimReason: Uint16Array.from(trimRows, (r) => trims.get(r)!.reason),
       added,
+      addedCells,
       addedReason: req.addColumns?.[0]?.reason ?? "",
       bytes: addBytes,
     };
@@ -630,8 +645,12 @@ export class EditSession {
     if (this.layer.added.length && width + this.layer.added.length > MAX_COLUMNS) {
       throw new EngineError("unsupported-format", `With the added columns this sheet would need more than ${MAX_COLUMNS.toLocaleString("en-US")} columns in the Excel file. Download as CSV instead.`);
     }
-    this.layer.added.forEach((m, k) => {
-      for (const [row, value] of m) if (!this.rowDeleted[row]) edits.set(cellKey(row, width + k), { value });
+    this.layer.added.forEach((list, k) => {
+      for (let row = 0; row < list.length; row++) {
+        const value = list[row];
+        if (value === null || value === undefined || value === "" || this.rowDeleted[row]) continue;
+        edits.set(cellKey(row, width + k), { value });
+      }
     });
     return { edits, deletedRows, deletedCols, addedColumns: this.layer.added.length };
   }
@@ -675,7 +694,7 @@ export class EditSession {
       } else {
         const k = i - e.keys.length - e.rows.length - e.cols.length - e.trimRows.length;
         const col = this.view().columnCount - e.added.length + k;
-        items.push({ kind: "added", column: columnLetter(col), cells: e.added[k]!.size, reason: e.addedReason });
+        items.push({ kind: "added", column: columnLetter(col), cells: e.addedCells[k]!, reason: e.addedReason });
       }
     }
     return { total, items };

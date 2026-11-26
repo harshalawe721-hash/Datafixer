@@ -21,8 +21,8 @@ export interface EditLayer {
   readonly formats: Map<number, string>;
   /** Stage 5: original rows made shorter (empty extra fields removed): row → new length, in original columns. */
   readonly trim: Map<number, number>;
-  /** Stage 10: columns added after the kept original columns; each maps original row → value (sparse). */
-  readonly added: Map<number, CellValue>[];
+  /** Stage 10: columns added after the kept original columns; each is a list indexed by original row (null = empty). */
+  readonly added: CellValue[][];
 }
 
 function text(v: CellValue): string {
@@ -101,8 +101,8 @@ export class EditedGrid implements CellGrid {
 
   /** Value of an added column (Stage 10) at view position (r, c), or null. */
   private addedValue(r: number, c: number): CellValue {
-    const m = this.layer.added[c - this.keptCount];
-    return m ? (m.get(this.baseRow(r)) ?? null) : null;
+    const col = this.layer.added[c - this.keptCount];
+    return col ? (col[this.baseRow(r)] ?? null) : null;
   }
 
   get(r: number, c: number): CellValue {

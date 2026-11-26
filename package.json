@@ -26,7 +26,8 @@
     "test:combine": "node scripts/combine-columns-e2e.ts",
     "test:export-perf": "node scripts/export-perf.ts",
     "test:validator-perf": "node scripts/validator-perf.ts",
-    "test:converter-perf": "node scripts/converter-perf.ts"
+    "test:converter-perf": "node scripts/converter-perf.ts",
+    "test:split-combine-perf": "node scripts/split-combine-perf.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",

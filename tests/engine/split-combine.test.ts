@@ -80,3 +80,8 @@ test("combined values over the Excel cell limit are flagged", () => {
   assert.equal(tooLongForCell("x".repeat(EXCEL_MAX_CELL_CHARS)), false);
   assert.equal(tooLongForCell("x".repeat(EXCEL_MAX_CELL_CHARS + 1)), true);
 });
+
+test("with trim on, spaces around the whole value don't make empty parts", () => {
+  assert.deepEqual(splitText(" Name 0 ", { ...base, trim: true }), ["Name", "0"]);
+  assert.deepEqual(splitText(" Name 0", { ...base, trim: false }), ["", "Name 0"]);
+});

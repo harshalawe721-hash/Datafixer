@@ -83,27 +83,24 @@ export function planSplitColumn(input: SplitPlanInput): SplitCombinePlan {
   const rowCount = g.rowCount;
   if (rowCount === 0) return refusedPlan("This sheet has no rows to split.");
 
-  // Parts per data row. A value with no separator (or a number) becomes the first part,
-  // so removing the original column later never loses it. Formula cells are not split.
-  const partsByRow = new Map<number, CellValue[]>();
+  // Two passes, so no list of parts is kept per row: first count the parts (the widest value
+  // sets the number of new columns), then write each part straight into its column.
+  // A value with no separator (or a number) becomes the first part, so removing the original
+  // column later never loses it. Formula cells are not split.
+  const isFormula = (r: number) => sheet.formulas.size > 0 && sheet.formulas.has(cellKey(r, column));
   let formulaSkipped = 0;
   let width = 1;
   let anySplit = false;
   for (let r = start; r < rowCount; r++) {
-    const v = g.get(r, column);
-    if (sheet.formulas.size && sheet.formulas.has(cellKey(r, column))) {
+    if (isFormula(r)) {
       formulaSkipped++;
       continue;
     }
-    if (v === null || v === "") continue;
-    if (typeof v !== "string") {
-      partsByRow.set(r, [v]);
-      continue;
-    }
-    const parts = splitText(v, options);
-    if (parts.length > 1) anySplit = true;
-    partsByRow.set(r, parts);
-    if (parts.length > width) width = parts.length;
+    const v = g.get(r, column);
+    if (typeof v !== "string" || v === "") continue;
+    const n = splitText(v, options).length;
+    if (n > 1) anySplit = true;
+    if (n > width) width = n;
   }
   if (!anySplit) {
     return {
@@ -120,35 +117,44 @@ export function planSplitColumn(input: SplitPlanInput): SplitCombinePlan {
 
   const name = headerRow ? cellText(g.get(0, column)) || `Column ${column + 1}` : "";
   const headers = splitHeaderNames(name, width);
-  const columns: ChangeRequest["addColumns"] = [];
-  for (let k = 0; k < width; k++) {
+  const lists: CellValue[][] = Array.from({ length: width }, (_, k) => {
     const values: CellValue[] = new Array(rowCount).fill(null);
     if (headerRow) values[0] = headers[k]!;
-    for (const [r, parts] of partsByRow) {
-      const p = parts[k];
-      if (p !== undefined && p !== "") values[r] = p;
+    return values;
+  });
+  const examples: PlanExample[] = [];
+  let cellsWritten = 0;
+  for (let r = start; r < rowCount; r++) {
+    if (isFormula(r)) continue;
+    const v = g.get(r, column);
+    if (v === null || v === "") continue;
+    if (typeof v !== "string") {
+      lists[0]![r] = v;
+      cellsWritten++;
+      continue;
     }
-    columns.push({ values, reason: "Split a column" });
+    const parts = splitText(v, options);
+    for (let k = 0; k < parts.length; k++) {
+      if (parts[k] === "") continue;
+      lists[k]![r] = parts[k]!;
+      cellsWritten++;
+    }
+    if (parts.length > 1 && examples.length < EXAMPLE_ROWS) {
+      examples.push({ row: r + 1, before: [v], after: Array.from({ length: width }, (_, k) => parts[k] ?? "") });
+    }
   }
+  const columns: ChangeRequest["addColumns"] = lists.map((values) => ({ values, reason: "Split a column" }));
   const requests: ChangeRequest[] = [{ operation: "split-column", label: "Split a column", addColumns: columns }];
   if (input.removeOriginal) {
     requests.push({ operation: "split-column-remove", label: "Remove the original column", deleteColumns: [{ col: column, reason: "Split a column" }] });
   }
 
-  const examples: PlanExample[] = [];
-  for (const [r, parts] of partsByRow) {
-    if (examples.length >= EXAMPLE_ROWS) break;
-    if (parts.length < 2) continue;
-    const after: string[] = [];
-    for (let k = 0; k < width; k++) after.push(cellText(parts[k] ?? null));
-    examples.push({ row: r + 1, before: [cellText(g.get(r, column))], after });
-  }
   const skipped: SplitCombinePlan["skipped"] = [];
   if (formulaSkipped) skipped.push({ reason: "Formula cells, left unchanged.", count: formulaSkipped });
   return {
     requests,
     columnsAdded: width,
-    cellsWritten: [...partsByRow.values()].reduce((n, p) => n + p.filter((x) => x !== null && x !== "").length, 0),
+    cellsWritten,
     skipped,
     examples,
   };
