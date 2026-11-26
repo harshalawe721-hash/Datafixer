@@ -16,7 +16,7 @@ import type { ScanIssue } from "@/engine/scan/scan";
 import type { EditResult } from "@/engine/core";
 import type { EditStats } from "@/engine/edit/session";
 
-const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
+const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, columnsAdded: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
 /** Ask before an action that would discard the user's changes (they live only in this tab). */
 function confirmDiscard(edits: EditStats, action: string): boolean {

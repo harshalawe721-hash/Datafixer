@@ -21,6 +21,8 @@ export interface EditLayer {
   readonly formats: Map<number, string>;
   /** Stage 5: original rows made shorter (empty extra fields removed): row → new length, in original columns. */
   readonly trim: Map<number, number>;
+  /** Stage 10: columns added after the kept original columns; each maps original row → value (sparse). */
+  readonly added: Map<number, CellValue>[];
 }
 
 function text(v: CellValue): string {
@@ -38,12 +40,14 @@ export class EditedGrid implements CellGrid {
   private readonly colMap: Uint32Array | null;
   /** keptBefore[n] = number of kept columns among original columns 0…n-1. */
   private readonly keptBefore: Uint32Array | null;
+  /** Number of original columns still shown (view columns before the added ones). */
+  private readonly keptCount: number;
   readonly approxBytes: number;
   /** Present only when the original grid can format numbers (Excel). */
   readonly formatNumber?: (format: string, value: number) => string;
   readonly isDateFormat?: (format: string) => boolean;
 
-  constructor(base: CellGrid, layer: EditLayer, rowMap: Uint32Array | null, colMap: Uint32Array | null, keptBefore: Uint32Array | null, approxBytes: number) {
+  constructor(base: CellGrid, layer: EditLayer, rowMap: Uint32Array | null, colMap: Uint32Array | null, keptBefore: Uint32Array | null, keptCount: number, approxBytes: number) {
     if (base.formatNumber) this.formatNumber = (f, v) => base.formatNumber!(f, v);
     if (base.isDateFormat) this.isDateFormat = (f) => base.isDateFormat!(f);
     this.base = base;
@@ -51,6 +55,7 @@ export class EditedGrid implements CellGrid {
     this.rowMap = rowMap;
     this.colMap = colMap;
     this.keptBefore = keptBefore;
+    this.keptCount = keptCount;
     this.approxBytes = approxBytes;
   }
 
@@ -63,14 +68,16 @@ export class EditedGrid implements CellGrid {
     return this.rowMap ? this.rowMap[r]! : r;
   }
 
-  /** Original column of view column c, or -1 if there is none. */
+  /** Original column of view column c, or -1 if there is none (added columns have none). */
   baseCol(c: number): number {
+    if (c >= this.keptCount) return -1;
     if (!this.colMap) return c;
     return c < this.colMap.length ? this.colMap[c]! : -1;
   }
 
   rowLength(r: number): number {
     if (r < 0 || r >= this.rowCount) return 0;
+    if (this.layer.added.length) return this.keptCount + this.layer.added.length;
     const br = this.baseRow(r);
     let len = this.base.rowLength(br);
     if (this.layer.editedRows[br]) {
@@ -92,8 +99,15 @@ export class EditedGrid implements CellGrid {
     return t !== undefined && bc >= t;
   }
 
+  /** Value of an added column (Stage 10) at view position (r, c), or null. */
+  private addedValue(r: number, c: number): CellValue {
+    const m = this.layer.added[c - this.keptCount];
+    return m ? (m.get(this.baseRow(r)) ?? null) : null;
+  }
+
   get(r: number, c: number): CellValue {
     if (r < 0 || r >= this.rowCount || c < 0) return null;
+    if (c >= this.keptCount) return this.addedValue(r, c);
     const bc = this.baseCol(c);
     if (bc < 0) return null;
     const br = this.baseRow(r);
@@ -108,6 +122,7 @@ export class EditedGrid implements CellGrid {
   /** True when the cell at view position (r, c) has been changed. */
   isEdited(r: number, c: number): boolean {
     if (r < 0 || r >= this.rowCount || c < 0) return false;
+    if (c >= this.keptCount) return this.addedValue(r, c) !== null;
     const bc = this.baseCol(c);
     if (bc < 0) return false;
     const br = this.baseRow(r);
@@ -123,6 +138,7 @@ export class EditedGrid implements CellGrid {
 
   display(r: number, c: number): string {
     if (r < 0 || r >= this.rowCount || c < 0) return "";
+    if (c >= this.keptCount) return text(this.addedValue(r, c));
     const bc = this.baseCol(c);
     if (bc < 0) return "";
     const br = this.baseRow(r);
@@ -139,7 +155,7 @@ export class EditedGrid implements CellGrid {
   }
 
   isDate(r: number, c: number): boolean {
-    if (r < 0 || r >= this.rowCount || c < 0) return false;
+    if (r < 0 || r >= this.rowCount || c < 0 || c >= this.keptCount) return false;
     const bc = this.baseCol(c);
     if (bc < 0) return false;
     const br = this.baseRow(r);

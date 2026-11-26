@@ -246,7 +246,7 @@ export interface FixAllPreview {
 const FIX_ALL_ORDER: FixId[] = ["extra-spaces", "inconsistent-case", "numbers-as-text", "duplicate-rows", "empty-rows", "empty-columns"];
 const ROW_OR_COLUMN_FIXES = new Set<FixId>(["duplicate-rows", "empty-rows", "empty-columns"]);
 
-const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
+const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, columnsAdded: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
 
 export function featureWarnings(f: FeatureInventory | null): string[] {
   if (!f) return [];
@@ -1133,6 +1133,9 @@ export class EngineCore {
     const part = st.inspection.sheets[sheetIndex]?.part;
     if (!part) throw new EngineError("sheet-not-found", `The sheet “${sheetName}” could not be found in the workbook.`);
     const plan = session.exportPlan();
+    if (plan.addedColumns > 0) {
+      throw new EngineError("unsupported-format", "Columns added by Split or Combine can't be written into the original Excel file yet. Nothing was downloaded, and your changes are kept. Download as CSV instead.");
+    }
 
     // S2: never remove rows/columns that something in the workbook refers to.
     let referenceNotes: string[] = [];
@@ -1217,6 +1220,9 @@ export class EngineCore {
     const session = this.session(sheetName);
     const view = session.view();
     const plan = session.exportPlan();
+    if (plan.addedColumns > 0) {
+      throw new EngineError("unsupported-format", "Columns added by Split or Combine can't be written into an old .xls file. Download as CSV instead, or keep the changes in another format.");
+    }
     if (plan.deletedRows.length || plan.deletedCols.length) {
       throw new EngineError("would-break-references", "Rows or columns can't be removed from .xls files, because MyDataFixer can't check what refers to them. Undo the removal, or download as CSV.");
     }

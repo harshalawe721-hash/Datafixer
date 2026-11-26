@@ -32,6 +32,11 @@ export interface ChangeRequest {
   deleteColumns?: { col: number; reason: string }[];
   /** Stage 5: make rows shorter (remove empty fields at the end); `length` is in view columns. */
   trimRows?: { row: number; length: number; reason: string }[];
+  /**
+   * Stage 10: columns added after the last column shown. `values` has one value
+   * per VIEW row (null = empty). A request that adds columns changes nothing else.
+   */
+  addColumns?: { values: CellValue[]; reason: string }[];
 }
 
 export type HistoryStatus = "applied" | "undone";
@@ -48,6 +53,8 @@ export interface HistorySummary {
   columnsRemoved: number;
   /** Rows made shorter (empty extra fields removed). */
   rowsShortened: number;
+  /** Columns added by a tool (Stage 10). */
+  columnsAdded: number;
   createdAt: number;
 }
 
@@ -55,7 +62,8 @@ export type HistoryItem =
   | { kind: "cell"; cell: string; row: number; column: string; original: string; newValue: string }
   | { kind: "row"; row: number; reason: string }
   | { kind: "column"; column: string; reason: string }
-  | { kind: "trim"; row: number; from: number; to: number; reason: string };
+  | { kind: "trim"; row: number; from: number; to: number; reason: string }
+  | { kind: "added"; column: string; cells: number; reason: string };
 
 export interface EditStats {
   /** Cells whose current value differs from the original file. */
@@ -64,6 +72,8 @@ export interface EditStats {
   columnsRemoved: number;
   /** Rows currently shorter than in the original file (empty extra fields removed). */
   rowsShortened: number;
+  /** Columns added by a tool and still in place. */
+  columnsAdded: number;
   /** Applied history entries. */
   changesApplied: number;
   canUndo: boolean;
@@ -92,6 +102,9 @@ interface Entry {
   cols: Uint32Array;
   colReason: Uint16Array;
   reasons: string[];
+  /** Stage 10: columns added at the right edge, one sparse map (original row → value) per column. */
+  added: Map<number, CellValue>[];
+  addedReason: string;
   /** Rows made shorter: original row, new and previous length in original columns (-1 = not shortened before). */
   trimRows: Uint32Array;
   trimTo: Uint32Array;
@@ -138,7 +151,7 @@ export class EditSession {
   constructor(base: SheetModel, options: EditSessionOptions = {}) {
     this.base = base;
     this.budget = options.memoryBudgetBytes;
-    this.layer = { edits: new Map(), editedRows: new Uint16Array(base.grid.rowCount), extent: new Map(), formats: new Map(), trim: new Map() };
+    this.layer = { edits: new Map(), editedRows: new Uint16Array(base.grid.rowCount), extent: new Map(), formats: new Map(), trim: new Map(), added: [] };
     this.rowDeleted = new Uint8Array(base.grid.rowCount);
     this.colDeleted = new Uint8Array(base.columnCount);
   }
@@ -157,6 +170,7 @@ export class EditSession {
       rowsRemoved: this.rowsRemoved,
       columnsRemoved: this.colsRemoved,
       rowsShortened: this.layer.trim.size,
+      columnsAdded: this.layer.added.length,
       changesApplied: this.cursor,
       canUndo: this.cursor > 0,
       canRedo: this.cursor < this.chain.length,
@@ -225,7 +239,8 @@ export class EditSession {
       keptBefore[width] = baseCols - this.colsRemoved;
     }
 
-    const grid = new EditedGrid(base.grid, this.layer, rowMap, colMap, keptBefore, base.grid.approxBytes + this.bytes);
+    const keptCols = baseCols - this.colsRemoved;
+    const grid = new EditedGrid(base.grid, this.layer, rowMap, colMap, keptBefore, keptCols, base.grid.approxBytes + this.bytes);
     const mapKey = (key: number): number => {
       if (!baseToViewRow && !baseToViewCol) return key;
       const { row, col } = splitCellKey(key);
@@ -284,7 +299,7 @@ export class EditSession {
     const sheet: SheetModel = {
       ...base,
       grid,
-      columnCount: baseCols - this.colsRemoved,
+      columnCount: keptCols + this.layer.added.length,
       formulas: remap(base.formulas, true),
       errors: remap(base.errors, true),
       numberFormats: this.withFormatOverrides(remap(base.numberFormats, false), mapKey),
@@ -323,10 +338,12 @@ export class EditSession {
 
     // Cells (last value wins if a cell is listed twice).
     const byKey = new Map<number, { value: CellValue; format: string | undefined }>();
+    const keptView = view.columnCount - this.layer.added.length;
     const add = (vr: number, vc: number, value: CellValue, format: string | undefined) => {
       if (!Number.isInteger(vr) || !Number.isInteger(vc) || vc < 0 || vc >= view.columnCount) {
         throw new EngineError("invalid-edit", `Cell ${columnLetter(Math.max(0, vc))}${vr + 1} doesn't exist.`);
       }
+      if (vc >= keptView) throw new EngineError("invalid-edit", `Column ${columnLetter(vc)} was added by a tool, so its cells can't be edited here.`);
       const { row, col } = this.toBase(vr, vc);
       byKey.set(cellKey(row, col), { value, format });
     };
@@ -384,6 +401,7 @@ export class EditSession {
     const colSet = new Map<number, number>();
     for (const d of req.deleteColumns ?? []) {
       if (!Number.isInteger(d.col) || d.col < 0 || d.col >= view.columnCount) throw new EngineError("invalid-edit", `Column ${columnLetter(Math.max(0, d.col))} doesn't exist.`);
+      if (d.col >= keptView) throw new EngineError("invalid-edit", `Column ${columnLetter(d.col)} was added by a tool, so it can only be undone.`);
       colSet.set(g.baseCol(d.col), reasonOf(d.reason));
     }
     // Shortened rows (only when the row really gets shorter).
@@ -393,11 +411,27 @@ export class EditSession {
         throw new EngineError("invalid-edit", `Row ${t.row + 1} can't be shortened to ${t.length} fields.`);
       }
       if (t.length >= g.rowLength(t.row)) continue;
+      if (t.length > keptView) throw new EngineError("invalid-edit", `Row ${t.row + 1} can't be shortened into the columns added by a tool.`);
       const br = g.baseRow(t.row);
       const to = t.length === 0 ? 0 : g.baseCol(t.length - 1) + 1;
       trims.set(br, { to, from: this.baseLength(br), reason: reasonOf(t.reason) });
     }
-    if (keys.length === 0 && rowSet.size === 0 && colSet.size === 0 && trims.size === 0) return null;
+    // Stage 10: columns added after the last column shown (view row → original row).
+    const added: Map<number, CellValue>[] = [];
+    if (req.addColumns?.length) {
+      if (keys.length || rowSet.size || colSet.size || trims.size) throw new EngineError("internal", "A change can't add columns and change cells at the same time.");
+      for (const col of req.addColumns) {
+        if (col.values.length !== g.rowCount) throw new EngineError("internal", "An added column needs one value per row.");
+        const m = new Map<number, CellValue>();
+        for (let r = 0; r < col.values.length; r++) {
+          const v = col.values[r] ?? null;
+          if (v !== null && v !== "") m.set(g.baseRow(r), v);
+          addBytes += v === null ? 0 : cellBytes(v);
+        }
+        added.push(m);
+      }
+    }
+    if (keys.length === 0 && rowSet.size === 0 && colSet.size === 0 && trims.size === 0 && added.length === 0) return null;
     addBytes += 200 + rowSet.size * 6 + colSet.size * 6 + trims.size * 40;
     this.ensureBudget(addBytes, keys.length + rowSet.size + colSet.size + trims.size);
     const trimRows = Uint32Array.from([...trims.keys()].sort((a, b) => a - b));
@@ -426,6 +460,8 @@ export class EditSession {
       trimPrev: Int32Array.from(trimRows, (r) => this.layer.trim.get(r) ?? -1),
       trimFrom: Uint32Array.from(trimRows, (r) => trims.get(r)!.from),
       trimReason: Uint16Array.from(trimRows, (r) => trims.get(r)!.reason),
+      added,
+      addedReason: req.addColumns?.[0]?.reason ?? "",
       bytes: addBytes,
     };
 
@@ -524,6 +560,7 @@ export class EditSession {
   }
 
   private forward(e: Entry): void {
+    for (const m of e.added) this.layer.added.push(m);
     for (let i = 0; i < e.keys.length; i++) this.setCell(e.keys[i]!, e.values[i]!, e.formats?.[i]);
     for (let i = 0; i < e.trimRows.length; i++) this.layer.trim.set(e.trimRows[i]!, e.trimTo[i]!);
     for (const r of e.rows) {
@@ -551,6 +588,8 @@ export class EditSession {
       else this.layer.trim.set(e.trimRows[i]!, prev);
     }
     for (let i = e.keys.length - 1; i >= 0; i--) this.setCell(e.keys[i]!, e.prev[i], e.prevFormats?.[i]);
+    // Added columns are always the last ones, so undo takes them off the end.
+    for (let i = 0; i < e.added.length; i++) this.layer.added.pop();
   }
 
   // ------------------------------------------------------------------ history
@@ -566,6 +605,7 @@ export class EditSession {
       rowsRemoved: e.rows.length,
       columnsRemoved: e.cols.length,
       rowsShortened: e.trimRows.length,
+      columnsAdded: e.added.length,
       createdAt: e.createdAt,
     };
   }
@@ -574,7 +614,7 @@ export class EditSession {
    * Everything to write into the original file (Excel download), by ORIGINAL
    * position: cell edits with any number format, and removed rows/columns.
    */
-  exportPlan(): { edits: Map<number, { value: CellValue; format?: string }>; deletedRows: number[]; deletedCols: number[] } {
+  exportPlan(): { edits: Map<number, { value: CellValue; format?: string }>; deletedRows: number[]; deletedCols: number[]; addedColumns: number } {
     const edits = new Map<number, { value: CellValue; format?: string }>();
     for (const [key, value] of this.layer.edits) {
       const format = this.layer.formats.get(key);
@@ -584,7 +624,7 @@ export class EditSession {
     for (let r = 0; r < this.rowDeleted.length; r++) if (this.rowDeleted[r]) deletedRows.push(r);
     const deletedCols: number[] = [];
     for (let c = 0; c < this.colDeleted.length; c++) if (this.colDeleted[c]) deletedCols.push(c);
-    return { edits, deletedRows, deletedCols };
+    return { edits, deletedRows, deletedCols, addedColumns: this.layer.added.length };
   }
 
   /** Applied entries, oldest first (for the download summary). */
@@ -605,7 +645,7 @@ export class EditSession {
   historyDetails(id: number, offset = 0, limit = 100): { total: number; items: HistoryItem[] } {
     const e = this.chain.find((x) => x.id === id) ?? this.discarded.find((x) => x.id === id);
     if (!e) throw new EngineError("invalid-edit", "That change is no longer in the history.");
-    const total = e.keys.length + e.rows.length + e.cols.length + e.trimRows.length;
+    const total = e.keys.length + e.rows.length + e.cols.length + e.trimRows.length + e.added.length;
     const items: HistoryItem[] = [];
     const end = Math.min(total, offset + Math.max(0, Math.min(limit, 1000)));
     for (let i = Math.max(0, offset); i < end; i++) {
@@ -620,9 +660,13 @@ export class EditSession {
       } else if (i < e.keys.length + e.rows.length + e.cols.length) {
         const k = i - e.keys.length - e.rows.length;
         items.push({ kind: "column", column: columnLetter(e.cols[k]!), reason: e.reasons[e.colReason[k]!]! });
-      } else {
+      } else if (i < e.keys.length + e.rows.length + e.cols.length + e.trimRows.length) {
         const k = i - e.keys.length - e.rows.length - e.cols.length;
         items.push({ kind: "trim", row: e.trimRows[k]! + 1, from: e.trimFrom[k]!, to: e.trimTo[k]!, reason: e.reasons[e.trimReason[k]!]! });
+      } else {
+        const k = i - e.keys.length - e.rows.length - e.cols.length - e.trimRows.length;
+        const col = this.view().columnCount - e.added.length + k;
+        items.push({ kind: "added", column: columnLetter(col), cells: e.added[k]!.size, reason: e.addedReason });
       }
     }
     return { total, items };
