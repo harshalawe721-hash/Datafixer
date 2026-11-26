@@ -138,7 +138,10 @@ async function run(name: string, tool: "split" | "combine", file: string, kind: 
   try {
     let t = Date.now();
     await page.locator("input[type=file]").setInputFiles(file);
-    await page.getByRole("heading", { name: tool === "split" ? "Split a column" : "Combine columns", exact: true }).waitFor({ timeout: 300000 });
+    const panel = page.getByRole("heading", { name: tool === "split" ? "Split a column" : "Combine columns", exact: true });
+    const refused = page.getByRole("heading", { name: "This file couldn't be opened" });
+    await panel.or(refused).first().waitFor({ timeout: 300000 });
+    if (await refused.isVisible()) throw new Error(`refused safely: when opening: ${(await page.getByText(/too large|needs roughly|memory/i).first().textContent().catch(() => "")) ?? ""}`);
     row.openS = secs(t);
     t = Date.now();
     let apply;
