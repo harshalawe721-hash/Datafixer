@@ -37,7 +37,8 @@
     "test:duplicates-perf": "node scripts/duplicates-perf.ts",
     "test:json-perf": "node scripts/json-perf.ts",
     "test:tsv-perf": "node scripts/tsv-perf.ts",
-    "test:xml-perf": "node scripts/xml-perf.ts"
+    "test:xml-perf": "node scripts/xml-perf.ts",
+    "test:merge-perf": "node scripts/merge-perf.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",
