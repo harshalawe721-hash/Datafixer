@@ -150,6 +150,21 @@ export interface JsonSummary {
   longNumbers: number;
 }
 
+/** Stage 14: how an XML file became a table. */
+export interface XmlSummary {
+  /** Repeating elements that can be the records, e.g. "catalog/products/product". */
+  choices: { path: string; count: number }[];
+  /** The element used for the records. */
+  path: string;
+  records: number;
+  /** Cells holding values joined from repeated child elements (“; ”). */
+  joinedCells: number;
+  /** The file has data outside the records (not included in the table). */
+  outside: boolean;
+  /** The text encoding the file was read with. */
+  encoding: string;
+}
+
 export interface WorkbookSummary {
   fileName: string;
   fileSize: number;
@@ -175,6 +190,8 @@ export interface WorkbookSummary {
   namesGuess?: boolean;
   /** Stage 12: set when the file is JSON or JSON Lines (shown as a table). */
   json?: JsonSummary | null;
+  /** Stage 14: set when the file is XML (shown as a table). */
+  xml?: XmlSummary | null;
   timings: { totalMs: number };
 }
 

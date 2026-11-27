@@ -15,7 +15,9 @@ import { parseCsv } from "./csv/parse-csv.ts";
 import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspect.ts";
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
-import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
+import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary, XmlSummary } from "./types.ts";
+import { XmlReader, XmlSyntaxError } from "./xml/parse.ts";
+import { RecordFinder, XmlTableBuilder } from "./xml/table.ts";
 import { JsonSyntaxError, parseJson, type JsonValue } from "./json/parse.ts";
 import { atPath, findLists, JsonTableBuilder } from "./json/table.ts";
 import { jsonFrame, jsonValue, keyNames, recordJson, type JsonLayout, type JsonOut } from "./json/write.ts";
@@ -48,8 +50,8 @@ import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./f
 interface OpenState {
   file: Blob;
   fileName: string;
-  /** A JSON file is held as "csv" (see openJson); WorkbookSummary reports it as "json". */
-  format: Exclude<SpreadsheetFormat, "json">;
+  /** JSON and XML files are held as "csv" (see openJson, openXml); WorkbookSummary reports them as "json" or "xml". */
+  format: Exclude<SpreadsheetFormat, "json" | "xml">;
   sheets: SheetInfo[];
   loaded: Map<string, LoadedSheet>;
   inspection: InspectionResult | null;
@@ -59,6 +61,8 @@ interface OpenState {
   csv: CsvMeta | null;
   /** Stage 12: a JSON file shown as a text table (it then works like a CSV file inside the engine). */
   json?: JsonSummary & { headerRow: boolean };
+  /** Stage 14: an XML file shown as a text table (like a CSV file inside the engine). */
+  xml?: XmlSummary;
   activeSheet: string;
   sheetError: { code: string; message: string } | null;
   /** Warnings produced while reading the active sheet (Excel). */
@@ -464,6 +468,90 @@ async function openJson(file: File, options: OpenOptions, onProgress: Progress, 
   };
 }
 
+/** Stage 14: the encoding named by a BOM or the XML declaration (UTF-8 when none). */
+function xmlEncoding(head: Uint8Array): string {
+  if (head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf) return "utf-8";
+  if (head[0] === 0xff && head[1] === 0xfe) return "utf-16le";
+  if (head[0] === 0xfe && head[1] === 0xff) return "utf-16be";
+  const start = new TextDecoder("latin1").decode(head.subarray(0, 200));
+  const m = /^\s*<\?xml[^>]*\bencoding\s*=\s*["']([A-Za-z0-9._-]+)["']/.exec(start);
+  return m ? m[1]!.toLowerCase() : "utf-8";
+}
+
+/**
+ * Stage 14: open an XML file as a text table. The file is read twice in pieces: first to
+ * find the repeating elements (the records), then to build the rows, so memory grows with
+ * the table, with a safe stop when it would pass the device's memory budget.
+ */
+async function openXml(file: File, options: OpenOptions, onProgress: Progress, startedAt: number, cancel?: CancelToken): Promise<OpenState> {
+  const encoding = xmlEncoding(new Uint8Array(await file.slice(0, 512).arrayBuffer()));
+  try {
+    new TextDecoder(encoding);
+  } catch {
+    throw new EngineError("unsupported-format", `This file uses the “${encoding}” text encoding, which this browser can't read. Save it as UTF-8 and try again.`);
+  }
+  const limit = options.memoryBudgetBytes ? options.memoryBudgetBytes * 0.8 : Infinity;
+  const pass = async (reader: XmlReader, phase: "inspecting" | "parsing", check?: () => void) => {
+    const stream = file.stream().pipeThrough(new TextDecoderStream(encoding, { fatal: true })).getReader();
+    let loaded = 0;
+    try {
+      for (;;) {
+        let chunk;
+        try {
+          chunk = await stream.read();
+        } catch {
+          throw new EngineError("corrupt-file", `This file can't be read as ${encoding.toUpperCase()} text. Save it as UTF-8 and try again.`);
+        }
+        if (chunk.done) break;
+        reader.feed(chunk.value);
+        check?.();
+        loaded += chunk.value.length;
+        throwIfCancelled(cancel);
+        onProgress({ phase, loaded: Math.min(loaded, file.size), total: file.size });
+      }
+      reader.end();
+    } catch (e) {
+      if (e instanceof XmlSyntaxError) throw new EngineError("corrupt-file", `This file isn't valid XML: ${e.message}`);
+      throw e;
+    }
+  };
+  const finder = new RecordFinder();
+  await pass(new XmlReader(finder), "inspecting");
+  const choices = finder.choices();
+  const wanted = options.xmlPath;
+  const path = wanted !== undefined && choices.some((c) => c.path === wanted) ? wanted : choices[0]!.path;
+  const builder = new XmlTableBuilder(path);
+  await pass(new XmlReader(builder), "parsing", () => {
+    if (builder.bytes > limit) {
+      throw new EngineError(
+        "too-large-for-engine",
+        `This XML file is too large to open safely in this browser on this device (it needs roughly ${Math.ceil((limit / 0.8) / 1048576)} MB of memory or more). Nothing was changed. Try a computer.`,
+      );
+    }
+  });
+  onProgress({ phase: "indexing", loaded: null, total: null });
+  const table = builder.finish();
+  const sheet = createSheet("Sheet1");
+  sheet.grid = new ArrayGrid(table.rows);
+  sheet.columnCount = table.rows.reduce((m, r) => Math.max(m, r.length), 0);
+  return {
+    file,
+    fileName: file.name,
+    format: "csv",
+    sheets: [{ name: sheet.name, state: "visible", kind: "worksheet" }],
+    loaded: new Map([[sheet.name, { sheet, query: new SheetQuery(sheet) }]]),
+    inspection: null,
+    csv: null,
+    xml: { choices, path, records: table.records, joinedCells: table.joinedCells, outside: table.outside, encoding },
+    activeSheet: sheet.name,
+    sheetError: null,
+    sheetWarnings: [],
+    memoryBudgetBytes: options.memoryBudgetBytes,
+    startedAt,
+    lastScan: null,
+  };
+}
+
 export class EngineCore {
   private state: OpenState | null = null;
   private scanSeq = 0;
@@ -483,6 +571,10 @@ export class EngineCore {
 
     if (format === "json") {
       this.state = await openJson(file, options, onProgress, startedAt, cancel);
+      return this.summary();
+    }
+    if (format === "xml") {
+      this.state = await openXml(file, options, onProgress, startedAt, cancel);
       return this.summary();
     }
 
@@ -1202,7 +1294,7 @@ export class EngineCore {
           originalName: st.fileName,
           // Excel sheet without changes (Excel to CSV converter): “Book - Sheet.csv”.
           // JSON, and TSV/TXT files turned into CSV (Stage 13): named after the file, with the new extension.
-          downloadName: st.json || (!excel && delimiter !== "\t" && /\.(tsv|tab|txt)$/i.test(st.fileName))
+          downloadName: st.json || st.xml || (!excel && delimiter !== "\t" && /\.(tsv|tab|txt)$/i.test(st.fileName))
             ? `${base}.${delimiter === "\t" ? "tsv" : "csv"}`
             : excel && !stats.changesApplied
               ? `${base} - ${safeSheet}.${delimiter === "\t" ? "tsv" : "csv"}`
@@ -1686,7 +1778,7 @@ export class EngineCore {
     return {
       fileName: st.fileName,
       fileSize: st.file.size,
-      format: st.json ? "json" : st.format,
+      format: st.json ? "json" : st.xml ? "xml" : st.format,
       sheets: st.sheets,
       activeSheet: st.activeSheet,
       sheetStats,
@@ -1696,8 +1788,9 @@ export class EngineCore {
       issueCount,
       issues,
       sheetError: st.sheetError,
-      headerGuess: st.json ? st.json.headerRow : active ? guessHeaderRow(active) : false,
-      namesGuess: st.json ? st.json.headerRow : active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
+      headerGuess: st.json ? st.json.headerRow : st.xml ? true : active ? guessHeaderRow(active) : false,
+      namesGuess: st.json ? st.json.headerRow : st.xml ? true : active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
+      xml: st.xml ?? null,
       json: st.json ? { lines: st.json.lines, lists: st.json.lists, path: st.json.path, records: st.json.records, listsAsText: st.json.listsAsText, longNumbers: st.json.longNumbers } : null,
       timings: { totalMs: Date.now() - st.startedAt },
     };

@@ -1,6 +1,6 @@
 # Stage 14 plan: XML to CSV
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 14”.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -60,3 +60,11 @@ No new dependencies. Files stay in the browser.
 - Text mixed with child elements inside one element (as in HTML-like documents) is joined into one cell.
 - Documents that define their own entities in a `<!DOCTYPE>` are refused for safety.
 - XML that isn't a list of similar records (for example a configuration file) gives a table that may not be useful.
+
+## Progress
+
+- **Step 1 (engine): done, 27 November 2026.**
+  - `src/engine/xml/parse.ts`: a streaming XML reader written for this tool (the browser's own reader isn't available in the worker). It is fed text in pieces and checks that the document is well formed; mistakes are explained in plain language with line and column (wrong closing tag, unclosed tag or comment, unquoted or repeated attributes, a bare “&”, unknown entities such as &nbsp;, text outside the main element, a second main element). Only the five standard entities and character codes are understood; documents that declare their own entities are refused for safety (protecting against “billion laughs” and file-reading tricks); nesting over 1,000 levels is refused; a “>” inside quoted attributes, CDATA, comments, declarations and a DOCTYPE without entities are handled.
+  - `src/engine/xml/table.ts`: pass 1 finds repeating elements and suggests the records (elements with fields first, most numerous first; the root as one row when nothing repeats); pass 2 builds the rows: child elements and attributes as columns in order of first appearance, nested elements as dotted columns, repeated children joined with “; ” and counted (3A), attribute columns named after the attribute or @name on a clash (4A), namespace prefixes kept (g:price), namespace declarations ignored, data outside the records noted.
+  - Engine: .xml accepted at upload; the encoding is taken from a BOM or the XML declaration (UTF-8, UTF-16, ISO-8859-1, Windows-1252 …; unknown ones refused); both passes stream the file in pieces with a safe memory stop (5A); the result is held as a text table, so the verified CSV download (named after the file) and the CSV to Excel rules apply; another repeating element can be chosen.
+  - Tests: 21 new (540 unit tests in total): reader events identical when fed in pieces of 1–13 characters, entity declarations refused, 13 kinds of mistake with line and column, a product feed with g: fields, customers with nested address and an attribute clash, repeated phones, a sitemap, simple values, mixed content, an accounting-style export, a file where nothing repeats, ISO-8859-1 and UTF-16 files, 50,000 records across piece boundaries, the memory stop, downloads.

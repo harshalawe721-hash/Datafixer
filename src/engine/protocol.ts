@@ -17,6 +17,8 @@ export interface OpenOptions {
   encoding?: string;
   /** Stage 12: which list of a JSON file becomes the table (a path from WorkbookSummary.json.lists). */
   jsonPath?: string;
+  /** Stage 14: which repeated element of an XML file holds the records (a path from WorkbookSummary.xml.records). */
+  xmlPath?: string;
   /** Memory budget computed on the main thread (see memory-budget.ts). */
   memoryBudgetBytes?: number;
 }
