@@ -42,6 +42,9 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
       case "loadSheet":
         result = await core.loadSheet(req.sheet, onProgress, token);
         break;
+      case "openMerge":
+        result = await core.openMerge(req.files, req.options, onProgress, token);
+        break;
       case "scan": {
         const scanToken = { cancelled: false };
         scanTokens.add(scanToken);

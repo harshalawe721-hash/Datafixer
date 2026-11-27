@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode, Files } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -13,7 +13,8 @@ export type ToolId =
   | "json-to-csv"
   | "csv-to-json"
   | "tsv-to-csv"
-  | "xml-to-csv";
+  | "xml-to-csv"
+  | "merge-files";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -163,6 +164,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".xml"],
     featured: false,
     related: ["json-to-csv", "csv-to-excel", "tsv-to-csv"],
+  },
+  {
+    id: "merge-files",
+    name: "Merge CSV and Excel Files",
+    shortName: "Merge files",
+    href: "/merge-files",
+    summary: "Combine several CSV or Excel files into one, matching columns by name, with the source file of each row.",
+    icon: Files,
+    accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
+    featured: false,
+    related: ["remove-duplicates", "csv-to-excel", "spreadsheet-cleaner"],
   },
 ];
 

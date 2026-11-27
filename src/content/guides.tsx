@@ -703,3 +703,57 @@ export const xmlToCsvGuide: Guide = {
     },
   ],
 };
+
+export const mergeGuide: Guide = {
+  how: {
+    title: "How Merge Files works",
+    steps: [
+      "Choose or drop two or more files: CSV, TSV, TXT or Excel (.xlsx, .xls), even mixed. You can add more, change the order and remove files before merging.",
+      "Each file is read on your device, one at a time. Each CSV file's separator and text encoding are found separately, and Excel files use their first visible sheet.",
+      "Columns are matched by name, ignoring capital letters and spaces around the names, so files with the same columns in a different order line up. Columns found in only some files are added at the end.",
+      "Optionally add a “Source file” column and remove rows that appear more than once. Check the merged table, then download it as CSV or Excel, or open it in Remove Duplicates for more options.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        jan.csv has the columns id, name and city; feb.xlsx has name, id and phone. Merged, the table has the columns Source file, id, name, city and phone.
+        January&apos;s rows have no phone and February&apos;s rows have no city, so those cells are empty, and the page says which columns are only in some files.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your files or change them. The merged file is a new file created in your browser.",
+    "Change a value: codes keep their leading zeros and values from Excel are taken as they are shown.",
+    "Mix up columns: they are matched by name, and a column that exists in only some files stays empty for the others instead of being filled from another column.",
+    "Offer a file that doesn't match the merged table: every download is checked first.",
+  ],
+  limits: [
+    "Up to 50 files and 150 MB together. Very large merges need a computer or a recent phone with enough memory; if the merged table is too large for the device, MyDataFixer stops safely and says so.",
+    "Only the first visible sheet of each Excel workbook is used.",
+    "Differently named columns that mean the same thing (Email and E-mail) stay separate; rename them in one file first.",
+  ],
+  faqs: [
+    {
+      q: "Are my files uploaded?",
+      a: "No. Your browser reads the files on your device and creates the merged file there. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "Do the columns have to be in the same order?",
+      a: "No. Columns are matched by their names, so “id, name” and “name, id” line up. Files without column names are matched by position.",
+    },
+    {
+      q: "Can I merge CSV and Excel files together?",
+      a: "Yes. CSV, TSV, TXT, .xlsx and .xls files can be merged in one go. For Excel files, the first visible sheet is used.",
+    },
+    {
+      q: "How do I know which file a row came from?",
+      a: "Keep “Add a Source file column” ticked: the first column then holds the file name for every row.",
+    },
+    {
+      q: "Can I remove duplicates after merging?",
+      a: "Yes. Tick “Remove rows that appear more than once” to leave out exact copies, or use “Open in Remove Duplicates” to compare only some columns or keep the last copy.",
+    },
+  ],
+};

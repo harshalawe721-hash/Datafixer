@@ -87,6 +87,11 @@ export class EngineClient {
     return this.request<"open">({ type: "open", file, format, options: { ...options, memoryBudgetBytes } }, onProgress);
   }
 
+  /** Stage 15: read several files and merge them into one table (cancel with cancel()). */
+  openMerge(files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {
+    return this.request<"openMerge">({ type: "openMerge", files, options: { ...options, memoryBudgetBytes: computeMemoryBudget().bytes } }, onProgress);
+  }
+
   loadSheet(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {
     return this.request<"loadSheet">({ type: "loadSheet", sheet }, onProgress);
   }

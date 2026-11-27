@@ -26,6 +26,8 @@ export interface OpenOptions {
 export type EngineRequest =
   | { id: number; type: "open"; file: File; format: SpreadsheetFormat; options?: OpenOptions }
   | { id: number; type: "loadSheet"; sheet: string }
+  /** Stage 15: read several files and merge them into one table. */
+  | { id: number; type: "openMerge"; files: { file: File; format: SpreadsheetFormat }[]; options: { sourceColumn: boolean; removeDuplicates: boolean; memoryBudgetBytes?: number } }
   | { id: number; type: "getRows"; sheet: string; query: RowQuery }
   | { id: number; type: "scan"; sheet: string; options: ScanOptions }
   /** Stage 5: CSV Validator (cancellable with abortScans). */
@@ -65,6 +67,7 @@ export type EngineRequest =
 export interface EngineResults {
   open: WorkbookSummary;
   loadSheet: WorkbookSummary;
+  openMerge: WorkbookSummary;
   getRows: RowPage;
   scan: ScanResult;
   validate: ValidationResult;

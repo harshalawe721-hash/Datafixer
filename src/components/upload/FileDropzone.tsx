@@ -20,6 +20,9 @@ export interface FileDropzoneProps {
   inputId?: string;
   /** CSV Validator: accept CSV files with a few NUL bytes (reported as a problem, not refused). */
   allowNulBytes?: boolean;
+  /** Stage 15 (Merge Files): accept several files at once; accepted ones are passed to onFilesAccepted. */
+  multiple?: boolean;
+  onFilesAccepted?: (files: { file: File; format: SpreadsheetFormat }[]) => void;
 }
 
 /**
@@ -35,6 +38,8 @@ export function FileDropzone({
   disabled = false,
   inputId: inputIdProp,
   allowNulBytes = false,
+  multiple = false,
+  onFilesAccepted,
 }: FileDropzoneProps) {
   const generatedId = useId();
   const inputId = inputIdProp ?? generatedId;
@@ -52,6 +57,30 @@ export function FileDropzone({
     if (disabled || checking) return;
     const files = Array.from(list ?? []);
     if (files.length === 0) return;
+    if (multiple) {
+      // Several files: each is checked on its own; accepted ones go on, refused ones are listed.
+      setError(null);
+      setChecking(true);
+      const accepted: { file: File; format: SpreadsheetFormat }[] = [];
+      const refused: string[] = [];
+      try {
+        for (const file of files) {
+          try {
+            const result = validateSpreadsheet(file, await readFileHead(file), { accept, maxBytes: siteConfig.maxFileSizeBytes, allowNulBytes });
+            if (result.ok) accepted.push({ file, format: result.format });
+            else refused.push(result.error);
+          } catch {
+            refused.push(`“${file.name}” could not be read.`);
+          }
+        }
+        if (refused.length) setError(refused.length > 3 ? `${refused.slice(0, 3).join(" ")} (and ${refused.length - 3} more)` : refused.join(" "));
+        if (accepted.length) onFilesAccepted?.(accepted);
+      } finally {
+        setChecking(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+      return;
+    }
     if (files.length > 1) {
       setError("Please choose one file at a time.");
       return;
@@ -124,7 +153,7 @@ export function FileDropzone({
           {checking ? <Loader2 className="size-7 animate-spin" /> : <FileUp className="size-7" />}
         </span>
         <span className="mt-4 text-lg font-semibold text-foreground">
-          {checking ? "Checking file…" : dragging ? "Drop to select this file" : title}
+          {checking ? (multiple ? "Checking files…" : "Checking file…") : dragging ? (multiple ? "Drop to add these files" : "Drop to select this file") : title}
         </span>
         <span id={hintId} className="mt-1 text-sm text-muted">
           or <span className="font-semibold text-primary underline-offset-2 group-hover:underline">browse your device</span>
@@ -136,6 +165,7 @@ export function FileDropzone({
           id={inputId}
           type="file"
           accept={accept.join(",")}
+          multiple={multiple}
           className="sr-only"
           disabled={disabled || checking}
           aria-describedby={error ? `${hintId} ${errorId}` : hintId}
@@ -159,7 +189,7 @@ export function FileDropzone({
 
       <p className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
         <ShieldCheck className="size-4 shrink-0 text-success" aria-hidden="true" />
-        Your file is read by your browser on this device. It is not uploaded to our servers.
+        {multiple ? "Your files are read by your browser on this device. They are not uploaded to our servers." : "Your file is read by your browser on this device. It is not uploaded to our servers."}
       </p>
     </div>
   );

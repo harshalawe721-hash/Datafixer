@@ -39,10 +39,19 @@ export function SpreadsheetWorkspace({
   allowEditing = false,
   csvTools = false,
   renderIdle,
+  merge = false,
 }: {
   accept?: readonly string[];
-  /** Stage 12: shown under the upload box before a file is open (e.g. “paste JSON”); `open` opens a file without the upload checks. */
-  renderIdle?: (open: (file: File, format: SpreadsheetFormat) => void) => React.ReactNode;
+  /**
+   * Shown before a file is open: under the upload box (Stage 12, “paste JSON”), or instead of
+   * it when `merge` is set (Stage 15). `open` opens one file; `openMerge` merges several.
+   */
+  renderIdle?: (
+    open: (file: File, format: SpreadsheetFormat) => void,
+    openMerge: (files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }) => void,
+  ) => React.ReactNode;
+  /** Stage 15: the page merges several files (its own file list replaces the upload box). */
+  merge?: boolean;
   renderTool?: (api: ToolApi) => React.ReactNode;
   /** Stage 4: tap a cell in the table to edit it. */
   allowEditing?: boolean;
@@ -104,6 +113,13 @@ export function SpreadsheetWorkspace({
   }, [peekPending, clearPending, open]);
 
   if (state.status === "idle") {
+    const doMerge = (files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }) => {
+      setAdvisory(null);
+      void engine.openMerge(files, options);
+    };
+    if (merge && renderIdle) {
+      return <>{renderIdle((file, format) => void open(file, format), doMerge)}</>;
+    }
     const dropzone = (
       <FileDropzone
         accept={accept}
@@ -118,10 +134,13 @@ export function SpreadsheetWorkspace({
     return (
       <div className="space-y-4">
         {dropzone}
-        {renderIdle((file, format) => {
-          setAdvisory(null);
-          void open(file, format);
-        })}
+        {renderIdle(
+          (file, format) => {
+            setAdvisory(null);
+            void open(file, format);
+          },
+          doMerge,
+        )}
       </div>
     );
   }
@@ -166,7 +185,7 @@ export function SpreadsheetWorkspace({
                 {state.error.message}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                {state.file && state.format && (
+                {state.file && state.format && !merge && (
                   <Button size="sm" onClick={() => void open(state.file!, state.format!)}>
                     Try again
                   </Button>
@@ -235,6 +254,8 @@ export function SpreadsheetWorkspace({
       }));
     },
     reopen: (options) => void open(file, format, options),
+    openMerge: (files, options) => void engine.openMerge(files, options),
+    reset: resetAll,
     previewJson: (options) => engine.previewJson(sheetName, { ...options, headerRow: current.headerRow }),
     exportJson: (options, onProgress) => engine.exportJson(sheetName, { ...options, headerRow: current.headerRow }, onProgress),
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
@@ -258,7 +279,7 @@ export function SpreadsheetWorkspace({
           if (!unsaved || confirmDiscard(edits, "Switching to another sheet")) void selectSheet(name);
         }}
         onChangeDelimiter={
-          format === "csv"
+          format === "csv" && !summary.merge
             ? (d) =>
                 (!unsaved || confirmDiscard(edits, "Changing the separator")) &&
                 // Validator: an encoding the user chose is kept when the separator changes.
@@ -266,7 +287,7 @@ export function SpreadsheetWorkspace({
             : undefined
         }
         onChangeEncoding={
-          csvTools && format === "csv"
+          csvTools && format === "csv" && !summary.merge
             ? (encoding) => (!unsaved || confirmDiscard(edits, "Changing the text encoding")) && void open(file, format, { encoding })
             : undefined
         }

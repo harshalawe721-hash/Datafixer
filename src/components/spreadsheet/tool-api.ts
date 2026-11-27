@@ -62,6 +62,9 @@ export interface ToolApi {
   exportJson(options: { detect: boolean; layout: JsonLayout }, onProgress?: (p: ProgressEvent) => void): Promise<JsonExportResult>;
   /** Stage 12: open the same file again with other options (e.g. another list of a JSON file). */
   reopen(options: { jsonPath?: string; xmlPath?: string }): void;
+  /** Stage 15: merge files again (other files or options), or go back to choosing files. */
+  openMerge(files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }): void;
+  reset(): void;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */

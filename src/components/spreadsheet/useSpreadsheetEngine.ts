@@ -65,6 +65,25 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
+  /** Stage 15: merge several files into one table; the first file stands for them in the state. */
+  const openMerge = useCallback(
+    async (files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }) => {
+      const seq = ++opSeq.current;
+      const startedAt = Date.now();
+      const file = files[0]!.file;
+      setState({ status: "working", file, format: "csv", progress: null, startedAt, summary: null });
+      try {
+        const summary = await client().openMerge(files, options, (progress) => {
+          if (seq === opSeq.current) setState((s) => (s.status === "working" ? { ...s, progress } : s));
+        });
+        if (seq === opSeq.current) setState({ status: "ready", file, format: "csv", summary });
+      } catch (err) {
+        if (seq === opSeq.current) setState({ status: "error", file, format: "csv", error: toError(err), summary: null });
+      }
+    },
+    [client],
+  );
+
   const selectSheet = useCallback(
     async (name: string) => {
       if (state.status !== "ready") return;
@@ -161,5 +180,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, previewJson, exportJson, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, openMerge, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, previewJson, exportJson, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }
