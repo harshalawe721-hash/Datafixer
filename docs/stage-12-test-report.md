@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** ✅ **Steps 1–5 complete; waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 27 November 2026.
 
 The owner approved the plan (`docs/stage-12-plan.md`) on 27 November 2026 with decisions **A for all**: two pages (1A); nested objects as dotted columns and lists kept as JSON text (2A); values as text by default with optional detection (3A); JSON Lines both ways (4A); 50 MB for .json and 150 MB for .jsonl (5A); one guide per page, 19 and 20 December (6A).
 
@@ -59,4 +59,4 @@ No new dependencies. Files and pasted text stay in the browser.
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 12 on 27 November 2026 (“Stage 12 approved”).

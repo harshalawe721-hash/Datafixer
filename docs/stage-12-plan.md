@@ -1,6 +1,6 @@
 # Stage 12 plan: JSON to CSV and CSV to JSON
 
-**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 12”.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 12”. Stage 12 was approved as complete on 27 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
