@@ -39,6 +39,7 @@ import { csvFormulaInjection } from "./csv-formula-injection";
 import { findDuplicatesInExcel } from "./find-duplicates-in-excel";
 import { convertJsonToCsv } from "./convert-json-to-csv";
 import { convertCsvToJson } from "./convert-csv-to-json";
+import { convertTsvToCsv } from "./convert-tsv-to-csv";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -81,6 +82,8 @@ export const GUIDES: readonly HowToGuide[] = [
   // Guides 30–31 (Stage 12, owner decision 6A, 27 November 2026): 19 and 20 December 2026.
   convertJsonToCsv,
   convertCsvToJson,
+  // Guide 32 (Stage 13, owner decision 5A, 27 November 2026): 21 December 2026.
+  convertTsvToCsv,
 ];
 
 /**
