@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** ✅ **Steps 1–3 complete; waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 27 November 2026.
 
 The owner approved the plan (`docs/stage-13-plan.md`) on 27 November 2026 with decisions **A for all**: one page that also makes TSV from CSV (1A); comma by default with semicolon and tab, line endings and BOM under “More options” (2A); an Excel download (3A); a structure check with a link to the CSV Validator (4A); one guide on 21 December (5A).
 
@@ -47,4 +47,4 @@ No new dependencies; the existing reader, verified CSV writer and CSV to Excel c
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 13 on 27 November 2026 (“Stage 13 approved”).
