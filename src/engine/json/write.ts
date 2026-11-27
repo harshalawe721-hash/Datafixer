@@ -63,14 +63,23 @@ export function jsonValue(cell: WriteCell, detect: boolean): JsonOut {
   return text;
 }
 
-/** JSON text for records (each an ordered list of [key, value]). */
+/** JSON text of one record; `indent` is the record's own indentation in a pretty file. */
+export function recordJson(keys: string[], r: JsonOut[], layout: JsonLayout, indent = ""): string {
+  return layout === "pretty"
+    ? `${indent}{\n${keys.map((k, c) => `${indent}  ${JSON.stringify(k)}: ${JSON.stringify(r[c] ?? null)}`).join(",\n")}\n${indent}}`
+    : `{${keys.map((k, c) => `${JSON.stringify(k)}:${JSON.stringify(r[c] ?? null)}`).join(",")}}`;
+}
+
+/** What goes before the first record, between records and after the last one. */
+export function jsonFrame(layout: JsonLayout, empty: boolean): { open: string; between: string; close: string; indent: string } {
+  if (layout === "lines") return { open: "", between: "\n", close: empty ? "" : "\n", indent: "" };
+  if (empty) return { open: "[]\n", between: "", close: "", indent: "" };
+  if (layout === "pretty") return { open: "[\n", between: ",\n", close: "\n]\n", indent: "  " };
+  return { open: "[", between: ",", close: "]\n", indent: "" };
+}
+
+/** JSON text for records (each an ordered list of values, in key order). */
 export function recordsToJson(keys: string[], records: JsonOut[][], layout: JsonLayout): string {
-  const one = (r: JsonOut[], indent: string) =>
-    layout === "pretty"
-      ? `${indent}{\n${keys.map((k, c) => `${indent}  ${JSON.stringify(k)}: ${JSON.stringify(r[c] ?? null)}`).join(",\n")}\n${indent}}`
-      : `{${keys.map((k, c) => `${JSON.stringify(k)}:${JSON.stringify(r[c] ?? null)}`).join(",")}}`;
-  if (layout === "lines") return records.map((r) => one(r, "")).join("\n") + (records.length ? "\n" : "");
-  if (records.length === 0) return "[]\n";
-  if (layout === "pretty") return `[\n${records.map((r) => one(r, "  ")).join(",\n")}\n]\n`;
-  return `[${records.map((r) => one(r, "")).join(",")}]\n`;
+  const f = jsonFrame(layout, records.length === 0);
+  return f.open + records.map((r) => recordJson(keys, r, layout, f.indent)).join(f.between) + f.close;
 }

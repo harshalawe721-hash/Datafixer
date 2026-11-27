@@ -15,7 +15,7 @@ import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
-import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview } from "./core";
+import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportOptions, JsonExportResult, JsonPreview } from "./core";
 import type { DuplicatePlanInput } from "./fix/duplicates";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans";
 import type { FixOptions } from "./fix/fixes";
@@ -126,6 +126,14 @@ export class EngineClient {
 
   previewDuplicates(sheet: string, input: Omit<DuplicatePlanInput, "sheet"> & { clearInstead?: boolean }): Promise<DuplicatesPreview> {
     return this.request<"previewDuplicates">({ type: "previewDuplicates", sheet, input });
+  }
+
+  previewJson(sheet: string, options: JsonExportOptions): Promise<JsonPreview> {
+    return this.request<"previewJson">({ type: "previewJson", sheet, options });
+  }
+
+  exportJson(sheet: string, options: JsonExportOptions, onProgress?: (p: ProgressEvent) => void): Promise<JsonExportResult> {
+    return this.request<"exportJson">({ type: "exportJson", sheet, options }, onProgress);
   }
 
   applyFix(sheet: string, token: string): Promise<EditResult> {

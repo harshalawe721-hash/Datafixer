@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -10,7 +10,8 @@ export type ToolId =
   | "split-column"
   | "combine-columns"
   | "remove-duplicates"
-  | "json-to-csv";
+  | "json-to-csv"
+  | "csv-to-json";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -126,7 +127,18 @@ export const tools: readonly ToolDefinition[] = [
     icon: FileJson,
     accepts: [".json", ".jsonl"],
     featured: false,
-    related: ["csv-to-excel", "excel-to-csv", "csv-validator"],
+    related: ["csv-to-json", "csv-to-excel", "csv-validator"],
+  },
+  {
+    id: "csv-to-json",
+    name: "CSV to JSON Converter",
+    shortName: "CSV to JSON",
+    href: "/csv-to-json",
+    summary: "Turn a CSV or Excel file into JSON: pretty, compact or JSON Lines, with values as text or detected numbers.",
+    icon: Braces,
+    accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
+    featured: false,
+    related: ["json-to-csv", "csv-validator", "excel-to-csv"],
   },
 ];
 

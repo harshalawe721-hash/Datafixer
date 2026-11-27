@@ -235,6 +235,8 @@ export function SpreadsheetWorkspace({
       }));
     },
     reopen: (options) => void open(file, format, options),
+    previewJson: (options) => engine.previewJson(sheetName, { ...options, headerRow: current.headerRow }),
+    exportJson: (options, onProgress) => engine.exportJson(sheetName, { ...options, headerRow: current.headerRow }, onProgress),
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
     exportCsv: (onProgress, options) => engine.exportCsv(sheetName, onProgress, options),
     csvDownloadOptions: csvTools,

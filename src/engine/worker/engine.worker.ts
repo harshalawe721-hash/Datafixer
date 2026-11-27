@@ -125,6 +125,19 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "previewJson":
+        result = core.previewJson(req.sheet, req.options);
+        break;
+      case "exportJson": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = await core.exportJson(req.sheet, req.options, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "applyFix":
         result = core.applyFix(req.sheet, req.token);
         break;

@@ -1,5 +1,6 @@
 "use client";
 
+import type { JsonExportOptions } from "@/engine/core";
 import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 import type { DuplicatePlanInput } from "@/engine/fix/duplicates";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -136,6 +137,11 @@ export function useSpreadsheetEngine() {
     (sheet: string, input: Omit<DuplicatePlanInput, "sheet"> & { clearInstead?: boolean }) => client().previewDuplicates(sheet, input),
     [client],
   );
+  const previewJson = useCallback((sheet: string, options: JsonExportOptions) => client().previewJson(sheet, options), [client]);
+  const exportJson = useCallback(
+    (sheet: string, options: JsonExportOptions, onProgress?: (p: ProgressEvent) => void) => client().exportJson(sheet, options, onProgress),
+    [client],
+  );
   const applyFix = useCallback((sheet: string, token: string) => client().applyFix(sheet, token), [client]);
   const cellInfo = useCallback((sheet: string, row: number, col: number) => client().cellInfo(sheet, row, col), [client]);
   const editCell = useCallback(
@@ -155,5 +161,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, previewJson, exportJson, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }

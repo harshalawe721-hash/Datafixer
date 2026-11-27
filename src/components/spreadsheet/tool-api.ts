@@ -1,7 +1,8 @@
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { ScanIssue, ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportResult, JsonPreview } from "@/engine/core";
+import type { JsonLayout } from "@/engine/json/write";
 import type { DuplicateOptions } from "@/engine/fix/duplicates";
 import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 
@@ -56,6 +57,9 @@ export interface ToolApi {
   previewDuplicates(input: { options: DuplicateOptions; clearInstead?: boolean }): Promise<DuplicatesPreview>;
   /** Stage 10: the current columns: name (header or letter) and the first non-empty value as an example. */
   columns(): Promise<{ index: number; name: string; example: string }[]>;
+  /** Stage 12: CSV / Excel → JSON (header setting comes from the table; stop the export with abortScans). */
+  previewJson(options: { detect: boolean; layout: JsonLayout }): Promise<JsonPreview>;
+  exportJson(options: { detect: boolean; layout: JsonLayout }, onProgress?: (p: ProgressEvent) => void): Promise<JsonExportResult>;
   /** Stage 12: open the same file again with other options (e.g. another list of a JSON file). */
   reopen(options: { jsonPath?: string }): void;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */

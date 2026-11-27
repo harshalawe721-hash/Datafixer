@@ -539,3 +539,58 @@ export const jsonToCsvGuide: Guide = {
     },
   ],
 };
+
+export const csvToJsonGuide: Guide = {
+  how: {
+    title: "How the CSV to JSON converter works",
+    steps: [
+      "Open a CSV, TSV or TXT file, or an Excel workbook (.xlsx or .xls). It is read on your device; the separator and text encoding of CSV files are detected and can be changed.",
+      "Each row becomes a record. With “First row contains column names” ticked, the names become the keys; empty names become column_2 and repeated names name_2.",
+      "Choose the values: as text, exactly as shown (the default), or with numbers, true/false and empty values detected.",
+      "Choose the layout: pretty (indented), compact (smallest) or JSON Lines (one record per line), check the preview of the first records, and download. Every record is checked before the file is offered.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A CSV file has the columns id, name and age, and a row 00123, Asha, 30. As text, the record is{" "}
+        <code>{"{"}&quot;id&quot;: &quot;00123&quot;, &quot;name&quot;: &quot;Asha&quot;, &quot;age&quot;: &quot;30&quot;{"}"}</code>. With values
+        detected, age becomes the number 30, while the id stays the text &quot;00123&quot; because of its leading zeros.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file. The JSON is created in your browser.",
+    "Change a value unless you ask: by default every value is written as text, exactly as shown in the table.",
+    "Turn codes with leading zeros, numbers longer than 15 digits or dates into numbers, even with detection on.",
+    "Offer a file that doesn't match the table: every record is read back and compared before the download.",
+  ],
+  limits: [
+    "Each row is one flat record; nested JSON (for example address.city as an object) is not built from column names.",
+    "Excel dates are written as shown in the sheet, as text.",
+    "Very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    {
+      q: "Is my file uploaded?",
+      a: "No. Your browser reads the file on your device and creates the JSON there. Nothing is sent to MyDataFixer's servers or to anyone else, and your original file is never changed.",
+    },
+    {
+      q: "Why are my numbers in quotes?",
+      a: "By default every value is written as text, exactly as shown, so nothing changes. Choose “Detect numbers, true/false and empty values” to write plain numbers without quotes.",
+    },
+    {
+      q: "Why does 00123 stay in quotes even with detection on?",
+      a: "Because as a number it would become 123. Codes with leading zeros, numbers longer than 15 digits and dates always stay text.",
+    },
+    {
+      q: "What is the difference between pretty, compact and JSON Lines?",
+      a: "Pretty is indented and easy to read. Compact has no extra spaces, so the file is smallest. JSON Lines puts one record on each line, which many data tools read one line at a time.",
+    },
+    {
+      q: "Can I convert an Excel file to JSON?",
+      a: "Yes. Open the .xlsx or .xls file and choose the sheet; the values are written as shown in the sheet.",
+    },
+  ],
+};

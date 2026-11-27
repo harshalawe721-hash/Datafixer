@@ -109,7 +109,7 @@ console.log("\nHeader interactions (desktop)");
   await toolsBtn.click();
   check((await toolsBtn.getAttribute("aria-expanded")) === "true", "Tools menu opens on click");
   const menuLinks = page.locator("[data-menu-item]");
-  check((await menuLinks.count()) === 9, "Tools menu lists 9 tools");
+  check((await menuLinks.count()) === 10, "Tools menu lists 10 tools");
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "desktop-tools-menu.png") });
   await page.keyboard.press("Escape");
   check((await toolsBtn.getAttribute("aria-expanded")) === "false", "Escape closes Tools menu");

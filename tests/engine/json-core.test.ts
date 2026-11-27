@@ -110,3 +110,94 @@ test("upload check: .json and .jsonl accepted as text; .json limited to 50 MB", 
   assert.equal(validateSpreadsheet({ name: "a.json", size: 4 }, new Uint8Array([0x50, 0x4b, 3, 4]), opts).ok, false);
   assert.equal(validateSpreadsheet({ name: "a.json", size: 7 }, text, { accept: [".csv"], maxBytes: 100 }).ok, false);
 });
+
+// ---------------------------------------------------------------- CSV / Excel → JSON
+
+import { parseJson as readJson, parseJsonLines as readLines } from "../../src/engine/json/parse.ts";
+import { writeXlsx } from "../../src/engine/export/xlsx-writer.ts";
+
+async function openCsv(text: string, name = "people.csv") {
+  const core = new EngineCore();
+  const s = await core.open(new File([text], name), "csv", {}, noop);
+  return { core, sheet: s.activeSheet };
+}
+const CSV = "id,name,age,active,note\n00123,Asha,30,true,\n00124,Ben,4.5,FALSE,hi\n";
+
+test("CSV to JSON: text by default, exactly as written; named after the file", async () => {
+  const { core, sheet } = await openCsv(CSV);
+  const out = await core.exportJson(sheet, { headerRow: true, detect: false, layout: "pretty" }, noop);
+  assert.equal(out.summary.downloadName, "people.json");
+  assert.equal(out.summary.records, 2);
+  assert.deepEqual(readJson(await out.blob.text()), [
+    { id: "00123", name: "Asha", age: "30", active: "true", note: "" },
+    { id: "00124", name: "Ben", age: "4.5", active: "FALSE", note: "hi" },
+  ]);
+});
+
+test("CSV to JSON with detection: numbers, booleans and null; codes stay text", async () => {
+  const { core, sheet } = await openCsv(CSV);
+  const out = await core.exportJson(sheet, { headerRow: true, detect: true, layout: "compact" }, noop);
+  const text = await out.blob.text();
+  assert.equal(text, '[{"id":"00123","name":"Asha","age":30,"active":true,"note":null},{"id":"00124","name":"Ben","age":4.5,"active":false,"note":"hi"}]\n');
+});
+
+test("JSON Lines output: one record per line, .jsonl", async () => {
+  const { core, sheet } = await openCsv(CSV);
+  const out = await core.exportJson(sheet, { headerRow: true, detect: true, layout: "lines" }, noop);
+  assert.equal(out.summary.downloadName, "people.jsonl");
+  const text = await out.blob.text();
+  assert.equal(text.split("\n").length, 3);
+  assert.equal(readLines(text).length, 2);
+});
+
+test("no header row: keys column_1, column_2…; empty and repeated names made unique", async () => {
+  const a = await openCsv("x,y\n1,2\n");
+  const noHeader = await a.core.exportJson(a.sheet, { headerRow: false, detect: false, layout: "compact" }, noop);
+  assert.equal(await noHeader.blob.text(), '[{"column_1":"x","column_2":"y"},{"column_1":"1","column_2":"2"}]\n');
+  const b = await openCsv("name,,name\na,b,c\n");
+  const p = b.core.previewJson(b.sheet, { headerRow: true, detect: false, layout: "compact" });
+  assert.deepEqual(p.keys, ["name", "column_2", "name_2"]);
+});
+
+test("preview: the first 3 records exactly as written", async () => {
+  const { core, sheet } = await openCsv("a\n1\n2\n3\n4\n5\n");
+  const p = core.previewJson(sheet, { headerRow: true, detect: true, layout: "pretty" });
+  assert.equal(p.records, 5);
+  assert.equal(p.sampleRecords, 3);
+  assert.deepEqual(readJson(p.sample), [{ a: 1 }, { a: 2 }, { a: 3 }]);
+});
+
+test("an empty sheet gives an empty list", async () => {
+  const { core, sheet } = await openCsv("a,b\n");
+  const out = await core.exportJson(sheet, { headerRow: true, detect: false, layout: "pretty" }, noop);
+  assert.equal(await out.blob.text(), "[]\n");
+});
+
+test("Excel to JSON: dates as shown; numbers detected; long text numbers stay text", async () => {
+  const { blob } = await writeXlsx([
+    {
+      name: "S",
+      rowCount: 2,
+      colCount: 3,
+      header: true,
+      row: (r) => (r === 0 ? [{ t: "s", v: "joined" }, { t: "s", v: "amount" }, { t: "s", v: "card" }] : [{ t: "n", v: 45366, fmt: "yyyy-mm-dd" }, { t: "n", v: 12.5, fmt: "0.00" }, { t: "s", v: "4111111111111111" }]),
+    },
+  ]);
+  const core = new EngineCore();
+  const s = await core.open(new File([blob], "book.xlsx"), "xlsx", {}, noop);
+  const out = await core.exportJson(s.activeSheet, { headerRow: true, detect: true, layout: "compact" }, noop);
+  assert.deepEqual(readJson(await out.blob.text()), [{ joined: "2024-03-15", amount: 12.5, card: "4111111111111111" }]);
+  assert.equal(out.summary.downloadName, "book.json");
+});
+
+test("many records are written in pieces and still read back as one list", async () => {
+  const lines = ["n"];
+  for (let i = 0; i < 12_345; i++) lines.push(String(i));
+  const { core, sheet } = await openCsv(lines.join("\n"));
+  for (const layout of ["pretty", "compact", "lines"] as const) {
+    const text = await (await core.exportJson(sheet, { headerRow: true, detect: true, layout }, noop)).blob.text();
+    const back = layout === "lines" ? readLines(text) : (readJson(text) as unknown[]);
+    assert.equal(back.length, 12_345, layout);
+    assert.deepEqual(back[12_344], { n: 12_344 });
+  }
+});

@@ -18,6 +18,7 @@ import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery 
 import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
 import { JsonSyntaxError, parseJson, parseJsonLines } from "./json/parse.ts";
 import { atPath, findLists, jsonToTable } from "./json/table.ts";
+import { jsonFrame, jsonValue, keyNames, recordJson, type JsonLayout, type JsonOut } from "./json/write.ts";
 import { ArrayGrid } from "./grid.ts";
 import { createSheet } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
@@ -33,7 +34,7 @@ import { PartWriter, writeZip, streamEntry, type OutputEntry } from "./xlsx/zip.
 import { countConversion, KEPT_REASON_TEXT, planCsvToXlsx, type KeptReason } from "./convert/csv-to-xlsx.ts";
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
 import { classify } from "./scan/classify.ts";
-import { buildCsv, verifyCsv } from "./export/csv-export.ts";
+import { buildCsv, cellOutText, verifyCsv } from "./export/csv-export.ts";
 import { readZipEntries, type ZipEntry } from "./xlsx/zip.ts";
 import { affectedBy, buildReferenceIndex, type ReferenceIndex } from "./xlsx/references.ts";
 import { patchXlsx } from "./xlsx/patch.ts";
@@ -204,6 +205,27 @@ export interface CellInfo {
 }
 
 /** A fix preview as sent to the page: the token must be passed back to apply exactly this preview. */
+/** Stage 12: CSV / Excel → JSON. */
+export interface JsonExportOptions {
+  headerRow: boolean;
+  /** Plain numbers, true/false and empty cells become numbers, booleans and null (decision 3A). */
+  detect: boolean;
+  layout: JsonLayout;
+}
+
+export interface JsonPreview {
+  keys: string[];
+  records: number;
+  /** The first records, exactly as they will be written. */
+  sample: string;
+  sampleRecords: number;
+}
+
+export interface JsonExportResult {
+  blob: Blob;
+  summary: { downloadName: string; bytes: number; records: number; keys: number; layout: JsonLayout };
+}
+
 /** Stage 11: preview of the Remove Duplicates page. */
 export interface DuplicatesPreview extends Omit<DuplicatePlan, "requests" | "removeRows"> {
   /** Pass to applyFix to apply exactly this preview; null when nothing will change. */
@@ -862,6 +884,75 @@ export class EngineCore {
   async previewCombine(sheetName: string, input: Omit<CombinePlanInput, "sheet">, cancel?: CancelToken): Promise<SplitCombinePreview> {
     this.requireSplitCombineFormat();
     return this.stageSplitCombine(sheetName, planCombineColumns({ ...input, sheet: this.session(sheetName).view() }), cancel);
+  }
+
+  /** Stage 12: key names and a way to read each data row as a JSON record. */
+  private jsonSource(sheetName: string, options: JsonExportOptions) {
+    const { sheet: view } = this.current(sheetName);
+    const g = view.grid;
+    const width = view.columnCount;
+    const header = options.headerRow && g.rowCount > 0 ? Array.from({ length: width }, (_, c) => cellOutText(view, 0, c, true)) : [];
+    const keys = keyNames(header, width);
+    const start = options.headerRow ? 1 : 0;
+    const record = (r: number): JsonOut[] =>
+      keys.map((_, c) => jsonValue({ value: g.get(r, c), text: cellOutText(view, r, c, true), date: g.isDate?.(r, c) ?? false }, options.detect));
+    return { view, keys, start, rows: Math.max(0, g.rowCount - start), record };
+  }
+
+  /** Stage 12: the first records as they will be written (CSV to JSON preview). */
+  previewJson(sheetName: string, options: JsonExportOptions): JsonPreview {
+    const src = this.jsonSource(sheetName, options);
+    const n = Math.min(3, src.rows);
+    const records = Array.from({ length: n }, (_, i) => src.record(src.start + i));
+    const f = jsonFrame(options.layout, n === 0);
+    const sample = f.open + records.map((r) => recordJson(src.keys, r, options.layout, f.indent)).join(f.between) + f.close;
+    return { keys: src.keys, records: src.rows, sample, sampleRecords: n };
+  }
+
+  /**
+   * Stage 12: the sheet as a .json or .jsonl file. Records are written in pieces;
+   * each one is read back with the strict JSON reader and compared before the file
+   * is offered (the brackets and commas around them are fixed text).
+   */
+  async exportJson(sheetName: string, options: JsonExportOptions, onProgress: Progress, cancel?: CancelToken): Promise<JsonExportResult> {
+    const st = this.requireState();
+    const src = this.jsonSource(sheetName, options);
+    if (st.memoryBudgetBytes && src.view.grid.approxBytes * 2.5 + 32 * 1024 * 1024 > st.memoryBudgetBytes * 1.3) {
+      throw new EngineError("out-of-memory", "This file is too large to turn into JSON safely in this browser on this device. Nothing was created. Close other tabs and try again, or use a device with more memory.");
+    }
+    const f = jsonFrame(options.layout, src.rows === 0);
+    const parts: string[] = [f.open];
+    const same = (a: unknown, b: JsonOut) => a === b;
+    let batch: string[] = [];
+    let written = 0;
+    for (let i = 0; i < src.rows; i++) {
+      const values = src.record(src.start + i);
+      const text = recordJson(src.keys, values, options.layout, f.indent);
+      // Check: the record reads back to the same keys, in the same order, with the same values.
+      const back = parseJson(text) as Record<string, unknown>;
+      const backKeys = Object.keys(back);
+      if (backKeys.length !== src.keys.length || src.keys.some((k, c) => backKeys[c] !== k || !same(back[k], values[c]!))) {
+        throw new EngineError("internal", `The JSON file didn't match the table when it was checked (record ${i + 1}), so it was not offered. Nothing was changed.`);
+      }
+      batch.push(text);
+      if (batch.length >= 5000) {
+        parts.push((written ? f.between : "") + batch.join(f.between));
+        written += batch.length;
+        batch = [];
+        throwIfCancelled(cancel);
+        onProgress({ phase: "exporting", loaded: i + 1, total: src.rows });
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+    if (batch.length) parts.push((written ? f.between : "") + batch.join(f.between));
+    parts.push(f.close);
+    const blob = new Blob(parts, { type: options.layout === "lines" ? "application/x-ndjson" : "application/json" });
+    const base = st.fileName.replace(/\.[^.]+$/, "") || "data";
+    const sheetPart = st.format !== "csv" && st.sheets.filter((x) => x.kind === "worksheet").length > 1 ? ` - ${sheetName.replace(/[\\/:*?"<>|]+/g, "_")}` : "";
+    return {
+      blob,
+      summary: { downloadName: `${base}${sheetPart}.${options.layout === "lines" ? "jsonl" : "json"}`, bytes: blob.size, records: src.rows, keys: src.keys.length, layout: options.layout },
+    };
   }
 
   /**
