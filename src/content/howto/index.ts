@@ -37,6 +37,8 @@ import { findUnusualValues } from "./find-unusual-values";
 import { standardisePhoneNumbers } from "./standardise-phone-numbers";
 import { csvFormulaInjection } from "./csv-formula-injection";
 import { findDuplicatesInExcel } from "./find-duplicates-in-excel";
+import { convertJsonToCsv } from "./convert-json-to-csv";
+import { convertCsvToJson } from "./convert-csv-to-json";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -76,6 +78,9 @@ export const GUIDES: readonly HowToGuide[] = [
   csvFormulaInjection,
   // Guide 29 (Stage 11, owner decision 6A, 27 November 2026): after the guides already queued, on 18 December 2026.
   findDuplicatesInExcel,
+  // Guides 30–31 (Stage 12, owner decision 6A, 27 November 2026): 19 and 20 December 2026.
+  convertJsonToCsv,
+  convertCsvToJson,
 ];
 
 /**
