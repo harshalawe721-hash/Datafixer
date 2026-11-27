@@ -113,6 +113,15 @@ export const convertXmlToCsv: HowToGuide = {
         see what is wrong and on which line and column.
       </p>
 
+      <h2>From start to finish: an example</h2>
+      <p>
+        Ravi&apos;s accountant sends him the month&apos;s vouchers as an XML export from the accounting software, and he wants them in Excel to
+        check the totals. He opens the file in XML to CSV. The converter suggests <code>&lt;VOUCHER&gt;</code> as the record, which repeats once per
+        voucher, and the table shows one row for each with columns such as DATE, AMOUNT and LEDGER. Vouchers with two ledger lines show both in
+        one cell, joined with “; ”, and a note says how many cells that applies to. He downloads the Excel file, and the amounts are real numbers he
+        can add up.
+      </p>
+
       <h2>Common problems</h2>
       <ul>
         <li>
