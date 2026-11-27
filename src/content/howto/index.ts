@@ -40,6 +40,7 @@ import { findDuplicatesInExcel } from "./find-duplicates-in-excel";
 import { convertJsonToCsv } from "./convert-json-to-csv";
 import { convertCsvToJson } from "./convert-csv-to-json";
 import { convertTsvToCsv } from "./convert-tsv-to-csv";
+import { convertXmlToCsv } from "./convert-xml-to-csv";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -84,6 +85,8 @@ export const GUIDES: readonly HowToGuide[] = [
   convertCsvToJson,
   // Guide 32 (Stage 13, owner decision 5A, 27 November 2026): 21 December 2026.
   convertTsvToCsv,
+  // Guide 33 (Stage 14, owner decision 6A, 27 November 2026): 22 December 2026.
+  convertXmlToCsv,
 ];
 
 /**
