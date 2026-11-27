@@ -15,7 +15,11 @@ import { parseCsv } from "./csv/parse-csv.ts";
 import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspect.ts";
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
-import type { CsvMeta, FeatureInventory, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
+import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
+import { JsonSyntaxError, parseJson, parseJsonLines } from "./json/parse.ts";
+import { atPath, findLists, jsonToTable } from "./json/table.ts";
+import { ArrayGrid } from "./grid.ts";
+import { createSheet } from "./types.ts";
 import type { OpenOptions } from "./protocol.ts";
 import { runScan, type Finding, type ScanOptions, type ScanResult } from "./scan/scan.ts";
 import { ALL_CHECKS } from "./scan/checks/index.ts";
@@ -43,7 +47,8 @@ import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./f
 interface OpenState {
   file: Blob;
   fileName: string;
-  format: SpreadsheetFormat;
+  /** A JSON file is held as "csv" (see openJson); WorkbookSummary reports it as "json". */
+  format: Exclude<SpreadsheetFormat, "json">;
   sheets: SheetInfo[];
   loaded: Map<string, LoadedSheet>;
   inspection: InspectionResult | null;
@@ -51,6 +56,8 @@ interface OpenState {
   zip?: ZipEntry[];
   refIndex?: Map<string, ReferenceIndex>;
   csv: CsvMeta | null;
+  /** Stage 12: a JSON file shown as a text table (it then works like a CSV file inside the engine). */
+  json?: JsonSummary & { headerRow: boolean };
   activeSheet: string;
   sheetError: { code: string; message: string } | null;
   /** Warnings produced while reading the active sheet (Excel). */
@@ -317,6 +324,74 @@ function csvWarnings(meta: CsvMeta): string[] {
   return w;
 }
 
+/**
+ * Stage 12: open a JSON or JSON Lines file as a text table. Numbers keep their JSON
+ * spelling, true/false become text and null an empty cell, so the table works exactly
+ * like an opened CSV file (the verified CSV download and the CSV to Excel rules apply).
+ */
+async function openJson(file: File, options: OpenOptions, onProgress: Progress, startedAt: number, cancel?: CancelToken): Promise<OpenState> {
+  const lines = /\.jsonl$/i.test(file.name);
+  // Reading a whole JSON file needs several times its size in memory (measured: about 10×).
+  if (!lines && options.memoryBudgetBytes && file.size * 10 > options.memoryBudgetBytes) {
+    throw new EngineError(
+      "too-large-for-engine",
+      `This JSON file is too large to open safely in this browser on this device (it needs roughly ${Math.ceil((file.size * 10) / 1048576)} MB of memory). Nothing was changed. Try a computer, or save the data as JSON Lines (.jsonl, one record per line).`,
+    );
+  }
+  onProgress({ phase: "parsing", loaded: 0, total: file.size });
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+  } catch {
+    throw new EngineError("corrupt-file", "This file isn't UTF-8 text, so it can't be read as JSON. Save it as UTF-8 and try again.");
+  }
+  throwIfCancelled(cancel);
+  let root;
+  try {
+    root = lines ? parseJsonLines(text) : parseJson(text);
+  } catch (e) {
+    if (e instanceof JsonSyntaxError) throw new EngineError("corrupt-file", `This file isn't valid JSON${lines ? " Lines" : ""}: ${e.message}`);
+    throw e;
+  }
+  text = "";
+  throwIfCancelled(cancel);
+  onProgress({ phase: "indexing", loaded: null, total: null });
+  const lists = findLists(root);
+  const wanted = options.jsonPath;
+  const path = wanted !== undefined && lists.some((l) => l.path === wanted) ? wanted : (lists[0]?.path ?? null);
+  const table = jsonToTable(path === null ? root : atPath(root, path));
+  root = null;
+  const text2 = (v: CellValue): CellValue => (v === null ? null : typeof v === "string" ? v : typeof v === "boolean" ? (v ? "true" : "false") : String(v));
+  const rows = table.rows.map((r) => r.map(text2));
+  const sheet = createSheet("Sheet1");
+  sheet.grid = new ArrayGrid(rows);
+  sheet.columnCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  return {
+    file,
+    fileName: file.name,
+    format: "csv",
+    sheets: [{ name: sheet.name, state: "visible", kind: "worksheet" }],
+    loaded: new Map([[sheet.name, { sheet, query: new SheetQuery(sheet) }]]),
+    inspection: null,
+    csv: null,
+    json: {
+      lines,
+      lists,
+      path,
+      records: Math.max(0, rows.length - (table.headerRow ? 1 : 0)),
+      listsAsText: table.listsAsText,
+      longNumbers: table.longNumbers,
+      headerRow: table.headerRow,
+    },
+    activeSheet: sheet.name,
+    sheetError: null,
+    sheetWarnings: [],
+    memoryBudgetBytes: options.memoryBudgetBytes,
+    startedAt,
+    lastScan: null,
+  };
+}
+
 export class EngineCore {
   private state: OpenState | null = null;
   private scanSeq = 0;
@@ -333,6 +408,11 @@ export class EngineCore {
     this.close(); // release any previous file first
     const startedAt = Date.now();
     if (file.size === 0) throw new EngineError("empty-file", "This file is empty (0 bytes).");
+
+    if (format === "json") {
+      this.state = await openJson(file, options, onProgress, startedAt, cancel);
+      return this.summary();
+    }
 
     if (format === "csv") {
       const { sheet, meta } = await parseCsv(file, "Sheet1", {
@@ -980,8 +1060,9 @@ export class EngineCore {
         summary: {
           originalName: st.fileName,
           // Excel sheet without changes (Excel to CSV converter): “Book - Sheet.csv”.
-          downloadName:
-            excel && !stats.changesApplied
+          downloadName: st.json
+            ? `${base}.${delimiter === "\t" ? "tsv" : "csv"}`
+            : excel && !stats.changesApplied
               ? `${base} - ${safeSheet}.${delimiter === "\t" ? "tsv" : "csv"}`
               : `${excel ? `${base} - ${safeSheet}` : base}-${stats.changesApplied ? "cleaned" : "copy"}.${delimiter === "\t" ? "tsv" : "csv"}`,
           format: "csv",
@@ -1463,7 +1544,7 @@ export class EngineCore {
     return {
       fileName: st.fileName,
       fileSize: st.file.size,
-      format: st.format,
+      format: st.json ? "json" : st.format,
       sheets: st.sheets,
       activeSheet: st.activeSheet,
       sheetStats,
@@ -1473,8 +1554,9 @@ export class EngineCore {
       issueCount,
       issues,
       sheetError: st.sheetError,
-      headerGuess: active ? guessHeaderRow(active) : false,
-      namesGuess: active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
+      headerGuess: st.json ? st.json.headerRow : active ? guessHeaderRow(active) : false,
+      namesGuess: st.json ? st.json.headerRow : active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
+      json: st.json ? { lines: st.json.lines, lists: st.json.lists, path: st.json.path, records: st.json.records, listsAsText: st.json.listsAsText, longNumbers: st.json.longNumbers } : null,
       timings: { totalMs: Date.now() - st.startedAt },
     };
   }

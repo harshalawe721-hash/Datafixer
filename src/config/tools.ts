@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -9,7 +9,8 @@ export type ToolId =
   | "csv-to-excel"
   | "split-column"
   | "combine-columns"
-  | "remove-duplicates";
+  | "remove-duplicates"
+  | "json-to-csv";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -21,7 +22,7 @@ export interface ToolDefinition {
   summary: string;
   icon: LucideIcon;
   /** File types the tool accepts. */
-  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt")[];
+  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt" | ".json" | ".jsonl")[];
   /** Shown in "Popular tools" on the homepage. */
   featured: boolean;
   /** Related tools shown on this tool's page, in order (default: the first other tools in the registry). */
@@ -115,6 +116,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".xlsx", ".xls", ".csv", ".tsv", ".txt"],
     featured: false,
     related: ["spreadsheet-cleaner", "spreadsheet-error-detector", "combine-columns"],
+  },
+  {
+    id: "json-to-csv",
+    name: "JSON to CSV Converter",
+    shortName: "JSON to CSV",
+    href: "/json-to-csv",
+    summary: "Turn JSON or JSON Lines into a table and download it as CSV or Excel. Nested data becomes columns.",
+    icon: FileJson,
+    accepts: [".json", ".jsonl"],
+    featured: false,
+    related: ["csv-to-excel", "excel-to-csv", "csv-validator"],
   },
 ];
 

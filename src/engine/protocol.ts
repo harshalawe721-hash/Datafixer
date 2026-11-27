@@ -15,6 +15,8 @@ import type { ValidationResult } from "./validate/validate.ts";
 export interface OpenOptions {
   delimiter?: string;
   encoding?: string;
+  /** Stage 12: which list of a JSON file becomes the table (a path from WorkbookSummary.json.lists). */
+  jsonPath?: string;
   /** Memory budget computed on the main thread (see memory-budget.ts). */
   memoryBudgetBytes?: number;
 }

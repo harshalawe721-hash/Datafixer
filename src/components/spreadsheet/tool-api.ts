@@ -56,6 +56,8 @@ export interface ToolApi {
   previewDuplicates(input: { options: DuplicateOptions; clearInstead?: boolean }): Promise<DuplicatesPreview>;
   /** Stage 10: the current columns: name (header or letter) and the first non-empty value as an example. */
   columns(): Promise<{ index: number; name: string; example: string }[]>;
+  /** Stage 12: open the same file again with other options (e.g. another list of a JSON file). */
+  reopen(options: { jsonPath?: string }): void;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */

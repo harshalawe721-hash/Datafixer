@@ -4,12 +4,16 @@
  * Pure functions (no DOM) so they can be unit-tested and reused in workers.
  */
 
-export type SpreadsheetFormat = "xlsx" | "xls" | "csv";
+export type SpreadsheetFormat = "xlsx" | "xls" | "csv" | "json";
+
+/** Stage 12 (decision 5A): .json files are read as a whole, so they have a lower limit than .jsonl. */
+export const JSON_MAX_BYTES = 50 * 1024 * 1024;
 
 export const FORMAT_LABELS: Record<SpreadsheetFormat, string> = {
   xlsx: "Excel Workbook (XLSX)",
   xls: "Excel 97–2003 Workbook (XLS)",
   csv: "Comma-Separated Values (CSV)",
+  json: "JSON or JSON Lines",
 };
 
 export type ValidationResult =
@@ -131,6 +135,19 @@ function checkSpreadsheet(
       ok: false,
       error: `“${file.name}” is not a genuine Excel workbook (it may be an HTML or text export renamed to .xls). Open it in Excel and save it as .xlsx or .csv.`,
     };
+  }
+
+  if (ext === ".json" || ext === ".jsonl") {
+    if (ext === ".json" && file.size > JSON_MAX_BYTES) {
+      return {
+        ok: false,
+        error: `“${file.name}” is ${formatMB(file.size)}. JSON files can be up to ${formatLimit(JSON_MAX_BYTES)} here, because they have to be read as a whole. If the file has one record per line, save it as .jsonl (up to ${formatLimit(options.maxBytes)}), or split it into smaller files.`,
+      };
+    }
+    if (startsWith(head, ZIP_SIGNATURE) || startsWith(head, OLE2_SIGNATURE) || !looksLikeText(head)) {
+      return { ok: false, error: `“${file.name}” contains binary data and does not look like a JSON text file.` };
+    }
+    return { ok: true, format: "json" };
   }
 
   // .csv

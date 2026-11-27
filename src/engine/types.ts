@@ -134,6 +134,22 @@ export interface CsvMeta {
 }
 
 /** Summary sent to the UI after a file is opened (never contains cell data). */
+/** Stage 12: what a JSON file held and how it became a table. */
+export interface JsonSummary {
+  /** JSON Lines (one record per line). */
+  lines: boolean;
+  /** Lists that can become the table (path "" = the whole file). */
+  lists: { path: string; length: number }[];
+  /** The list shown, or null when the file is one object (one row). */
+  path: string | null;
+  /** Records (rows) in the table. */
+  records: number;
+  /** Cells holding a list or object from the JSON, kept as JSON text. */
+  listsAsText: number;
+  /** Numbers longer than 15 digits, kept exactly as text. */
+  longNumbers: number;
+}
+
 export interface WorkbookSummary {
   fileName: string;
   fileSize: number;
@@ -157,6 +173,8 @@ export interface WorkbookSummary {
    * dates, emails). Unlike headerGuess, empty or duplicate names still count as names.
    */
   namesGuess?: boolean;
+  /** Stage 12: set when the file is JSON or JSON Lines (shown as a table). */
+  json?: JsonSummary | null;
   timings: { totalMs: number };
 }
 

@@ -15,6 +15,7 @@ import { CellEditor } from "@/components/tools/fix/CellEditor";
 import type { ScanIssue } from "@/engine/scan/scan";
 import type { EditResult } from "@/engine/core";
 import type { EditStats } from "@/engine/edit/session";
+import type { SpreadsheetFormat } from "@/lib/file-validation";
 import { MAX_PAGE_COLUMNS, columnLetter } from "@/engine/query/query";
 
 const NO_EDITS: EditStats = { cellsEdited: 0, rowsRemoved: 0, columnsRemoved: 0, rowsShortened: 0, columnsAdded: 0, changesApplied: 0, canUndo: false, canRedo: false, version: 0 };
@@ -37,8 +38,11 @@ export function SpreadsheetWorkspace({
   renderTool,
   allowEditing = false,
   csvTools = false,
+  renderIdle,
 }: {
   accept?: readonly string[];
+  /** Stage 12: shown under the upload box before a file is open (e.g. “paste JSON”); `open` opens a file without the upload checks. */
+  renderIdle?: (open: (file: File, format: SpreadsheetFormat) => void) => React.ReactNode;
   renderTool?: (api: ToolApi) => React.ReactNode;
   /** Stage 4: tap a cell in the table to edit it. */
   allowEditing?: boolean;
@@ -100,7 +104,7 @@ export function SpreadsheetWorkspace({
   }, [peekPending, clearPending, open]);
 
   if (state.status === "idle") {
-    return (
+    const dropzone = (
       <FileDropzone
         accept={accept}
         allowNulBytes={csvTools}
@@ -109,6 +113,16 @@ export function SpreadsheetWorkspace({
           void open(file, format);
         }}
       />
+    );
+    if (!renderIdle) return dropzone;
+    return (
+      <div className="space-y-4">
+        {dropzone}
+        {renderIdle((file, format) => {
+          setAdvisory(null);
+          void open(file, format);
+        })}
+      </div>
     );
   }
 
@@ -220,6 +234,7 @@ export function SpreadsheetWorkspace({
         example: page.rows.map((r) => r.cells[c] ?? "").find((t) => t.trim() !== "") ?? "",
       }));
     },
+    reopen: (options) => void open(file, format, options),
     applyFix: (token) => engine.applyFix(sheetName, token).then(track("applied")),
     exportCsv: (onProgress, options) => engine.exportCsv(sheetName, onProgress, options),
     csvDownloadOptions: csvTools,

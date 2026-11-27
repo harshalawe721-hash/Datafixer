@@ -25,6 +25,7 @@
     "test:split": "node scripts/split-column-e2e.ts",
     "test:combine": "node scripts/combine-columns-e2e.ts",
     "test:duplicates": "node scripts/remove-duplicates-e2e.ts",
+    "test:json": "node scripts/json-to-csv-e2e.ts",
     "test:export-perf": "node scripts/export-perf.ts",
     "test:validator-perf": "node scripts/validator-perf.ts",
     "test:converter-perf": "node scripts/converter-perf.ts",

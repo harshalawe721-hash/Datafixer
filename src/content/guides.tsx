@@ -483,3 +483,59 @@ export const duplicatesGuide: Guide = {
     },
   ],
 };
+
+export const jsonToCsvGuide: Guide = {
+  how: {
+    title: "How the JSON to CSV converter works",
+    steps: [
+      "Open a .json or .jsonl file, or paste JSON into the box. It is read on your device.",
+      "Each record becomes a row and each key a column, in the order the keys first appear. Nested objects get their own columns, such as address.city.",
+      "If the file holds the records inside another object (for example under “results”), the largest list is shown, and you can choose another one.",
+      "Check the table, then download it as CSV or as an Excel workbook. Each file is checked before it is downloaded.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A file holds <code>[{"{"}&quot;id&quot;: &quot;00123&quot;, &quot;name&quot;: &quot;Asha&quot;, &quot;address&quot;: {"{"}&quot;city&quot;: &quot;Pune&quot;{"}"}, &quot;phones&quot;: [&quot;+91 1&quot;, &quot;+91 2&quot;]{"}"}]</code>.
+        The table gets the columns id, name, address.city and phones. The id keeps its leading zeros, and the two phone numbers stay together in one
+        cell as JSON text, so nothing is lost.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or what you paste. Everything is read and converted in your browser.",
+    "Round long numbers: numbers longer than 15 digits (IDs, card numbers) are kept exactly as written.",
+    "Guess when the JSON has a mistake. It shows what is wrong and the line and column, so you can fix it.",
+    "Turn a value into a formula in the Excel file: =1+1 stays the text “=1+1”.",
+  ],
+  limits: [
+    ".json files can be up to 50 MB, because they have to be read as a whole; .jsonl files (one record per line) can be up to 150 MB.",
+    "Lists inside a record stay as JSON text in one cell, and very deeply nested data gives many columns.",
+    "Only UTF-8 text can be read (the usual encoding for JSON).",
+    "Very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    {
+      q: "Is my file uploaded?",
+      a: "No. Your browser reads the file (or the pasted text) on your device, and the CSV or Excel file is created there too. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "What happens to nested JSON?",
+      a: "Nested objects become columns with dotted names, such as address.city and address.zip. Lists inside a record, such as several phone numbers, stay as JSON text in one cell.",
+    },
+    {
+      q: "My JSON has the data under “data” or “results”. Can I convert it?",
+      a: "Yes. The converter finds lists inside the file and shows the largest one. If there are several, choose the one you want from the list above the table.",
+    },
+    {
+      q: "Why do some numbers stay as text?",
+      a: "Excel keeps only 15 digits of a number, so longer IDs and card numbers would be changed. They stay exactly as written. Codes with leading zeros, such as 00123, also stay text.",
+    },
+    {
+      q: "What is JSON Lines?",
+      a: "A file with one JSON record on each line, often saved as .jsonl or .ndjson. Save it as .jsonl to open it here, or tick “One record per line” when you paste it.",
+    },
+  ],
+};
