@@ -1,6 +1,6 @@
 # Stage 12 plan: JSON to CSV and CSV to JSON
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 12”.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -64,3 +64,11 @@ No new dependencies (the browser's own JSON reader is used). Files stay in the b
 - Very deeply nested JSON gives many columns; lists inside records stay as JSON text in one cell (decision 2A).
 - CSV to JSON can't know which text is really a number or a date unless value detection is on, and dates always stay text.
 - JSON files larger than the size limit can't be opened in the browser.
+
+## Progress
+
+- **Step 1 (engine): done, 27 November 2026.**
+  - `src/engine/json/parse.ts`: a strict JSON reader written for these tools, because the browser's own reader rounds numbers longer than 15 digits and doesn't reliably say where a mistake is. Numbers with more than 15 significant digits are kept exactly as written; mistakes are reported in plain language with line and column (for example “There is a comma before “}” with nothing after it (line 1, column 9)”); single quotes, unquoted words, unclosed text, leading zeros and line breaks inside text are explained; nesting over 500 levels is refused instead of crashing; a BOM is allowed; `__proto__` is an ordinary key. JSON Lines: one value per line, blank lines skipped, errors name the file line.
+  - `src/engine/json/table.ts` (decision 2A): lists of objects become rows with columns in order of first appearance; nested objects become dotted columns (address.city); lists inside a record stay JSON text in one cell; lists of lists become rows; plain values get a “value” column; lists inside an object (for example “results”) are found up to 3 levels deep so the user can choose one.
+  - `src/engine/json/write.ts` (decisions 3A, 4A): unique key names (column_N, name_2); values as shown by default; with detection, plain numbers, true/false and empty cells become numbers, booleans and null, while leading-zero codes, numbers longer than 15 digits, dates and values with spaces around them stay text; pretty, compact and JSON Lines layouts.
+  - Tests: 18 new (488 in total), including output read back to the same records. Speed: a 50 MB JSON file (339,116 records) is read in about 1.5 s and turned into a table in 0.3 s (the browser's own reader: 0.44 s, but it rounds long numbers).
