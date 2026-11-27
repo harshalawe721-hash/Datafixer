@@ -10,9 +10,9 @@ export const removeDuplicateRows: HowToGuide = {
   description:
     "Duplicate rows make totals wrong. Learn how to find and remove them in Excel, Google Sheets, or free in your browser with MyDataFixer.",
   summary: "Rows that appear twice make totals and counts wrong. Here's how to find them and keep just one copy.",
-  updated: "2026-11-20",
-  tools: ["spreadsheet-cleaner", "spreadsheet-error-detector"],
-  related: ["remove-extra-spaces", "remove-empty-rows-and-columns", "fix-inconsistent-capitalization"],
+  updated: "2026-11-27",
+  tools: ["remove-duplicates", "spreadsheet-cleaner", "spreadsheet-error-detector"],
+  related: ["find-duplicates-in-excel", "remove-extra-spaces", "remove-empty-rows-and-columns", "fix-inconsistent-capitalization"],
   quickAnswer: (
     <p>
       A duplicate row is a row that is the same as another row in every column. In Excel, use <strong>Data → Remove Duplicates</strong>. In
@@ -118,18 +118,24 @@ export const removeDuplicateRows: HowToGuide = {
       <p>MyDataFixer works in your browser, also on a phone or tablet, and your file never leaves your device.</p>
       <ol>
         <li>
-          Open your Excel or CSV file in the <Link href="/spreadsheet-cleaner">Spreadsheet Cleaner</Link>.
+          Open your Excel or CSV file in <Link href="/remove-duplicates">Remove Duplicates</Link>. The duplicate rows are found straight away.
         </li>
         <li>
-          Choose <strong>Remove duplicate rows</strong>. You see a preview of every row that will be removed, each marked “Exact copy of row N”,
-          so you know which row it repeats.
+          Choose how rows are compared: all columns, or only the columns you pick, such as email. You can also ignore capital letters and extra
+          spaces.
         </li>
-        <li>Apply the change. The first copy is kept. If you change your mind, use Undo.</li>
+        <li>
+          Choose which copy to keep, the first or the last, and whether to remove the other copies or just mark them in a new column.
+        </li>
+        <li>
+          Check the preview. It shows each group of matching rows: the row that is kept and its copies. Then apply the change; Undo puts the rows
+          back.
+        </li>
         <li>Download the clean file as CSV, or as Excel if you opened an Excel file.</li>
       </ol>
       <p>
-        If you want to check for other problems at the same time, such as empty rows, bad dates or extra spaces, open the file in the{" "}
-        <Link href="/spreadsheet-error-detector">Error Detector</Link> instead. It finds duplicates together with ten other kinds of problem.
+        The <Link href="/spreadsheet-cleaner">Spreadsheet Cleaner</Link> and the <Link href="/spreadsheet-error-detector">Error Detector</Link> also
+        remove exact duplicate rows in one tap, together with other fixes such as empty rows, bad dates and extra spaces.
       </p>
 
       <h2>Rows that almost match</h2>
@@ -142,8 +148,9 @@ export const removeDuplicateRows: HowToGuide = {
         <li>“500” and “500.00” in a CSV file</li>
       </ul>
       <p>
-        To catch these, clean the data first: remove extra spaces and make capitalization the same, then remove duplicates. MyDataFixer&apos;s
-        Cleaner has a tool for each of these steps.
+        To catch these in Excel or Google Sheets, clean the data first: remove extra spaces and make capitalization the same, then remove
+        duplicates. In MyDataFixer&apos;s Remove Duplicates, tick <strong>Ignore capital letters</strong> and <strong>Ignore extra spaces</strong>{" "}
+        instead: the rows are compared that way, and the rows you keep are not changed. “500” and “500.00” still count as different.
       </p>
 
       <h2>How to avoid duplicates next time</h2>
@@ -167,8 +174,8 @@ export const removeDuplicateRows: HowToGuide = {
       <h2>Quick summary</h2>
       <p>
         Duplicate rows make totals and counts wrong. Look at them first, keep a copy of the original, then remove them with Remove Duplicates in
-        Excel, Data cleanup in Google Sheets, or the Spreadsheet Cleaner in your browser. Clean spaces and capitalization first if rows only
-        almost match.
+        Excel, Data cleanup in Google Sheets, or MyDataFixer&apos;s Remove Duplicates in your browser, which can also ignore capitals and spaces,
+        keep the last copy, or only mark the duplicates.
       </p>
 
       <h2>Common mistakes</h2>
@@ -189,11 +196,11 @@ export const removeDuplicateRows: HowToGuide = {
   faqs: [
     {
       q: "Which copy is kept?",
-      a: "The first one. Excel, Google Sheets and MyDataFixer all keep the first copy and remove the later ones.",
+      a: "Excel and Google Sheets keep the first copy and remove the later ones. MyDataFixer's Remove Duplicates keeps the first copy too, unless you choose to keep the last.",
     },
     {
       q: "Can I remove rows with the same email even if other columns differ?",
-      a: "Yes: in Excel or Google Sheets, untick every column except email. Be careful, because you may delete rows that had different and useful details.",
+      a: "Yes: in Excel or Google Sheets, untick every column except email; in MyDataFixer's Remove Duplicates, choose “Only the columns I choose” and tick email. Be careful, because you may delete rows that had different and useful details. Marking them first lets you check.",
     },
     {
       q: "Is it safe to remove duplicates from a file with formulas?",
@@ -201,7 +208,7 @@ export const removeDuplicateRows: HowToGuide = {
     },
     {
       q: "Can I do this on my phone?",
-      a: "The Excel phone app doesn't have Remove Duplicates. MyDataFixer's Spreadsheet Cleaner works in the browser on phones and tablets.",
+      a: "The Excel phone app doesn't have Remove Duplicates. MyDataFixer's Remove Duplicates works in the browser on phones and tablets.",
     },
     {
       q: "Does MyDataFixer upload my file?",
