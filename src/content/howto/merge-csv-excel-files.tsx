@@ -116,6 +116,14 @@ export const mergeCsvExcelFiles: HowToGuide = {
         lists columns that only some files have. Up to 50 files and 150 MB can be merged at once; for Excel files, the first visible sheet is used.
       </p>
 
+      <h2>From start to finish: an example</h2>
+      <p>
+        Priya runs three shops, and each manager sends a weekly sales sheet: two as CSV files and one as an Excel workbook, with the columns in a
+        different order. She drops all three into Merge Files and keeps “Add a Source file column” ticked, so she can see which shop each sale came
+        from. The note tells her that one column, “discount”, is only in the Excel file, so it&apos;s empty for the other two shops. She downloads the
+        merged Excel file and builds one pivot table for all three shops, instead of copying rows by hand every week.
+      </p>
+
       <h2>Before you merge</h2>
       <ul>
         <li>
