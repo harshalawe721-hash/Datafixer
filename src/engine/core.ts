@@ -704,14 +704,8 @@ export class EngineCore {
       }
       const header = guessHeaderRow(sheet);
       const g = sheet.grid;
-      const rows: CellValue[][] = new Array(g.rowCount);
-      for (let r = 0; r < g.rowCount; r++) {
-        const len = g.rowLength(r);
-        const row: CellValue[] = new Array(len);
-        for (let c = 0; c < len; c++) row[c] = cellOutText(sheet, r, c, true);
-        rows[r] = row;
-      }
-      merger.add(file.name, rows, header);
+      // The merger reads each cell as shown, straight from the file's table (no copy of the file).
+      merger.add(file.name, { rowCount: g.rowCount, rowLength: (r) => g.rowLength(r), text: (r, c) => cellOutText(sheet, r, c, true) }, header);
       infos.push({ name: file.name, rows: Math.max(0, g.rowCount - (header ? 1 : 0)), columns: sheet.columnCount, header, sheet: format === "csv" ? null : sheet.name });
       if (budget && merger.bytes > budget * 0.8) {
         throw new EngineError("too-large-for-engine", "The merged table would be too large to keep safely in this browser on this device. Nothing was changed. Merge fewer or smaller files, or use a computer.");
@@ -722,8 +716,10 @@ export class EngineCore {
     onProgress({ phase: "indexing", loaded: null, total: null });
     const result = merger.finish();
     const merged = createSheet("Merged");
-    merged.grid = new ArrayGrid(result.rows);
-    merged.columnCount = result.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    merged.grid = result.grid;
+    let width = 0;
+    for (let r = 0; r < result.grid.rowCount; r++) width = Math.max(width, result.grid.rowLength(r));
+    merged.columnCount = width;
     this.state = {
       file: files[0]!.file,
       fileName: "merged.csv",
@@ -738,7 +734,7 @@ export class EngineCore {
         sourceColumn: options.sourceColumn,
         removeDuplicates: options.removeDuplicates,
         duplicatesRemoved: result.duplicatesRemoved,
-        records: Math.max(0, result.rows.length - (result.headerRow ? 1 : 0)),
+        records: result.records,
         headerRow: result.headerRow,
         bytes: total,
       },

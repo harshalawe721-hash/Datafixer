@@ -21,9 +21,12 @@ async function xlsx(name: string, rows: (string | number)[][], hiddenFirst = fal
   const { blob } = await writeXlsx([{ name: "S", rowCount: rows.length, colCount: rows[0]!.length, header: true, row: cells }]);
   return { file: new File([blob], name), format: "xlsx" as const };
 }
+/** Rows with empty cells as null, padded to full width (merged rows store empty cells compactly). */
 const rowsOf = (core: EngineCore, sheet: string) => {
   const g = (core as unknown as { session(n: string): EditSession }).session(sheet).grid();
-  return Array.from({ length: g.rowCount }, (_, r) => g.row(r));
+  let width = 0;
+  for (let r = 0; r < g.rowCount; r++) width = Math.max(width, g.rowLength(r));
+  return Array.from({ length: g.rowCount }, (_, r) => Array.from({ length: width }, (_, c) => (g.get(r, c) === "" ? null : g.get(r, c))));
 };
 const opts = { sourceColumn: true, removeDuplicates: false };
 

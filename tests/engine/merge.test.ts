@@ -3,10 +3,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { TableMerger } from "../../src/engine/merge/merge.ts";
 
+/** Merges in-memory tables; `rows` reads the result back with empty cells as null and rows padded to full width. */
 const merge = (inputs: [string, (string | null)[][], boolean][], o = { sourceColumn: false, removeDuplicates: false }) => {
   const m = new TableMerger(o);
-  for (const [name, rows, header] of inputs) m.add(name, rows, header);
-  return m.finish();
+  for (const [name, t, header] of inputs) m.add(name, { rowCount: t.length, rowLength: (r) => t[r]!.length, text: (r, c) => t[r]![c] ?? "" }, header);
+  const result = m.finish();
+  const g = result.grid;
+  let width = 0;
+  for (let r = 0; r < g.rowCount; r++) width = Math.max(width, g.rowLength(r));
+  const rows = Array.from({ length: g.rowCount }, (_, r) => Array.from({ length: width }, (_, c) => (g.get(r, c) === "" ? null : g.get(r, c))));
+  return { ...result, rows };
 };
 
 test("columns are matched by name, whatever their order", () => {

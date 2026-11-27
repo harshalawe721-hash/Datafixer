@@ -12,6 +12,7 @@
  * Inputs are added one at a time (`add`), so only the merged table is held.
  */
 import type { CellValue } from "../types.ts";
+import { CompactTextGrid, type CellGrid } from "../grid.ts";
 
 export const SOURCE_COLUMN = "Source file";
 
@@ -27,22 +28,32 @@ export interface MergeColumnInfo {
 }
 
 export interface MergeResult {
-  rows: CellValue[][];
+  /** The merged table: the header row (when headerRow) and then every row. */
+  grid: CellGrid;
   /** The merged table has a header row (at least one file had column names). */
   headerRow: boolean;
   columns: MergeColumnInfo[];
   duplicatesRemoved: number;
+  /** Data rows (without the header). */
+  records: number;
   bytes: number;
 }
 
-const norm = (name: string) => name.trim().toLowerCase();
+/** A file's table as the merger reads it: cell texts, read one at a time (no copy of the file). */
+export interface MergeSource {
+  rowCount: number;
+  rowLength(r: number): number;
+  text(r: number, c: number): string;
+}
 
-/** 32-bit FNV-1a over a row's cells (for finding duplicate rows). */
-function rowHash(row: CellValue[], from: number): number {
+const norm = (name: string) => name.trim().toLowerCase();
+const BATCH = 5000;
+
+/** 32-bit FNV-1a over a row's cells from `from` (for finding duplicate rows). */
+function rowHash(row: string[], from: number): number {
   let h = 0x811c9dc5;
   for (let c = from; c < row.length; c++) {
-    const v = row[c];
-    const s = v === null || v === undefined ? "" : String(v);
+    const s = row[c] ?? "";
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);
       h = Math.imul(h, 0x01000193);
@@ -53,20 +64,62 @@ function rowHash(row: CellValue[], from: number): number {
   return h >>> 0;
 }
 
+/**
+ * The merged rows with the header row in front (the header is only known when every file is
+ * in). Every row has the full width, so a CSV download has the same number of fields on every
+ * line; cells a file didn't have are empty.
+ */
+class HeaderedGrid implements CellGrid {
+  private readonly header: string[] | null;
+  private readonly body: CompactTextGrid;
+  private readonly width: number;
+  constructor(header: string[] | null, body: CompactTextGrid, width: number) {
+    this.header = header;
+    this.body = body;
+    this.width = width;
+  }
+  get rowCount() {
+    return this.body.rowCount + (this.header ? 1 : 0);
+  }
+  get approxBytes() {
+    return this.body.approxBytes + (this.header ? this.header.length * 64 : 0);
+  }
+  rowLength(r: number): number {
+    return r >= 0 && r < this.rowCount ? this.width : 0;
+  }
+  get(r: number, c: number): CellValue {
+    if (c < 0 || c >= this.width) return null;
+    if (this.header && r === 0) return this.header[c] ?? null;
+    return this.body.get(this.header ? r - 1 : r, c);
+  }
+  row(r: number): CellValue[] {
+    const n = this.rowLength(r);
+    const out = new Array<CellValue>(n);
+    for (let c = 0; c < n; c++) out[c] = this.get(r, c);
+    return out;
+  }
+}
+
 export class TableMerger {
-  bytes = 0;
   duplicatesRemoved = 0;
   private readonly o: MergeOptions;
   private readonly names: string[] = [];
   private readonly index = new Map<string, number>();
   private readonly fileCount: number[] = [];
-  private readonly rows: CellValue[][] = [];
+  /** Merged rows are kept compactly (like a CSV file), appended in batches. */
+  private readonly body = new CompactTextGrid();
+  private pending: string[][] = [];
+  private pendingBytes = 0;
   private anyHeader = false;
-  /** Duplicate check: hash → row indexes in `rows`. */
+  /** Duplicate check: hash → row numbers (in body, then pending). */
   private readonly seen = new Map<number, number[]>();
 
   constructor(options: MergeOptions) {
     this.o = options;
+  }
+
+  get bytes(): number {
+    return this.body.approxBytes + this.pendingBytes + this.seen.size * 48;
   }
 
   private column(name: string): number {
@@ -81,19 +134,21 @@ export class TableMerger {
     return c;
   }
 
-  /**
-   * Adds one file's table. `header`: its first row holds column names. Empty
-   * names are matched by position (“Column 3”).
-   */
-  add(fileName: string, table: CellValue[][], header: boolean): void {
-    const width = table.reduce((m, r) => Math.max(m, r.length), 0);
+  /** Column for position c when there is no name: the existing column at that position, or a new “Column N”. */
+  private positional(c: number): number {
+    return c < this.names.length ? c : this.column(`Column ${c + 1}`);
+  }
+
+  /** Adds one file's table. `header`: its first row holds column names (empty names are matched by position). */
+  add(fileName: string, src: MergeSource, header: boolean): void {
+    let width = 0;
+    for (let r = 0; r < src.rowCount; r++) width = Math.max(width, src.rowLength(r));
     const map: number[] = [];
-    if (header && table.length) {
+    if (header && src.rowCount) {
       this.anyHeader = true;
       const used = new Set<number>();
       for (let c = 0; c < width; c++) {
-        const raw = table[0]![c];
-        const name = raw === null || raw === undefined ? "" : String(raw);
+        const name = c < src.rowLength(0) ? src.text(0, c) : "";
         let col = name.trim() === "" ? this.positional(c) : this.column(name);
         // The same name twice in one file: the second gets its own column.
         if (used.has(col)) col = this.column(`${name.trim()} (${c + 1})`);
@@ -103,60 +158,76 @@ export class TableMerger {
     } else for (let c = 0; c < width; c++) map.push(this.positional(c));
     for (const col of new Set(map)) this.fileCount[col]!++;
 
-    const start = header ? 1 : 0;
     const offset = this.o.sourceColumn ? 1 : 0;
-    for (let r = start; r < table.length; r++) {
-      const src = table[r]!;
-      if (src.every((v) => v === null || v === "")) continue; // empty lines between files
-      const row: CellValue[] = [];
-      if (offset) row[0] = fileName;
-      for (let c = 0; c < src.length; c++) {
-        const v = src[c] ?? null;
-        row[map[c]! + offset] = v === "" ? null : v;
-        this.bytes += 16 + (typeof v === "string" ? v.length * 2 : 0);
+    for (let r = header ? 1 : 0; r < src.rowCount; r++) {
+      const len = src.rowLength(r);
+      const row: string[] = [];
+      let any = false;
+      for (let c = 0; c < len; c++) {
+        const v = src.text(r, c);
+        if (v !== "") any = true;
+        row[map[c]! + offset] = v;
       }
+      if (!any) continue; // empty lines between files
+      if (offset) row[0] = fileName;
+      for (let c = 0; c < row.length; c++) if (row[c] === undefined) row[c] = "";
       if (this.o.removeDuplicates && this.isDuplicate(row, offset)) {
         this.duplicatesRemoved++;
         continue;
       }
-      this.bytes += 32 + row.length * 8;
-      this.rows.push(row);
+      this.pending.push(row);
+      for (const v of row) this.pendingBytes += 16 + v.length * 2;
+      if (this.pending.length >= BATCH) this.flush();
     }
   }
 
-  /** Column for position c when there is no name: the existing column at that position, or a new “Column N”. */
-  private positional(c: number): number {
-    return c < this.names.length ? c : this.column(`Column ${c + 1}`);
+  private flush(): void {
+    this.body.appendRows(this.pending);
+    this.pending = [];
+    this.pendingBytes = 0;
   }
 
-  private isDuplicate(row: CellValue[], from: number): boolean {
-    const h = rowHash(row, from);
+  private rowAt(i: number): string[] {
+    const n = this.body.rowCount;
+    if (i >= n) return this.pending[i - n]!;
+    return this.body.row(i).map((v) => (v === null ? "" : String(v)));
+  }
+
+  private isDuplicate(row: string[], from: number): boolean {
+    const h = rowHash(trimEnd(row), from);
     const list = this.seen.get(h);
-    const width = Math.max(row.length, ...(list ?? []).map((i) => this.rows[i]!.length));
+    const index = this.body.rowCount + this.pending.length;
     if (list) {
       for (const i of list) {
-        const other = this.rows[i]!;
+        const other = this.rowAt(i);
+        const width = Math.max(row.length, other.length);
         let same = true;
-        for (let c = from; c < width && same; c++) same = (row[c] ?? null) === (other[c] ?? null);
+        for (let c = from; c < width && same; c++) same = (row[c] ?? "") === (other[c] ?? "");
         if (same) return true;
       }
-      list.push(this.rows.length);
-    } else this.seen.set(h, [this.rows.length]);
+      list.push(index);
+    } else this.seen.set(h, [index]);
     return false;
   }
 
   finish(): MergeResult {
-    const offset = this.o.sourceColumn ? 1 : 0;
-    const width = this.names.length + offset;
-    for (const row of this.rows) for (let c = 0; c < width; c++) if (row[c] === undefined) row[c] = null;
-    const header = [...(offset ? [SOURCE_COLUMN] : []), ...this.names];
-    const columns = this.names.map((name, i) => ({ name, files: this.fileCount[i]! }));
+    if (this.pending.length) this.flush();
+    const header = this.anyHeader ? [...(this.o.sourceColumn ? [SOURCE_COLUMN] : []), ...this.names] : null;
+    const grid = new HeaderedGrid(header, this.body, this.names.length + (this.o.sourceColumn ? 1 : 0));
     return {
-      rows: this.anyHeader ? [header, ...this.rows] : this.rows,
+      grid,
       headerRow: this.anyHeader,
-      columns,
+      columns: this.names.map((name, i) => ({ name, files: this.fileCount[i]! })),
       duplicatesRemoved: this.duplicatesRemoved,
-      bytes: this.bytes,
+      records: this.body.rowCount,
+      bytes: grid.approxBytes,
     };
   }
+}
+
+/** A row without empty cells at the end (rows that differ only by trailing empties are equal). */
+function trimEnd(row: string[]): string[] {
+  let n = row.length;
+  while (n > 0 && row[n - 1] === "") n--;
+  return n === row.length ? row : row.slice(0, n);
 }
