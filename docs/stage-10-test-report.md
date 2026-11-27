@@ -2,7 +2,7 @@
 
 **Date:** 26 November 2026
 
-**Status:** ✅ **Steps 1–5 complete; waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 27 November 2026.
 
 The owner approved the plan (`docs/stage-10-plan.md`) on 26 November 2026 with decisions **A for all**: two separate tool pages (1A); split at a chosen separator, first or every (2A); combine keeps the originals by default (3A); a space by default between combined values, with comma, dash, none or custom (4A); one guide per tool after guide 16 (5A).
 
@@ -80,4 +80,4 @@ The first measurement found memory use too high (150 MB split: 1,878 MB; 600,000
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 10 on 27 November 2026 (“Stage 10 approved”).

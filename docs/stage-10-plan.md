@@ -1,6 +1,6 @@
 # Stage 10 plan: Split a column and Combine columns
 
-**Status:** plan prepared on 26 November 2026. **The owner approved it with decisions A for all (1A–5A) and said “Start Stage 10”.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 26 November 2026. **The owner approved it with decisions A for all (1A–5A) and said “Start Stage 10”. Stage 10 was approved as complete on 27 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
