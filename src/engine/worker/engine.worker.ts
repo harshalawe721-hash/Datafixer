@@ -109,11 +109,17 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         break;
       }
       case "previewSplit":
-      case "previewCombine": {
+      case "previewCombine":
+      case "previewDuplicates": {
         const t = { cancelled: false };
         scanTokens.add(t);
         try {
-          result = req.type === "previewSplit" ? await core.previewSplit(req.sheet, req.input, t) : await core.previewCombine(req.sheet, req.input, t);
+          result =
+            req.type === "previewSplit"
+              ? await core.previewSplit(req.sheet, req.input, t)
+              : req.type === "previewCombine"
+                ? await core.previewCombine(req.sheet, req.input, t)
+                : await core.previewDuplicates(req.sheet, req.input, t);
         } finally {
           scanTokens.delete(t);
         }

@@ -4,7 +4,8 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
-import type { CellInfo, ConvertResult, WorkbookZipResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview } from "./core.ts";
+import type { CellInfo, ConvertResult, WorkbookZipResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview } from "./core.ts";
+import type { DuplicatePlanInput } from "./fix/duplicates.ts";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans.ts";
 import type { FixOptions } from "./fix/fixes.ts";
 import type { AnyFixId } from "./fix/fix-ids.ts";
@@ -33,6 +34,8 @@ export type EngineRequest =
   /** Stage 10: Split a column / Combine columns previews (applied with applyFix). */
   | { id: number; type: "previewSplit"; sheet: string; input: Omit<SplitPlanInput, "sheet"> }
   | { id: number; type: "previewCombine"; sheet: string; input: Omit<CombinePlanInput, "sheet"> }
+  /** Stage 11: Remove Duplicates preview (applied with applyFix). */
+  | { id: number; type: "previewDuplicates"; sheet: string; input: Omit<DuplicatePlanInput, "sheet"> & { clearInstead?: boolean } }
   /** Apply exactly the previewed fix(es). */
   | { id: number; type: "applyFix"; sheet: string; token: string }
   | { id: number; type: "cellInfo"; sheet: string; row: number; col: number }
@@ -63,6 +66,7 @@ export interface EngineResults {
   previewFixAll: FixAllPreview;
   previewSplit: SplitCombinePreview;
   previewCombine: SplitCombinePreview;
+  previewDuplicates: DuplicatesPreview;
   applyFix: EditResult;
   cellInfo: CellInfo;
   editCell: EditResult;

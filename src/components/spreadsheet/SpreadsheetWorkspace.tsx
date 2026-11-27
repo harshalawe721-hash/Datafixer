@@ -211,6 +211,7 @@ export function SpreadsheetWorkspace({
     lastChange,
     previewSplit: (input) => engine.previewSplit(sheetName, { ...input, headerRow: current.headerRow }),
     previewCombine: (input) => engine.previewCombine(sheetName, { ...input, headerRow: current.headerRow }),
+    previewDuplicates: (input) => engine.previewDuplicates(sheetName, { ...input, headerRow: current.headerRow }),
     columns: async () => {
       const page = await getRows(sheetName, { offset: 0, limit: 50, headerRow: current.headerRow, columnLimit: MAX_PAGE_COLUMNS });
       return Array.from({ length: Math.min(page.columnCount, MAX_PAGE_COLUMNS) }, (_, c) => ({

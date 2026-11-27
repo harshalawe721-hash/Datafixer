@@ -15,7 +15,8 @@ import type { RowPage, RowQuery } from "./query/query";
 import { computeMemoryBudget } from "./memory-budget";
 import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
-import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview } from "./core";
+import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview } from "./core";
+import type { DuplicatePlanInput } from "./fix/duplicates";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans";
 import type { FixOptions } from "./fix/fixes";
 import type { AnyFixId } from "./fix/fix-ids";
@@ -121,6 +122,10 @@ export class EngineClient {
 
   previewCombine(sheet: string, input: Omit<CombinePlanInput, "sheet">): Promise<SplitCombinePreview> {
     return this.request<"previewCombine">({ type: "previewCombine", sheet, input });
+  }
+
+  previewDuplicates(sheet: string, input: Omit<DuplicatePlanInput, "sheet"> & { clearInstead?: boolean }): Promise<DuplicatesPreview> {
+    return this.request<"previewDuplicates">({ type: "previewDuplicates", sheet, input });
   }
 
   applyFix(sheet: string, token: string): Promise<EditResult> {

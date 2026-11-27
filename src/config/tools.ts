@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -8,7 +8,8 @@ export type ToolId =
   | "excel-to-csv"
   | "csv-to-excel"
   | "split-column"
-  | "combine-columns";
+  | "combine-columns"
+  | "remove-duplicates";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -103,6 +104,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".xlsx", ".csv", ".tsv", ".txt"],
     featured: false,
     related: ["split-column", "spreadsheet-cleaner", "csv-to-excel"],
+  },
+  {
+    id: "remove-duplicates",
+    name: "Remove Duplicates",
+    shortName: "Remove duplicates",
+    href: "/remove-duplicates",
+    summary: "Find and remove duplicate rows by all or chosen columns, keep the first or last copy, or just mark them.",
+    icon: CopyX,
+    accepts: [".xlsx", ".xls", ".csv", ".tsv", ".txt"],
+    featured: false,
+    related: ["spreadsheet-cleaner", "spreadsheet-error-detector", "combine-columns"],
   },
 ];
 

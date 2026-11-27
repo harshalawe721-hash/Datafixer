@@ -425,3 +425,61 @@ export const combineGuide: Guide = {
     },
   ],
 };
+
+export const duplicatesGuide: Guide = {
+  how: {
+    title: "How Remove Duplicates works",
+    steps: [
+      "Open an Excel workbook (.xlsx or .xls) or a CSV file. It is read on your device, and the preview of duplicate rows appears straight away.",
+      "Choose how rows are compared: all columns (the whole row is the same) or only the columns you choose, such as an email column.",
+      "Choose whether to ignore capital letters (Paris = PARIS) and extra spaces. These only affect the comparison; the rows you keep are not changed.",
+      "Choose which copy to keep, the first or the last, and whether to remove the other copies or mark them in a new “Duplicate” column.",
+      "Check the groups of matching rows in the preview, tap Apply, and download the result as CSV or Excel. Undo brings every row back.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A sign-up list has the rows “Asha, asha@example.com, Pune” twice and a third row “Asha P, asha@example.com, Mumbai”. Comparing all columns,
+        only the exact copy is a duplicate, so one row is removed. Comparing only the email column, all three rows match: the first is kept and the other
+        two are removed, or marked “Duplicate of row 2” if you choose to mark them.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or change the original. Rows are removed from a copy in your browser; the download is a new file.",
+    "Remove a row that isn't an exact match under the rules you chose. Every match is checked cell by cell.",
+    "Remove rows with formulas automatically. They are listed in the preview instead.",
+    "Remove rows from an Excel workbook when a formula, chart, filter or name refers to them, or from an old .xls file at all. You can mark the duplicates or clear those rows instead.",
+  ],
+  limits: [
+    "Only rows that match under the chosen rules are found. Near-duplicates such as “Asha Patil” and “A. Patil” are not.",
+    "When you compare chosen columns, the row you keep keeps its own values in the other columns; nothing is merged into it from the removed rows.",
+    "A number and the same digits stored as text (12 and “12”) count as different values.",
+    "Very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    privacyFaq,
+    {
+      q: "How do I remove duplicates based on one column?",
+      a: "Choose “Only the columns I choose” and tick that column, for example email. Rows with the same email count as duplicates even if the other columns differ; the first (or last) one is kept.",
+    },
+    {
+      q: "Which row is kept?",
+      a: "The first copy, unless you choose “The last”. Keeping the last is useful when new entries are added at the bottom, so the newest row stays.",
+    },
+    {
+      q: "Can I see the duplicates without deleting them?",
+      a: "Yes. Choose “Mark them in a new column”. A “Duplicate” column is added that says which row each copy matches, and nothing is removed. In Excel you can then filter on that column.",
+    },
+    {
+      q: "Are “Paris” and “paris” duplicates?",
+      a: "Only if you tick “Ignore capital letters”. By default, rows must match exactly. The same goes for extra spaces, with “Ignore extra spaces”.",
+    },
+    {
+      q: "Will my Excel formatting be kept?",
+      a: "Yes, when you download an .xlsx file as Excel: only the removed rows (or the new column) change inside your original workbook, and formatting, formulas and other sheets stay as they were.",
+    },
+  ],
+};

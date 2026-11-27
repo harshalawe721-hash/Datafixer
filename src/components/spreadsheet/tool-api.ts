@@ -1,7 +1,8 @@
 import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { ScanIssue, ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
-import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview } from "@/engine/core";
+import type { DuplicateOptions } from "@/engine/fix/duplicates";
 import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 
 /** The latest change, undo or redo, for the "Done" message. */
@@ -51,6 +52,8 @@ export interface ToolApi {
   /** Stage 10: preview Split a column / Combine columns (header setting comes from the table). Apply with applyFix. */
   previewSplit(input: Omit<SplitPlanInput, "sheet" | "headerRow">): Promise<SplitCombinePreview>;
   previewCombine(input: Omit<CombinePlanInput, "sheet" | "headerRow">): Promise<SplitCombinePreview>;
+  /** Stage 11: preview the Remove Duplicates page (header setting comes from the table). Apply with applyFix. */
+  previewDuplicates(input: { options: DuplicateOptions; clearInstead?: boolean }): Promise<DuplicatesPreview>;
   /** Stage 10: the current columns: name (header or letter) and the first non-empty value as an example. */
   columns(): Promise<{ index: number; name: string; example: string }[]>;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
