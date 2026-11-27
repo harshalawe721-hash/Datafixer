@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** ✅ **Steps 1–4 complete; waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 27 November 2026.
 
 The owner approved the plan (`docs/stage-11-plan.md`) on 27 November 2026 with decisions **A for all**: its own page (1A); compare all or chosen columns (2A); exact matching with “ignore capital letters” and “ignore extra spaces” (3A); keep the first or the last copy (4A); “Mark duplicates” as well as remove (5A); the existing guide updated and one new guide on finding and highlighting duplicates (6A).
 
@@ -57,4 +57,4 @@ Chromium, on the Remove Duplicates page: open, the automatic preview (all column
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 11 on 27 November 2026 (“Approved”).

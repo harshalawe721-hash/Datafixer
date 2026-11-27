@@ -1,6 +1,6 @@
 # Stage 11 plan: Remove Duplicates tool page
 
-**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 11”.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 11”. Stage 11 was approved as complete on 27 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 

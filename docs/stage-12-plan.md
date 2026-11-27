@@ -1,6 +1,6 @@
 # Stage 12 plan: JSON to CSV and CSV to JSON
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves. (Stage 11 is still waiting for the owner's approval; this plan doesn't depend on it.)
+**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
 
 ## Why
 
