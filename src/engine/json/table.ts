@@ -73,59 +73,101 @@ export function atPath(root: JsonValue, path: string): JsonValue {
   return v;
 }
 
-/** Builds the table for one list (or a single object). */
-export function jsonToTable(data: JsonValue): JsonTable {
-  let listsAsText = 0;
-  let longNumbers = 0;
-  const cell = (v: JsonValue): CellValue => {
-    if (v === null) return null;
-    if (v instanceof LongNumber) {
-      longNumbers++;
-      return v.text;
-    }
-    if (Array.isArray(v) || isObject(v)) {
-      listsAsText++;
-      return jsonText(v);
-    }
-    return v;
-  };
+export interface TableBuilderOptions {
+  /** Write every cell as text (numbers in their JSON spelling, true/false, null as empty), as the engine shows JSON. */
+  asText?: boolean;
+}
 
-  const items: JsonValue[] = Array.isArray(data) ? data : [data];
-  if (items.length === 0) return { rows: [], headerRow: false, listsAsText, longNumbers };
+/**
+ * Builds the table one record at a time (so JSON Lines can be read line by line),
+ * following the rules above. `bytes` estimates the memory the table holds.
+ */
+export class JsonTableBuilder {
+  listsAsText = 0;
+  longNumbers = 0;
+  bytes = 0;
+  private readonly asText: boolean;
+  private readonly columns: string[] = [];
+  private readonly index = new Map<string, number>();
+  private readonly rows: CellValue[][] = [];
+  /** Raw items while every item so far is a list (they become rows without a header). */
+  private pendingLists: JsonValue[][] | null = [];
+  private count = 0;
 
-  if (items.every((x) => Array.isArray(x))) {
-    return { rows: (items as JsonValue[][]).map((row) => row.map(cell)), headerRow: false, listsAsText, longNumbers };
-  }
-  if (!items.some(isObject)) {
-    return { rows: [["value"], ...items.map((x) => [cell(x)])], headerRow: true, listsAsText, longNumbers };
+  constructor(options: TableBuilderOptions = {}) {
+    this.asText = options.asText ?? false;
   }
 
-  // Objects (plain values among them go into a “value” column).
-  const index = new Map<string, number>();
-  const columns: string[] = [];
-  const col = (name: string) => {
-    let c = index.get(name);
+  private cell(v: JsonValue): CellValue {
+    let out: CellValue;
+    if (v === null) out = null;
+    else if (v instanceof LongNumber) {
+      this.longNumbers++;
+      out = v.text;
+    } else if (Array.isArray(v) || isObject(v)) {
+      this.listsAsText++;
+      out = jsonText(v);
+    } else out = this.asText && typeof v !== "string" ? (typeof v === "boolean" ? (v ? "true" : "false") : String(v)) : v;
+    this.bytes += 16 + (typeof out === "string" ? out.length * 2 : 0);
+    return out;
+  }
+
+  private col(name: string): number {
+    let c = this.index.get(name);
     if (c === undefined) {
-      c = columns.length;
-      index.set(name, c);
-      columns.push(name);
+      c = this.columns.length;
+      this.index.set(name, c);
+      this.columns.push(name);
     }
     return c;
-  };
-  const flatten = (obj: { [key: string]: JsonValue }, prefix: string, row: CellValue[]) => {
+  }
+
+  private flatten(obj: { [key: string]: JsonValue }, prefix: string, row: CellValue[]): void {
     for (const k of Object.keys(obj)) {
       const v = obj[k]!;
       const name = prefix ? `${prefix}.${k}` : k;
-      if (isObject(v) && Object.keys(v).length > 0) flatten(v, name, row);
-      else row[col(name)] = isObject(v) ? null : cell(v);
+      if (isObject(v) && Object.keys(v).length > 0) this.flatten(v, name, row);
+      else row[this.col(name)] = isObject(v) ? null : this.cell(v);
     }
-  };
-  const body: CellValue[][] = items.map((x) => {
+  }
+
+  private addRow(x: JsonValue): void {
     const row: CellValue[] = [];
-    if (isObject(x)) flatten(x, "", row);
-    else row[col("value")] = cell(x);
-    return row;
-  });
-  for (const row of body) for (let c = 0; c < columns.length; c++) if (row[c] === undefined) row[c] = null;
-  return { rows: [columns, ...body], headerRow: true, listsAsText, longNumbers };
+    if (isObject(x)) this.flatten(x, "", row);
+    else row[this.col("value")] = this.cell(x);
+    this.bytes += 32 + row.length * 8;
+    this.rows.push(row);
+  }
+
+  /** Adds one item; `rawBytes` estimates its size while it is held as a list. */
+  add(x: JsonValue, rawBytes = 0): void {
+    this.count++;
+    if (this.pendingLists && Array.isArray(x)) {
+      this.pendingLists.push(x);
+      this.bytes += rawBytes || 64 + x.length * 24;
+      return;
+    }
+    if (this.pendingLists) {
+      const held = this.pendingLists;
+      this.pendingLists = null;
+      for (const a of held) this.addRow(a);
+    }
+    this.addRow(x);
+  }
+
+  finish(): JsonTable {
+    const done = (rows: CellValue[][], headerRow: boolean): JsonTable => ({ rows, headerRow, listsAsText: this.listsAsText, longNumbers: this.longNumbers });
+    if (this.count === 0) return done([], false);
+    if (this.pendingLists) return done(this.pendingLists.map((r) => r.map((v) => this.cell(v))), false);
+    const width = this.columns.length;
+    for (const row of this.rows) for (let c = 0; c < width; c++) if (row[c] === undefined) row[c] = null;
+    return done([this.columns, ...this.rows], true);
+  }
+}
+
+/** Builds the table for one list (or a single object). */
+export function jsonToTable(data: JsonValue, options: TableBuilderOptions = {}): JsonTable {
+  const b = new JsonTableBuilder(options);
+  for (const item of Array.isArray(data) ? data : [data]) b.add(item);
+  return b.finish();
 }

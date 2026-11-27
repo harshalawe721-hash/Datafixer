@@ -201,3 +201,32 @@ test("many records are written in pieces and still read back as one list", async
     assert.deepEqual(back[12_344], { n: 12_344 });
   }
 });
+
+// ---------------------------------------------------------------- JSON Lines read line by line
+
+test("JSON Lines: a long file read in pieces; a mistake deep inside names its line", async () => {
+  const lines: string[] = [];
+  for (let i = 0; i < 60_000; i++) lines.push(`{"n":${i},"name":"Name ${i}"}`);
+  const ok = await open("﻿" + lines.join("\r\n") + "\r\n", "big.jsonl");
+  assert.equal(ok.summary.json!.records, 60_000);
+  assert.deepEqual(ok.summary.json!.lists, [{ path: "", length: 60_000 }]);
+  assert.deepEqual(rowsOf(ok.core, ok.sheet)[60_000], ["59999", "Name 59999"]);
+  lines[45_000] = '{"n":45000,"name":}';
+  await assert.rejects(open(lines.join("\n"), "bad.jsonl"), (e: unknown) => e instanceof EngineError && /line 45001, column 19/.test(e.message));
+});
+
+test("JSON Lines too large for the device's memory stops safely while reading", async () => {
+  const lines: string[] = [];
+  for (let i = 0; i < 20_000; i++) lines.push(`{"n":${i},"text":"${"x".repeat(50)}"}`);
+  const core = new EngineCore();
+  await assert.rejects(
+    core.open(new File([lines.join("\n")], "big.jsonl"), "json", { memoryBudgetBytes: 2_000_000 }, noop),
+    (e: unknown) => e instanceof EngineError && e.code === "too-large-for-engine" && /too large to open safely/.test(e.message) && !/save the data as JSON Lines/.test(e.message),
+  );
+});
+
+test("JSON Lines of lists become rows without a header", async () => {
+  const { core, summary, sheet } = await open("[1,\"a\"]\n[2,\"b\"]\n", "rows.jsonl");
+  assert.equal(summary.headerGuess, false);
+  assert.deepEqual(rowsOf(core, sheet), [["1", "a"], ["2", "b"]]);
+});

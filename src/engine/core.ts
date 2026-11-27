@@ -16,8 +16,8 @@ import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspec
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
 import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary } from "./types.ts";
-import { JsonSyntaxError, parseJson, parseJsonLines } from "./json/parse.ts";
-import { atPath, findLists, jsonToTable } from "./json/table.ts";
+import { JsonSyntaxError, parseJson, type JsonValue } from "./json/parse.ts";
+import { atPath, findLists, JsonTableBuilder } from "./json/table.ts";
 import { jsonFrame, jsonValue, keyNames, recordJson, type JsonLayout, type JsonOut } from "./json/write.ts";
 import { ArrayGrid } from "./grid.ts";
 import { createSheet } from "./types.ts";
@@ -353,38 +353,96 @@ function csvWarnings(meta: CsvMeta): string[] {
  */
 async function openJson(file: File, options: OpenOptions, onProgress: Progress, startedAt: number, cancel?: CancelToken): Promise<OpenState> {
   const lines = /\.jsonl$/i.test(file.name);
-  // Reading a whole JSON file needs several times its size in memory (measured: about 10×).
-  if (!lines && options.memoryBudgetBytes && file.size * 10 > options.memoryBudgetBytes) {
-    throw new EngineError(
+  const budget = options.memoryBudgetBytes;
+  const tooLarge = (needMB: number) =>
+    new EngineError(
       "too-large-for-engine",
-      `This JSON file is too large to open safely in this browser on this device (it needs roughly ${Math.ceil((file.size * 10) / 1048576)} MB of memory). Nothing was changed. Try a computer, or save the data as JSON Lines (.jsonl, one record per line).`,
+      `This JSON file is too large to open safely in this browser on this device (it needs roughly ${needMB} MB of memory or more). Nothing was changed. Try a computer${lines ? "" : ", or save the data as JSON Lines (.jsonl, one record per line)"}.`,
     );
+  const notUtf8 = () => new EngineError("corrupt-file", "This file isn't UTF-8 text, so it can't be read as JSON. Save it as UTF-8 and try again.");
+  const invalid = (e: JsonSyntaxError) => new EngineError("corrupt-file", `This file isn't valid JSON${lines ? " Lines" : ""}: ${e.message}`);
+  const builder = new JsonTableBuilder({ asText: true });
+  let lists: { path: string; length: number }[];
+  let path: string | null;
+
+  if (lines) {
+    // JSON Lines is read in pieces, one line at a time, so memory grows with the table (like a CSV file).
+    const limit = budget ? budget * 0.8 : Infinity;
+    const reader = file.stream().pipeThrough(new TextDecoderStream("utf-8", { fatal: true })).getReader();
+    let rest = "";
+    let lineNo = 0;
+    let loaded = 0;
+    let offset = 0;
+    const handle = (raw: string) => {
+      lineNo++;
+      let line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+      if (lineNo === 1 && line.charCodeAt(0) === 0xfeff) line = line.slice(1);
+      if (line.trim() !== "") {
+        let value;
+        try {
+          value = parseJson(line);
+        } catch (e) {
+          if (e instanceof JsonSyntaxError) throw invalid(new JsonSyntaxError(e.what, lineNo, e.column, offset + e.offset));
+          throw e;
+        }
+        builder.add(value, 64 + line.length * 2);
+        if (builder.bytes > limit) throw tooLarge(Math.ceil((builder.bytes / Math.max(loaded, 1)) * file.size / 1048576));
+      }
+      offset += raw.length + 1;
+    };
+    for (;;) {
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch {
+        throw notUtf8();
+      }
+      if (chunk.done) break;
+      loaded += chunk.value.length;
+      const text = rest + chunk.value;
+      let from = 0;
+      for (let nl = text.indexOf("\n"); nl !== -1; nl = text.indexOf("\n", from)) {
+        handle(text.slice(from, nl));
+        from = nl + 1;
+      }
+      rest = text.slice(from);
+      throwIfCancelled(cancel);
+      onProgress({ phase: "parsing", loaded: Math.min(loaded, file.size), total: file.size });
+    }
+    if (rest !== "") handle(rest);
+    path = "";
+    lists = [{ path: "", length: 0 }];
+  } else {
+    // A .json file has to be read as a whole: about 10 times its size in memory (measured).
+    if (budget && file.size * 10 > budget) throw tooLarge(Math.ceil((file.size * 10) / 1048576));
+    onProgress({ phase: "parsing", loaded: 0, total: file.size });
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+    } catch {
+      throw notUtf8();
+    }
+    throwIfCancelled(cancel);
+    let root: JsonValue;
+    try {
+      root = parseJson(text);
+    } catch (e) {
+      if (e instanceof JsonSyntaxError) throw invalid(e);
+      throw e;
+    }
+    text = "";
+    throwIfCancelled(cancel);
+    lists = findLists(root);
+    const wanted = options.jsonPath;
+    path = wanted !== undefined && lists.some((l) => l.path === wanted) ? wanted : (lists[0]?.path ?? null);
+    const data = path === null ? root : atPath(root, path);
+    for (const item of Array.isArray(data) ? data : [data]) builder.add(item);
   }
-  onProgress({ phase: "parsing", loaded: 0, total: file.size });
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
-  } catch {
-    throw new EngineError("corrupt-file", "This file isn't UTF-8 text, so it can't be read as JSON. Save it as UTF-8 and try again.");
-  }
-  throwIfCancelled(cancel);
-  let root;
-  try {
-    root = lines ? parseJsonLines(text) : parseJson(text);
-  } catch (e) {
-    if (e instanceof JsonSyntaxError) throw new EngineError("corrupt-file", `This file isn't valid JSON${lines ? " Lines" : ""}: ${e.message}`);
-    throw e;
-  }
-  text = "";
-  throwIfCancelled(cancel);
   onProgress({ phase: "indexing", loaded: null, total: null });
-  const lists = findLists(root);
-  const wanted = options.jsonPath;
-  const path = wanted !== undefined && lists.some((l) => l.path === wanted) ? wanted : (lists[0]?.path ?? null);
-  const table = jsonToTable(path === null ? root : atPath(root, path));
-  root = null;
-  const text2 = (v: CellValue): CellValue => (v === null ? null : typeof v === "string" ? v : typeof v === "boolean" ? (v ? "true" : "false") : String(v));
-  const rows = table.rows.map((r) => r.map(text2));
+  const table = builder.finish();
+  const rows = table.rows;
+  const records = Math.max(0, rows.length - (table.headerRow ? 1 : 0));
+  if (lines) lists = [{ path: "", length: records }];
   const sheet = createSheet("Sheet1");
   sheet.grid = new ArrayGrid(rows);
   sheet.columnCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
@@ -396,15 +454,7 @@ async function openJson(file: File, options: OpenOptions, onProgress: Progress, 
     loaded: new Map([[sheet.name, { sheet, query: new SheetQuery(sheet) }]]),
     inspection: null,
     csv: null,
-    json: {
-      lines,
-      lists,
-      path,
-      records: Math.max(0, rows.length - (table.headerRow ? 1 : 0)),
-      listsAsText: table.listsAsText,
-      longNumbers: table.longNumbers,
-      headerRow: table.headerRow,
-    },
+    json: { lines, lists, path, records, listsAsText: table.listsAsText, longNumbers: table.longNumbers, headerRow: table.headerRow },
     activeSheet: sheet.name,
     sheetError: null,
     sheetWarnings: [],
