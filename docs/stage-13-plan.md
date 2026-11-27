@@ -61,3 +61,8 @@ No new dependencies. Files stay in the browser.
 
 - A value with a tab inside it can't be told apart from two values unless it is quoted; the structure check points such rows out.
 - Very large files need a computer or a device with enough memory, as for the other tools.
+
+## Progress
+
+- **Step 1 (page): done, 27 November 2026.** New page `/tsv-to-csv` for .tsv, .txt, .tab and .csv files (in the tools registry; related tools CSV Validator, CSV to Excel, Excel to CSV). It shows the separator found (changeable above the table), runs the CSV Validator's structure check with a link that opens the same file in the Validator, and downloads CSV with a comma (default), semicolon or tab, Windows (default) or Mac/Linux line endings and an optional BOM (on by default), or an Excel workbook. TSV, TXT and TAB files turned into CSV are named after the file (export.txt → export.csv). Tests: 8 engine tests for TSV edge cases (518 unit tests in total); new browser suite `npm run test:tsv`, 21/21; all other suites pass (smoke 124, SEO 48, a11y 71, json 25, csv-json 19, duplicates 31, split 28, combine 29, change case 27, fix 126, detector 33, validator 106, converter 45, engine 62); the smoke and SEO checks were updated for the eleventh tool.
+- **Step 2 (guide and related links): done, 27 November 2026.** Guide 32 “How to convert a TSV file to CSV (and open TSV files in Excel)” (`/guides/convert-tsv-to-csv`, about 1,000 words) on 21 December 2026 at 12:30 pm India time. Checked with the guide clock at 21 December 1 pm: 200 and in the sitemap; SEO 72/72; link preview complete; links to /tsv-to-csv and the tool page lists it; axe-core clean in light and dark; no horizontal scroll at 390 px. With today's date it is 404 and absent from the sitemap. Unit 519.
