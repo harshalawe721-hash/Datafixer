@@ -38,6 +38,7 @@ import { XLS_REBUILD_LOSSES, rebuildXlsAsXlsx } from "./export/xls-export.ts";
 import type { CellValue } from "./types.ts";
 import { familyOf } from "./scan/checks/dates.ts";
 import { planCombineColumns, planSplitColumn, type CombinePlanInput, type SplitCombinePlan, type SplitPlanInput } from "./fix/split-combine-plans.ts";
+import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./fix/duplicates.ts";
 
 interface OpenState {
   file: Blob;
@@ -196,6 +197,21 @@ export interface CellInfo {
 }
 
 /** A fix preview as sent to the page: the token must be passed back to apply exactly this preview. */
+/** Stage 11: preview of the Remove Duplicates page. */
+export interface DuplicatesPreview extends Omit<DuplicatePlan, "requests" | "removeRows"> {
+  /** Pass to applyFix to apply exactly this preview; null when nothing will change. */
+  token: string | null;
+  /**
+   * Removing the rows was not allowed: what would break in the workbook (.xlsx), or that
+   * an old .xls file can't be checked. Nothing is removed unless the user chooses to clear the rows.
+   */
+  blockedBy: string[];
+  /** The rows' cells are cleared instead of removing the rows (the user chose it after a block). */
+  clearing: boolean;
+  /** Cells that will be cleared when `clearing`. */
+  cellsCleared: number;
+}
+
 /** Stage 10: preview of "Split a column" or "Combine columns". */
 export interface SplitCombinePreview extends Omit<SplitCombinePlan, "requests"> {
   /** Pass to applyFix to apply exactly this preview; null when nothing would change. */
@@ -768,6 +784,47 @@ export class EngineCore {
     return this.stageSplitCombine(sheetName, planCombineColumns({ ...input, sheet: this.session(sheetName).view() }), cancel);
   }
 
+  /**
+   * Stage 11: preview the Remove Duplicates page. Removal from an .xlsx file runs the
+   * workbook reference check first; from an .xls file it is never allowed. In both cases
+   * the user can mark the duplicates instead, or clear the rows (`clearInstead`).
+   */
+  async previewDuplicates(sheetName: string, input: Omit<DuplicatePlanInput, "sheet"> & { clearInstead?: boolean }, cancel?: CancelToken): Promise<DuplicatesPreview> {
+    const st = this.requireState();
+    const session = this.session(sheetName);
+    const view = session.view();
+    const plan = planDuplicates({ sheet: view, headerRow: input.headerRow, options: input.options });
+    let requests = plan.requests;
+    let blockedBy: string[] = [];
+    let clearing = false;
+    let cellsCleared = 0;
+    if (input.options.action === "remove" && plan.removeRows.length && st.format !== "csv") {
+      const g = session.grid();
+      blockedBy =
+        st.format === "xls"
+          ? ["Old .xls files: what refers to these rows can't be checked, so rows are never removed from them"]
+          : await this.excelRemovalCheck(sheetName, plan.removeRows.map((r) => g.baseRow(r)), [], cancel);
+      if (blockedBy.length) {
+        if (input.clearInstead) {
+          const cleared = removalsToClears(view, requests[0]!);
+          requests = cleared ? [cleared] : [];
+          clearing = true;
+          cellsCleared = cleared?.cellKeys?.length ?? 0;
+        } else requests = [];
+      }
+    }
+    const { requests: _r, removeRows: _rows, ...rest } = plan;
+    void _r;
+    void _rows;
+    if (!requests.length) {
+      this.pendingFix = null;
+      return { ...rest, token: null, blockedBy, clearing, cellsCleared };
+    }
+    const token = `fix-${++this.fixSeq}`;
+    this.pendingFix = { token, sheet: sheetName, version: session.version, requests };
+    return { ...rest, token, blockedBy, clearing, cellsCleared };
+  }
+
   private requireSplitCombineFormat(): void {
     if (this.requireState().format === "xls") {
       throw new EngineError(
@@ -1273,9 +1330,6 @@ export class EngineCore {
     const session = this.session(sheetName);
     const view = session.view();
     const plan = session.exportPlan();
-    if (plan.addedColumns > 0) {
-      throw new EngineError("unsupported-format", "Columns added by Split or Combine can't be written into an old .xls file. Download as CSV instead, or keep the changes in another format.");
-    }
     if (plan.deletedRows.length || plan.deletedCols.length) {
       throw new EngineError("would-break-references", "Rows or columns can't be removed from .xls files, because MyDataFixer can't check what refers to them. Undo the removal, or download as CSV.");
     }

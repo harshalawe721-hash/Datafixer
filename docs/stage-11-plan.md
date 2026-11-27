@@ -1,6 +1,6 @@
 # Stage 11 plan: Remove Duplicates tool page
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 11”.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -67,3 +67,10 @@ No new dependencies. Files stay in the browser.
 - Only rows that match exactly under the chosen rules are found. Near-duplicates such as “Asha Patil” and “A. Patil”, or different spellings of an address, are not.
 - When comparing chosen columns, the kept row keeps its own values in the other columns; values from the removed rows are not merged into it.
 - Very large files need a computer or a device with enough memory, as for the other tools.
+
+## Progress
+
+- **Step 1 (engine): done, 27 November 2026.**
+  - `src/engine/fix/duplicates.ts`: compare all columns or chosen columns; exact, ignore capital letters, ignore extra spaces (for the comparison only; kept values never change); keep the first or the last copy; remove, or mark in a new “Duplicate” column (“Duplicate of row N”). Rows are fingerprinted and every match is confirmed cell by cell; rows whose compared cells are all empty are never duplicates; a number and the same digits as text are different values; rows with formulas are never removed (and if every duplicate has one, the user is pointed to Mark).
+  - `previewDuplicates` in the engine: removing rows from an .xlsx runs the workbook reference check first, and from an .xls is never allowed; in both cases the preview says why and offers clearing the rows instead (or Mark). Marked .xls files can now be downloaded as Excel (the rebuild writes the new column; the download is still checked cell by cell).
+  - Tests: 15 new (469 in total), including that the default finds the same rows as the Cleaner's duplicate fix, and CSV, .xlsx and .xls round trips. Speed: about 0.6–1.5 s per million rows, depending on the options.
