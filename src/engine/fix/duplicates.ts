@@ -173,7 +173,7 @@ export function planDuplicates(input: DuplicatePlanInput): DuplicatePlan {
     examples.push({ kept: kept + 1, copies: copies.slice(0, 5).map((r) => r + 1), copyCount: copies.length, values: cols.slice(0, 6).map((c) => text(g.get(kept, c))), size: rows.length });
   }
   examples.sort((a, b) => b.size - a.size || a.kept - b.kept);
-  const shown = examples.slice(0, MAX_GROUP_EXAMPLES).map(({ size: _size, ...e }) => e);
+  const shown: DuplicateGroupExample[] = examples.slice(0, MAX_GROUP_EXAMPLES).map((e) => ({ kept: e.kept, copies: e.copies, copyCount: e.copyCount, values: e.values }));
 
   const requests: ChangeRequest[] = [];
   if (options.action === "remove") {
