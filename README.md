@@ -96,5 +96,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 8 | Guides: 15 how-to guides, one published per day (20 Nov – 4 Dec 2026, 12:30 pm India time) | **Complete** (approved 20 November 2026); publishing runs until 4 December. See `docs/stage-8-test-report.md` |
 | 9 | Change case tool (Proper Case, UPPER, lower) in the Cleaner, Error Detector note, homepage example | **Complete** (approved 23 November 2026). See `docs/stage-9-test-report.md` |
 | 10 | Split a Column and Combine Columns tool pages, added-column engine with Excel downloads, two guides (6 and 7 December 2026) | **Complete** (approved 27 November 2026). See `docs/stage-10-test-report.md` |
+| 11 | Remove Duplicates tool page (chosen columns, ignore capitals/spaces, keep first or last, mark), duplicates guides | Steps 1–4 done, waiting for the owner's approval. See `docs/stage-11-test-report.md` |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.
