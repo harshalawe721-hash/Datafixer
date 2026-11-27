@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "JSON to CSV Converter – Convert JSON to CSV or Excel Online",
   description:
-    "Convert JSON or JSON Lines to CSV or Excel online. Nested data becomes columns, long numbers stay exact, and mistakes are shown with the line. Free, in your browser.",
+    "Convert JSON or JSON Lines to CSV or Excel online. Nested data becomes columns, long numbers stay exact, and mistakes show their line. Free, in your browser.",
   path: "/json-to-csv",
 });
 
