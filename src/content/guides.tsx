@@ -648,3 +648,58 @@ export const tsvToCsvGuide: Guide = {
     },
   ],
 };
+
+export const xmlToCsvGuide: Guide = {
+  how: {
+    title: "How the XML to CSV converter works",
+    steps: [
+      "Open an .xml file. It is read on your device, in pieces, so large files work too; the text encoding named in the file is used.",
+      "The element that repeats as a list of records (for example every <product> or <VOUCHER>) is found for you. If the file has several lists, choose another one above the table.",
+      "Each record becomes a row. Its child elements and attributes become columns, nested elements get dotted names such as address.city, and repeated elements inside one record (several <phone>) are joined in one cell with “; ”.",
+      "Download the table as CSV or as an Excel workbook. Each file is checked before it is downloaded.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A product feed has <code>&lt;item&gt;&lt;g:id&gt;00123&lt;/g:id&gt;&lt;title&gt;Kurta&lt;/title&gt;&lt;g:price&gt;499.00 INR&lt;/g:price&gt;&lt;/item&gt;</code>{" "}
+        for every product. The table gets the columns g:id, title and g:price, one row per product. The id keeps its leading zeros, and the feed&apos;s own
+        title, which isn&apos;t a product, is left out (the page says so).
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file. Everything is read and converted in your browser.",
+    "Change a value: codes keep their leading zeros, long numbers all their digits, and text is kept exactly as written (entities such as &amp; become &).",
+    "Load other files or expand entities a document defines for itself: such documents are refused for safety.",
+    "Guess when the XML has a mistake. It shows what is wrong and the line and column.",
+  ],
+  limits: [
+    "Files up to 150 MB. Very large files need a computer or a recent phone with enough memory; if a file is too large for the device, it stops safely and says so.",
+    "Repeated elements inside one record are joined in one cell; text mixed with child elements is joined into one cell too.",
+    "XML that isn't a list of similar records (for example a settings file) gives a table that may not be useful.",
+  ],
+  faqs: [
+    {
+      q: "Is my file uploaded?",
+      a: "No. Your browser reads the file on your device and creates the CSV or Excel file there. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "Can I convert XML to Excel?",
+      a: "Yes. Choose “Download Excel (.xlsx)”. Plain numbers become numbers and year-month-day dates become dates, while codes with leading zeros stay text.",
+    },
+    {
+      q: "Which part of the XML becomes the rows?",
+      a: "The element that repeats as a list, such as every <product> in a feed or every <VOUCHER> in an accounting export. If the file has more than one list, choose the one you want above the table.",
+    },
+    {
+      q: "What happens to attributes like id=\"7\"?",
+      a: "They become columns too, named after the attribute. If a child element has the same name, the attribute column gets an @ in front, such as @id.",
+    },
+    {
+      q: "Why was my file refused?",
+      a: "Either the XML has a mistake (the message shows the line and column), or it defines its own entities in a <!DOCTYPE>, which is refused for safety. Files from normal exports, feeds and sitemaps don't do that.",
+    },
+  ],
+};

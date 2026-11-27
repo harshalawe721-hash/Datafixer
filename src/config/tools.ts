@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -12,7 +12,8 @@ export type ToolId =
   | "remove-duplicates"
   | "json-to-csv"
   | "csv-to-json"
-  | "tsv-to-csv";
+  | "tsv-to-csv"
+  | "xml-to-csv";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -24,7 +25,7 @@ export interface ToolDefinition {
   summary: string;
   icon: LucideIcon;
   /** File types the tool accepts. */
-  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt" | ".json" | ".jsonl" | ".tab")[];
+  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt" | ".json" | ".jsonl" | ".tab" | ".xml")[];
   /** Shown in "Popular tools" on the homepage. */
   featured: boolean;
   /** Related tools shown on this tool's page, in order (default: the first other tools in the registry). */
@@ -151,6 +152,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".tsv", ".txt", ".tab", ".csv"],
     featured: false,
     related: ["csv-validator", "csv-to-excel", "excel-to-csv"],
+  },
+  {
+    id: "xml-to-csv",
+    name: "XML to CSV Converter",
+    shortName: "XML to CSV",
+    href: "/xml-to-csv",
+    summary: "Turn XML (product feeds, accounting exports, sitemaps) into a table and download it as CSV or Excel.",
+    icon: FileCode,
+    accepts: [".xml"],
+    featured: false,
+    related: ["json-to-csv", "csv-to-excel", "tsv-to-csv"],
   },
 ];
 
