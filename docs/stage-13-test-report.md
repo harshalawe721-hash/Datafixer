@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** draft. The 150 MB low-memory case is still running.
+**Status:** ✅ **Steps 1–3 complete; waiting for the owner's approval.**
 
 The owner approved the plan (`docs/stage-13-plan.md`) on 27 November 2026 with decisions **A for all**: one page that also makes TSV from CSV (1A); comma by default with semicolon and tab, line endings and BOM under “More options” (2A); an Excel download (3A); a structure check with a link to the CSV Validator (4A); one guide on 21 December (5A).
 
@@ -35,7 +35,7 @@ No new dependencies; the existing reader, verified CSV writer and CSV to Excel c
 | TSV 100 MB (2,025,814 rows) | 3.4 s | CSV 7.2 s | 710 MB | CSV exactly 2,025,815 lines, quoted correctly |
 | TSV 150 MB (3,038,659 rows) | 4.9 s | CSV 11.3 s | 969 MB | CSV exactly 3,038,660 lines, quoted correctly |
 
-**Low-memory run (JS heap capped at 512 MB):** 50 MB ✅ ok (CSV 4.3 s, Excel 27 s, peak 541 MB); 100 MB ✅ ok (CSV 7.3 s, peak 536 MB); 150 MB _pending_.
+**Low-memory run (JS heap capped at 512 MB):** 50 MB ✅ ok (CSV 4.3 s, Excel 27 s, peak 541 MB); 100 MB ✅ ok (CSV 7.3 s, peak 536 MB); 150 MB stopped safely when opening (“too large to open safely … needs roughly 330 MB”), the known limit for this memory, as in earlier stages. No crashes; originals unchanged.
 
 **Found during Stage 13 and fixed:** no product bugs. Test corrections: the structure check rightly gives one warning for a quote inside an unquoted value (`says "hi"`), so the test now expects it and checks a clean file separately; a test called the download with its options in the wrong position; `Blob.text()` drops a leading BOM, so the BOM is checked in the bytes.
 

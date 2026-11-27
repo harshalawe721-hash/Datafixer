@@ -98,5 +98,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 10 | Split a Column and Combine Columns tool pages, added-column engine with Excel downloads, two guides (6 and 7 December 2026) | **Complete** (approved 27 November 2026). See `docs/stage-10-test-report.md` |
 | 11 | Remove Duplicates tool page (chosen columns, ignore capitals/spaces, keep first or last, mark), duplicates guides | **Complete** (approved 27 November 2026). See `docs/stage-11-test-report.md` |
 | 12 | JSON to CSV and CSV to JSON tool pages, strict JSON reader, JSON guides | **Complete** (approved 27 November 2026). See `docs/stage-12-test-report.md` |
+| 13 | TSV to CSV tool page (separator, line endings, BOM, Excel; CSV to TSV), TSV guide | Steps 1–3 done, waiting for the owner's approval. See `docs/stage-13-test-report.md` |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.
