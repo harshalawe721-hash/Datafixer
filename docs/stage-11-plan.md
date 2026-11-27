@@ -1,0 +1,69 @@
+# Stage 11 plan: Remove Duplicates tool page
+
+**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+
+## Why
+
+“How to remove duplicates in Excel” is one of the most searched spreadsheet tasks; the owner's Semrush data showed keyword difficulty 28 for it, which a focused page can compete for. MyDataFixer already removes exact duplicate rows inside the Spreadsheet Cleaner and the Error Detector, but there is no page made for that search, and the current fix has no options (whole rows only, exact match only, first copy kept).
+
+## What exists today (reused)
+
+- Finding duplicates: every row is fingerprinted and every match is confirmed cell by cell, so different rows are never treated as copies. Tested up to 150 MB files (Stage 4).
+- Removing them: the first copy is kept, rows with formulas are never removed automatically, and Undo, history and download (CSV or Excel) work as for every fix.
+- Excel safety: before rows are removed from an .xlsx file, the workbook is checked for anything that refers to them (formulas, charts, names, filters); if something would break, the rows can be cleared instead. Rows are never removed from old .xls files.
+- From Stage 10: columns can be added safely (used for “Mark duplicates” below).
+
+## What will be built
+
+1. **Remove Duplicates** tool page (`/remove-duplicates`) with:
+   - **Compare by:** all columns (the default), or only the columns you choose, for example “email” only, so two rows with the same email count as duplicates even when other columns differ.
+   - **Matching:** exact (the default), with options to ignore capital letters (“Paris” = “PARIS”) and to ignore extra spaces (“Asha Patil ” = “Asha Patil”).
+   - **Which copy to keep:** the first (the default) or the last, for example the most recent entry in a list that grows at the bottom.
+   - **What to do:** remove the duplicate rows, or **mark** them: add a column “Duplicate of row N” and remove nothing, so the user can check them first or filter them in Excel.
+   - **Preview:** how many rows will be removed or marked, and groups of matching rows (“rows 5 and 9 are copies of row 2”), before anything changes. Apply, Undo, Redo, history and download, as on the other tool pages.
+2. **Engine:** duplicate finding with chosen columns and the two matching options (the current exact whole-row check stays the default and keeps its tests), keep last, and the mark option, with unit tests.
+3. **Content:** the tool page's help (how it works, example, never, limits, FAQs), and the guides as decided below.
+
+No new dependencies. Files stay in the browser.
+
+## Safety rules (unchanged from earlier stages)
+
+- The original file is never changed; downloads are new files, checked before they are offered.
+- Rows with formulas are never removed automatically (they are listed in the preview).
+- .xlsx: rows aren't removed if anything in the workbook refers to them; the user is offered “clear instead” or “mark instead”.
+- .xls: rows are never removed; “mark” and “clear” work.
+- Two rows count as duplicates only when every compared cell matches under the chosen rules. Ignoring capitals or spaces affects only the comparison, never the values that are kept.
+
+## Decisions for the owner
+
+1. **Where the tool lives**
+   - **A (recommended):** its own page, `/remove-duplicates`, matching the search; the Cleaner and Error Detector keep their one-tap fix.
+   - B: options added to the Cleaner's existing fix only (no new page).
+2. **Compare by**
+   - **A (recommended):** all columns by default, or chosen columns.
+   - B: whole rows only, as today.
+3. **Matching**
+   - **A (recommended):** exact by default, with “ignore capital letters” and “ignore extra spaces” options.
+   - B: exact only.
+4. **Which copy to keep**
+   - **A (recommended):** the first by default, with “keep the last” as an option.
+   - B: the first only.
+5. **Mark instead of remove**
+   - **A (recommended):** offer “Mark duplicates” (adds a “Duplicate of row N” column, removes nothing), also useful for .xls files and protected workbooks.
+   - B: remove only.
+6. **Guides**
+   - **A (recommended):** update the existing guide “How to find and remove duplicate rows in Excel and CSV files” (live since 21 November) to point to the new tool and its options, instead of writing a second guide that would compete with it in search; plus one new guide on a different search, “How to find and highlight duplicates in Excel (without deleting them)”, published on the daily schedule after the guides already queued (from 18 December).
+   - B: update the existing guide only.
+
+## Steps (each tested, committed and reported)
+
+1. **Engine:** chosen columns, ignore capitals, ignore extra spaces, keep first or last, mark duplicates; unit tests (including that the current exact check gives the same results as before).
+2. **Tool page:** `/remove-duplicates` with the options, preview of the groups, apply, undo, download; browser tests (CSV and Excel, .xls mark-only, references blocking removal, keyboard, axe-core light and dark, phone).
+3. **Content:** tool help, the existing guide updated, the new guide (if 6A), related-tool links, sitemap and link preview checks.
+4. **Testing and report:** all earlier suites, large files (50/100/150 MB and a 600,000-row .xlsx, including the low-memory run), completion report.
+
+## Known limits (to be stated on the page)
+
+- Only rows that match exactly under the chosen rules are found. Near-duplicates such as “Asha Patil” and “A. Patil”, or different spellings of an address, are not.
+- When comparing chosen columns, the kept row keeps its own values in the other columns; values from the removed rows are not merged into it.
+- Very large files need a computer or a device with enough memory, as for the other tools.
