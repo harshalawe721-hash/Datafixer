@@ -52,6 +52,8 @@ export function CombinePanel({ api }: { api: ToolApi }) {
   const [state, setState] = useState<PreviewState>({ status: "idle" });
   const [done, setDone] = useState<string | null>(null);
   const seq = useRef(0);
+  /** Choices of the preview last requested (see the preview effect). */
+  const requested = useRef<string | null>(null);
 
   const unsupported = api.format === "xls";
   const sepValue = separator === "custom" ? custom : SEPARATORS.find((s) => s.id === separator)!.value;
@@ -64,7 +66,7 @@ export function CombinePanel({ api }: { api: ToolApi }) {
       (cols) => {
         if (!live) return;
         setColumns(cols);
-        setChosen((list) => list.filter((c) => c < cols.length));
+        setChosen((list) => (list.every((c) => c < cols.length) ? list : list.filter((c) => c < cols.length)));
       },
       () => live && setColumns([]),
     );
@@ -78,14 +80,20 @@ export function CombinePanel({ api }: { api: ToolApi }) {
   const key = JSON.stringify([chosen, sepValue, skipEmpty, removeOriginals, newName, api.edits.version, api.headerRow]);
   useEffect(() => {
     if (!active) return;
-    const mySeq = ++seq.current;
     const typing = separator === "custom" || name !== "";
     const timer = setTimeout(() => {
+      // One request per set of choices: a re-render with the same choices (for example the
+      // column list loading) must not start a second preview, which would replace the first
+      // one's token while its Apply button is already shown.
+      if (requested.current === key) return;
+      requested.current = key;
+      const mySeq = ++seq.current;
       setState({ status: "loading" });
       apiRef.current.previewCombine({ columns: chosen, name: newName, options: { separator: sepValue, skipEmpty }, removeOriginals }).then(
         (preview) => mySeq === seq.current && setState({ status: "ready", preview, key }),
         (err: unknown) => {
           if (mySeq !== seq.current) return;
+          requested.current = null;
           if (err instanceof EngineError && err.code === "cancelled") return setState({ status: "idle" });
           setState({ status: "error", message: err instanceof Error ? err.message : "The preview could not be made." });
         },

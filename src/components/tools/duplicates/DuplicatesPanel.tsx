@@ -43,6 +43,8 @@ export function DuplicatesPanel({ api }: { api: ToolApi }) {
   const [state, setState] = useState<PreviewState>({ status: "idle" });
   const [done, setDone] = useState<string | null>(null);
   const seq = useRef(0);
+  /** Choices of the preview last requested (see the preview effect). */
+  const requested = useRef<string | null>(null);
 
   useEffect(() => {
     if (!api.sheetReady) return;
@@ -51,7 +53,7 @@ export function DuplicatesPanel({ api }: { api: ToolApi }) {
       (cols) => {
         if (!live) return;
         setColumns(cols);
-        setChosen((list) => list.filter((c) => c < cols.length));
+        setChosen((list) => (list.every((c) => c < cols.length) ? list : list.filter((c) => c < cols.length)));
       },
       () => live && setColumns([]),
     );
@@ -65,8 +67,13 @@ export function DuplicatesPanel({ api }: { api: ToolApi }) {
   const key = JSON.stringify([allColumns, chosen, ignoreCase, ignoreSpaces, keep, action, clearInstead, api.edits.version, api.headerRow, api.viewKey]);
   useEffect(() => {
     if (!active) return;
-    const mySeq = ++seq.current;
     const timer = setTimeout(() => {
+      // One request per set of choices: a re-render with the same choices (for example the
+      // column list loading) must not start a second preview, which would replace the first
+      // one's token while its Apply button is already shown.
+      if (requested.current === key) return;
+      requested.current = key;
+      const mySeq = ++seq.current;
       setState({ status: "loading" });
       apiRef.current
         .previewDuplicates({ options: { columns: allColumns ? null : chosen, ignoreCase, ignoreSpaces, keep, action }, clearInstead: action === "remove" && clearInstead })
@@ -74,6 +81,7 @@ export function DuplicatesPanel({ api }: { api: ToolApi }) {
           (preview) => mySeq === seq.current && setState({ status: "ready", preview, key }),
           (err: unknown) => {
             if (mySeq !== seq.current) return;
+            requested.current = null;
             if (err instanceof EngineError && err.code === "cancelled") return setState({ status: "idle" });
             setState({ status: "error", message: err instanceof Error ? err.message : "The preview could not be made." });
           },
