@@ -31,7 +31,8 @@
     "test:validator-perf": "node scripts/validator-perf.ts",
     "test:converter-perf": "node scripts/converter-perf.ts",
     "test:split-combine-perf": "node scripts/split-combine-perf.ts",
-    "test:duplicates-perf": "node scripts/duplicates-perf.ts"
+    "test:duplicates-perf": "node scripts/duplicates-perf.ts",
+    "test:json-perf": "node scripts/json-perf.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",
