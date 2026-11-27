@@ -31,10 +31,14 @@ function writeJson(file: string, bytes: number, lines: boolean): number {
   const fd = openSync(file, "w");
   let written = writeSync(fd, lines ? "" : "[");
   let n = 0;
-  while (written < bytes - 4096) {
+  // Stop before the target size: the upload box refuses files over its limit (50 MB .json, 150 MB .jsonl).
+  for (;;) {
     const batch: string[] = [];
-    for (let k = 0; k < 2000; k++) batch.push(record(n++));
-    written += writeSync(fd, (lines ? "" : n > 2000 ? "," : "") + batch.join(lines ? "\n" : ",") + (lines ? "\n" : ""));
+    for (let k = 0; k < 2000; k++) batch.push(record(n + k));
+    const text = (lines ? "" : n > 0 ? "," : "") + batch.join(lines ? "\n" : ",") + (lines ? "\n" : "");
+    if (written + Buffer.byteLength(text) + 1 > bytes) break;
+    written += writeSync(fd, text);
+    n += batch.length;
   }
   if (!lines) writeSync(fd, "]");
   closeSync(fd);
