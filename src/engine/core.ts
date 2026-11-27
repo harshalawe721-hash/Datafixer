@@ -15,7 +15,8 @@ import { parseCsv } from "./csv/parse-csv.ts";
 import { inspectXlsx, dimensionSize, type InspectionResult } from "./xlsx/inspect.ts";
 import { readExcelSheet } from "./xlsx/read-workbook.ts";
 import { SheetQuery, guessHeaderRow, type PageView, type RowPage, type RowQuery } from "./query/query.ts";
-import type { CsvMeta, FeatureInventory, JsonSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary, XmlSummary } from "./types.ts";
+import type { CsvMeta, FeatureInventory, JsonSummary, MergeSummary, ProgressEvent, SheetInfo, SheetModel, WorkbookSummary, XmlSummary } from "./types.ts";
+import { TableMerger, type MergeOptions } from "./merge/merge.ts";
 import { XmlReader, XmlSyntaxError } from "./xml/parse.ts";
 import { RecordFinder, XmlTableBuilder } from "./xml/table.ts";
 import { JsonSyntaxError, parseJson, type JsonValue } from "./json/parse.ts";
@@ -63,6 +64,8 @@ interface OpenState {
   json?: JsonSummary & { headerRow: boolean };
   /** Stage 14: an XML file shown as a text table (like a CSV file inside the engine). */
   xml?: XmlSummary;
+  /** Stage 15: several files merged into one text table (like a CSV file inside the engine). */
+  merge?: MergeSummary & { headerRow: boolean; bytes: number };
   activeSheet: string;
   sheetError: { code: string; message: string } | null;
   /** Warnings produced while reading the active sheet (Excel). */
@@ -552,6 +555,10 @@ async function openXml(file: File, options: OpenOptions, onProgress: Progress, s
   };
 }
 
+/** Stage 15 (decision 5A): limits for merging. */
+export const MERGE_MAX_FILES = 50;
+export const MERGE_MAX_BYTES = 150 * 1024 * 1024;
+
 export class EngineCore {
   private state: OpenState | null = null;
   private scanSeq = 0;
@@ -647,6 +654,101 @@ export class EngineCore {
       const visible = st.sheets.findIndex((s) => s.kind === "worksheet" && s.state === "visible");
       if (visible > 0 && st.sheets[0]?.state !== "visible") await this.loadSheet(st.sheets[visible]!.name, onProgress, cancel);
     }
+    return this.summary();
+  }
+
+  /**
+   * Stage 15: read several files one at a time and merge them into one text table
+   * (Excel files: their first visible sheet, values as shown). Only the merged table is
+   * kept; the usual memory budget applies.
+   */
+  async openMerge(
+    files: { file: File; format: SpreadsheetFormat }[],
+    options: MergeOptions & { memoryBudgetBytes?: number },
+    onProgress: Progress,
+    cancel?: CancelToken,
+  ): Promise<WorkbookSummary> {
+    this.close();
+    const startedAt = Date.now();
+    if (files.length < 2) throw new EngineError("unsupported-format", "Choose at least two files to merge.");
+    if (files.length > MERGE_MAX_FILES) throw new EngineError("unsupported-format", `Up to ${MERGE_MAX_FILES} files can be merged at once. Merge them in groups, then merge the results.`);
+    const total = files.reduce((n, f) => n + f.file.size, 0);
+    if (total > MERGE_MAX_BYTES) {
+      throw new EngineError("too-large-for-engine", `These files are ${(total / 1048576).toFixed(1)} MB together; up to ${MERGE_MAX_BYTES / 1048576} MB can be merged at once. Merge them in smaller groups.`);
+    }
+    const budget = options.memoryBudgetBytes;
+    const merger = new TableMerger({ sourceColumn: options.sourceColumn, removeDuplicates: options.removeDuplicates });
+    const infos: MergeSummary["files"] = [];
+    let done = 0;
+    for (const { file, format } of files) {
+      throwIfCancelled(cancel);
+      if (file.size === 0) throw new EngineError("empty-file", `“${file.name}” is empty (0 bytes).`);
+      const progress = (loaded: number | null) => onProgress({ phase: "parsing", loaded: loaded === null ? done : done + loaded, total });
+      let sheet: SheetModel;
+      try {
+        if (format === "csv") {
+          sheet = (await parseCsv(file, "Sheet1", { memoryBudgetBytes: budget, cancel, onProgress: (loaded) => progress(loaded) })).sheet;
+        } else if (format === "xlsx" || format === "xls") {
+          let index = 0;
+          let inspection: InspectionResult | null = null;
+          if (format === "xlsx") {
+            inspection = await inspectXlsx(file, { cancel });
+            const i = inspection.sheets.findIndex((s) => s.kind === "worksheet" && s.state === "visible");
+            index = i >= 0 ? i : 0;
+          }
+          sheet = (await readExcelSheet(file, format, { sheetIndex: index, inspection, memoryBudgetBytes: budget, cancel })).sheet;
+        } else throw new EngineError("unsupported-format", "Only CSV, TSV, TXT and Excel files can be merged.");
+      } catch (e) {
+        if (e instanceof EngineError && e.code !== "cancelled") throw new EngineError(e.code, `“${file.name}”: ${e.message}`, e.detail);
+        throw e;
+      }
+      const header = guessHeaderRow(sheet);
+      const g = sheet.grid;
+      const rows: CellValue[][] = new Array(g.rowCount);
+      for (let r = 0; r < g.rowCount; r++) {
+        const len = g.rowLength(r);
+        const row: CellValue[] = new Array(len);
+        for (let c = 0; c < len; c++) row[c] = cellOutText(sheet, r, c, true);
+        rows[r] = row;
+      }
+      merger.add(file.name, rows, header);
+      infos.push({ name: file.name, rows: Math.max(0, g.rowCount - (header ? 1 : 0)), columns: sheet.columnCount, header, sheet: format === "csv" ? null : sheet.name });
+      if (budget && merger.bytes > budget * 0.8) {
+        throw new EngineError("too-large-for-engine", "The merged table would be too large to keep safely in this browser on this device. Nothing was changed. Merge fewer or smaller files, or use a computer.");
+      }
+      done += file.size;
+      progress(null);
+    }
+    onProgress({ phase: "indexing", loaded: null, total: null });
+    const result = merger.finish();
+    const merged = createSheet("Merged");
+    merged.grid = new ArrayGrid(result.rows);
+    merged.columnCount = result.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    this.state = {
+      file: files[0]!.file,
+      fileName: "merged.csv",
+      format: "csv",
+      sheets: [{ name: merged.name, state: "visible", kind: "worksheet" }],
+      loaded: new Map([[merged.name, { sheet: merged, query: new SheetQuery(merged) }]]),
+      inspection: null,
+      csv: null,
+      merge: {
+        files: infos,
+        columns: result.columns,
+        sourceColumn: options.sourceColumn,
+        removeDuplicates: options.removeDuplicates,
+        duplicatesRemoved: result.duplicatesRemoved,
+        records: Math.max(0, result.rows.length - (result.headerRow ? 1 : 0)),
+        headerRow: result.headerRow,
+        bytes: total,
+      },
+      activeSheet: merged.name,
+      sheetError: null,
+      sheetWarnings: [],
+      memoryBudgetBytes: budget,
+      startedAt,
+      lastScan: null,
+    };
     return this.summary();
   }
 
@@ -1294,7 +1396,7 @@ export class EngineCore {
           originalName: st.fileName,
           // Excel sheet without changes (Excel to CSV converter): “Book - Sheet.csv”.
           // JSON, and TSV/TXT files turned into CSV (Stage 13): named after the file, with the new extension.
-          downloadName: st.json || st.xml || (!excel && delimiter !== "\t" && /\.(tsv|tab|txt)$/i.test(st.fileName))
+          downloadName: st.json || st.xml || st.merge || (!excel && delimiter !== "\t" && /\.(tsv|tab|txt)$/i.test(st.fileName))
             ? `${base}.${delimiter === "\t" ? "tsv" : "csv"}`
             : excel && !stats.changesApplied
               ? `${base} - ${safeSheet}.${delimiter === "\t" ? "tsv" : "csv"}`
@@ -1777,7 +1879,7 @@ export class EngineCore {
     const features = st.inspection?.features ?? null;
     return {
       fileName: st.fileName,
-      fileSize: st.file.size,
+      fileSize: st.merge ? st.merge.bytes : st.file.size,
       format: st.json ? "json" : st.xml ? "xml" : st.format,
       sheets: st.sheets,
       activeSheet: st.activeSheet,
@@ -1788,9 +1890,12 @@ export class EngineCore {
       issueCount,
       issues,
       sheetError: st.sheetError,
-      headerGuess: st.json ? st.json.headerRow : st.xml ? true : active ? guessHeaderRow(active) : false,
-      namesGuess: st.json ? st.json.headerRow : st.xml ? true : active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
+      headerGuess: st.json ? st.json.headerRow : st.xml ? true : st.merge ? st.merge.headerRow : active ? guessHeaderRow(active) : false,
+      namesGuess: st.json ? st.json.headerRow : st.xml ? true : st.merge ? st.merge.headerRow : active && active.grid.rowCount > 0 ? !namesLookLikeData(active.grid.row(0).map((v) => (v === null ? "" : String(v)))) : false,
       xml: st.xml ?? null,
+      merge: st.merge
+        ? { files: st.merge.files, columns: st.merge.columns, sourceColumn: st.merge.sourceColumn, removeDuplicates: st.merge.removeDuplicates, duplicatesRemoved: st.merge.duplicatesRemoved, records: st.merge.records }
+        : null,
       json: st.json ? { lines: st.json.lines, lists: st.json.lists, path: st.json.path, records: st.json.records, listsAsText: st.json.listsAsText, longNumbers: st.json.longNumbers } : null,
       timings: { totalMs: Date.now() - st.startedAt },
     };

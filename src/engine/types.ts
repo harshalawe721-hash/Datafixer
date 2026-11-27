@@ -150,6 +150,18 @@ export interface JsonSummary {
   longNumbers: number;
 }
 
+/** Stage 15: what went into a merged table. */
+export interface MergeSummary {
+  files: { name: string; rows: number; columns: number; header: boolean; sheet: string | null }[];
+  /** Merged columns and in how many files each appears. */
+  columns: { name: string; files: number }[];
+  sourceColumn: boolean;
+  removeDuplicates: boolean;
+  duplicatesRemoved: number;
+  /** Rows in the merged table (without the header). */
+  records: number;
+}
+
 /** Stage 14: how an XML file became a table. */
 export interface XmlSummary {
   /** Repeating elements that can be the records, e.g. "catalog/products/product". */
@@ -192,6 +204,8 @@ export interface WorkbookSummary {
   json?: JsonSummary | null;
   /** Stage 14: set when the file is XML (shown as a table). */
   xml?: XmlSummary | null;
+  /** Stage 15: set when the table is several files merged into one. */
+  merge?: MergeSummary | null;
   timings: { totalMs: number };
 }
 

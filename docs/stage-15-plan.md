@@ -1,6 +1,6 @@
 # Stage 15 plan: Merge CSV / Excel files
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 15.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -65,3 +65,10 @@ No new dependencies. Files stay in the browser.
 - Only the first visible sheet of each Excel workbook is used.
 - Columns are matched by their names; differently named columns that mean the same thing (“Email” and “E-mail”) stay separate unless renamed first.
 - Very large merges need a computer or a device with enough memory, as for the other tools.
+
+## Progress
+
+- **Step 1 (engine): done, 27 November 2026.**
+  - `src/engine/merge/merge.ts`: tables are added one at a time; columns are matched by name ignoring capital letters and spaces around names (the first spelling is kept), columns found in only some files go at the end, files without column names are matched by position, a repeated name inside one file stays a separate column; optional “Source file” column (first); optional removal of exact duplicate rows across files (ignoring the source column; the first copy is kept); empty rows between files are skipped.
+  - `openMerge` in the engine: 2–50 files, up to 150 MB together; each file is read one at a time with the existing readers (each CSV's separator and encoding detected separately; Excel: the first visible sheet, values as shown) and released after merging; the usual memory stop; a problem in one file names the file; the result is a text table, so the verified CSV download (`merged.csv`) and the CSV to Excel rules (`merged.xlsx`, codes keep their zeros) apply.
+  - Tests: 14 new (555 unit tests in total), including a comma CSV, a semicolon CSV and an Excel file in one merge, a workbook whose first sheet is hidden, duplicates across files, a file without column names, downloads, limits and the memory stop.
