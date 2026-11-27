@@ -164,7 +164,17 @@ async function axe(page: Page, dark: boolean) {
   check((await dlg.getByRole("checkbox", { name: /^customer name/ }).isChecked()) && (await dlg.getByRole("checkbox", { name: /^city/ }).isChecked()), "the two flagged columns already ticked");
   check(!(await dlg.getByRole("checkbox", { name: /^status/ }).isChecked()), "other columns not ticked");
   await dlg.getByRole("button", { name: /^Apply fix/ }).click();
-  await page.getByRole("heading", { name: "Spreadsheet analysis complete" }).waitFor({ timeout: 30000 });
+  try {
+    // The re-check's results (with nothing left to fix the heading is “No problems found”, not
+    // “Spreadsheet analysis complete”; waiting for that heading only passed when it caught the old
+    // results before the re-check replaced them).
+    await page.getByText(/These results include your changes/).first().waitFor({ timeout: 30000 });
+  } catch (e) {
+    const shot = path.join(tmpdir(), "change-case-recheck-timeout.png");
+    await page.screenshot({ path: shot, fullPage: true });
+    console.log(`DIAGNOSTICS after Apply (screenshot ${shot}):\n${(await page.locator("main").innerText()).slice(0, 2000)}\nBrowser errors: ${errors.join(" | ") || "none"}`);
+    throw e;
+  }
   let goneNote = false;
   for (let i = 0; i < 40 && !goneNote; i++) {
     goneNote = (await note.count()) === 0;
