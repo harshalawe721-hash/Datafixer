@@ -1,6 +1,6 @@
 # Stage 13 plan: TSV to CSV
 
-**Status:** plan prepared on 27 November 2026, waiting for the owner's decisions. Nothing is built until the owner approves.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–5A) and said “Start Stage 13”.** Progress is recorded under “Progress” below.
 
 ## Why
 

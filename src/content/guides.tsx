@@ -594,3 +594,57 @@ export const csvToJsonGuide: Guide = {
     },
   ],
 };
+
+export const tsvToCsvGuide: Guide = {
+  how: {
+    title: "How the TSV to CSV converter works",
+    steps: [
+      "Open a .tsv, .txt or .tab file (or a .csv that really uses tabs). It is read on your device; the separator and text encoding are found automatically and can be changed.",
+      "A quick structure check shows whether every row has the same number of values. If not, “Check and repair in the CSV Validator” opens the same file there.",
+      "Choose the separator for the new file: comma (the usual CSV), semicolon (for Excel in countries that write decimals with a comma) or tab (to make a TSV from a CSV). Line endings and the BOM are under “More options”.",
+      "Download the CSV, or an Excel workbook. Each file is read back and checked before it is downloaded.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        A file exported from a database has the line <code>00123⇥Patil, Asha⇥Pune</code> (⇥ is a tab). As CSV it becomes{" "}
+        <code>00123,&quot;Patil, Asha&quot;,Pune</code>: the name is put in quotes because it contains a comma, so it stays in one cell, and the code keeps
+        its leading zeros.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or change the original. The new file is created in your browser.",
+    "Change a value: codes keep their leading zeros, long numbers keep all their digits, and dates stay as written in the CSV.",
+    "Split a value that contains the new separator: it is put in quotes, as CSV requires.",
+    "Offer a file that doesn't match the table: every download is checked first.",
+  ],
+  limits: [
+    "A value with a tab inside it can't be told apart from two values unless it is in quotes; the structure check points out rows that don't line up.",
+    "Files up to 150 MB; very large files need a computer or a recent phone with enough memory.",
+  ],
+  faqs: [
+    {
+      q: "Is my file uploaded?",
+      a: "No. Your browser reads the file on your device and creates the CSV there. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "What is a TSV file?",
+      a: "A text file where the values on each line are separated by tabs instead of commas. Databases, Google Sheets and many research tools export it, sometimes with a .txt name.",
+    },
+    {
+      q: "Can I convert CSV to TSV here?",
+      a: "Yes. Open the CSV file and choose “Tab” as the separator for the new file.",
+    },
+    {
+      q: "Comma or semicolon?",
+      a: "Comma is the usual CSV. Choose semicolon if the file is for Excel on a computer set up for a country that writes decimals with a comma (3,5), such as Germany, France or Brazil.",
+    },
+    {
+      q: "Why does my TSV open in one column in Excel?",
+      a: "Excel sometimes doesn't recognise tabs when you double-click a file. Converting it to CSV (or to an Excel workbook) here opens correctly every time.",
+    },
+  ],
+};

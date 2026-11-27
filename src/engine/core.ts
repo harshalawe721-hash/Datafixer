@@ -1201,7 +1201,8 @@ export class EngineCore {
         summary: {
           originalName: st.fileName,
           // Excel sheet without changes (Excel to CSV converter): “Book - Sheet.csv”.
-          downloadName: st.json
+          // JSON, and TSV/TXT files turned into CSV (Stage 13): named after the file, with the new extension.
+          downloadName: st.json || (!excel && delimiter !== "\t" && /\.(tsv|tab|txt)$/i.test(st.fileName))
             ? `${base}.${delimiter === "\t" ? "tsv" : "csv"}`
             : excel && !stats.changesApplied
               ? `${base} - ${safeSheet}.${delimiter === "\t" ? "tsv" : "csv"}`

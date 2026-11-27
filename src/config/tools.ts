@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -11,7 +11,8 @@ export type ToolId =
   | "combine-columns"
   | "remove-duplicates"
   | "json-to-csv"
-  | "csv-to-json";
+  | "csv-to-json"
+  | "tsv-to-csv";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -23,7 +24,7 @@ export interface ToolDefinition {
   summary: string;
   icon: LucideIcon;
   /** File types the tool accepts. */
-  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt" | ".json" | ".jsonl")[];
+  accepts: readonly (".xlsx" | ".xls" | ".csv" | ".tsv" | ".txt" | ".json" | ".jsonl" | ".tab")[];
   /** Shown in "Popular tools" on the homepage. */
   featured: boolean;
   /** Related tools shown on this tool's page, in order (default: the first other tools in the registry). */
@@ -139,6 +140,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
     featured: false,
     related: ["json-to-csv", "csv-validator", "excel-to-csv"],
+  },
+  {
+    id: "tsv-to-csv",
+    name: "TSV to CSV Converter",
+    shortName: "TSV to CSV",
+    href: "/tsv-to-csv",
+    summary: "Turn tab-separated (TSV or TXT) files into CSV, with the separator, line endings and BOM you need, or into Excel.",
+    icon: ArrowRightLeft,
+    accepts: [".tsv", ".txt", ".tab", ".csv"],
+    featured: false,
+    related: ["csv-validator", "csv-to-excel", "excel-to-csv"],
   },
 ];
 
