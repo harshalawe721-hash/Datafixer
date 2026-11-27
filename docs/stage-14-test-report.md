@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** ✅ **Steps 1–4 complete; waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 27 November 2026.
 
 The owner approved the plan (`docs/stage-14-plan.md`) on 27 November 2026 with decisions **A for all**: one page with CSV and Excel downloads (1A); records found automatically, with a choice (2A); repeated children joined with “; ” (3A); attribute columns named after the attribute, @name only on a clash (4A); up to 150 MB, read in pieces (5A); one guide on 22 December (6A).
 
@@ -56,4 +56,4 @@ Records with an attribute, nested fields, two repeated tags and an entity each.
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 14 on 27 November 2026 (“Approve”).

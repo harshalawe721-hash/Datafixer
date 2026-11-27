@@ -1,6 +1,6 @@
 # Stage 14 plan: XML to CSV
 
-**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 14”.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 27 November 2026. **The owner approved it with decisions A for all (1A–6A) and said “Start Stage 14”. Stage 14 was approved as complete on 27 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
