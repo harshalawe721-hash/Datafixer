@@ -21,7 +21,7 @@ const PAGE = 50;
 const fmt = (n: number) => n.toLocaleString("en-US");
 const plural = (n: number, one: string, many = `${one}s`) => `${fmt(n)} ${n === 1 ? one : many}`;
 
-type Picked = { file: File; format: SpreadsheetFormat; sheet?: string } | null;
+type Picked = { file: File; format: SpreadsheetFormat; sheet?: string; header?: boolean } | null;
 type Options = { keys: string[] | null | undefined; ignoreCase: boolean; ignoreSpaces: boolean };
 type Run = { status: "idle" } | { status: "working"; progress: ProgressEvent | null } | { status: "done"; summary: CompareSummary; seq: number } | { status: "error"; message: string };
 
@@ -95,10 +95,20 @@ export function CompareWorkspace() {
         client={client()}
         options={options}
         busy={updating}
+        headers={{ older: older?.header, newer: newer?.header }}
         onOptions={(next) => update(next)}
         onSheet={(side, sheet) => {
-          const o = side === "older" && older ? { ...older, sheet } : older;
-          const n = side === "newer" && newer ? { ...newer, sheet } : newer;
+          // Another sheet: its column names are detected again.
+          const o = side === "older" && older ? { ...older, sheet, header: undefined } : older;
+          const n = side === "newer" && newer ? { ...newer, sheet, header: undefined } : newer;
+          setOlder(o);
+          setNewer(n);
+          update({ keys: undefined }, o, n);
+        }}
+        onHeader={(side, header) => {
+          // Other column names: the key is suggested again.
+          const o = side === "older" && older ? { ...older, header } : older;
+          const n = side === "newer" && newer ? { ...newer, header } : newer;
           setOlder(o);
           setNewer(n);
           update({ keys: undefined }, o, n);
@@ -198,8 +208,10 @@ function ComparePanel({
   client,
   options,
   busy,
+  headers,
   onOptions,
   onSheet,
+  onHeader,
   onBack,
 }: {
   summary: CompareSummary;
@@ -207,8 +219,11 @@ function ComparePanel({
   client: EngineClient;
   options: Options;
   busy: boolean;
+  /** The column-names choice per file (undefined: as detected); shown at once while comparing again. */
+  headers: { older?: boolean; newer?: boolean };
   onOptions: (next: Partial<Options>) => void;
   onSheet: (side: "older" | "newer", sheet: string) => void;
+  onHeader: (side: "older" | "newer", header: boolean) => void;
   onBack: () => void;
 }) {
   const c = s.counts;
@@ -278,6 +293,22 @@ function ComparePanel({
               Ignore spaces at the start and end
             </label>
             <p className="text-xs text-muted">Values are compared as they are shown{s.older.sheet || s.newer.sheet ? " in Excel" : ""}.</p>
+          </fieldset>
+          <fieldset className="space-y-1 md:col-span-2">
+            <legend className="text-sm font-semibold">Column names</legend>
+            {(["older", "newer"] as const).map((side) => (
+              <label key={side} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" className="size-5 shrink-0 accent-[var(--primary)]" checked={headers[side] ?? s[side].header} onChange={(e) => onHeader(side, e.target.checked)} />
+                <span>
+                  First row of the {side} file contains column names
+                  {s[side].header !== s[side].headerDetected && <span className="text-muted"> (changed by you; detected: {s[side].headerDetected ? "names" : "data"})</span>}
+                </span>
+              </label>
+            ))}
+            <p className="text-xs text-muted">
+              Detected automatically. Untick a box if that file&apos;s first row is data, or tick it if its column names look like data (such as years). Without names in
+              both files, columns are matched by position.
+            </p>
           </fieldset>
         </fieldset>
 

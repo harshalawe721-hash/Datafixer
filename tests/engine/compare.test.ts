@@ -138,3 +138,28 @@ test("limits: no columns in common, too large together, an empty file, the memor
   const rows = "id,v\n" + Array.from({ length: 5000 }, (_, i) => `${i},value ${i}`).join("\n") + "\n";
   await assert.rejects(core.compareFiles(csv("a.csv", rows), csv("b.csv", rows), { ...opts, memoryBudgetBytes: 200 * 1024 }, noop), /too large to compare safely/);
 });
+
+test("the column-names choice per file overrides detection, both ways, without reading the files again", async () => {
+  const core = new EngineCore();
+  // Years as column names look like data, so detection says “no names”.
+  const years = [csv("a.csv", "2024,2025\n10,20\n11,21\n"), csv("b.csv", "2024,2025\n10,20\n11,22\n")] as const;
+  const guessed = await core.compareFiles(years[0], years[1], opts, noop);
+  assert.deepEqual([guessed.older.header, guessed.older.headerDetected, guessed.columns.map((c) => c.name)], [false, false, ["Column A", "Column B"]]);
+  const named = await core.compareFiles({ ...years[0], header: true }, { ...years[1], header: true }, opts, noop);
+  assert.deepEqual([named.older.header, named.older.headerDetected, named.older.rows], [true, false, 2]);
+  assert.deepEqual(named.columns.map((c) => c.name), ["2024", "2025"]);
+  assert.equal(named.keys?.[0], "2024");
+  assert.deepEqual(named.counts, { added: 0, removed: 0, changed: 1, unchanged: 1, changedCells: 1 });
+  // Names only in the first file, data rows starting with a name: detection takes “Asha, Pune” as names, so Asha's row is lost.
+  const people = [csv("p1.csv", "Asha,Pune\nBen,Oslo\n"), csv("p2.csv", "Asha,Pune\nBen,Rome\n")] as const;
+  const lost = await core.compareFiles(people[0], people[1], opts, noop);
+  assert.deepEqual([lost.older.header, lost.newer.rows], [true, 1]);
+  const all = await core.compareFiles({ ...people[0], header: false }, { ...people[1], header: false }, opts, noop);
+  assert.deepEqual([all.older.header, all.older.headerDetected, all.newer.rows], [false, true, 2]);
+  assert.deepEqual(all.counts, { added: 0, removed: 0, changed: 1, unchanged: 1, changedCells: 1 });
+  assert.deepEqual(core.compareDetails("changed", 0, 5).items[0]!.changes, [{ column: "Column B", old: "Oslo", new: "Rome" }]);
+  // One file with names and one without: matched by position, names taken from the file that has them.
+  const mixed = await core.compareFiles({ ...years[0], header: true }, years[1], opts, noop);
+  assert.deepEqual([mixed.older.header, mixed.newer.header, mixed.columns.map((c) => c.name)], [true, false, ["2024", "2025"]]);
+  assert.deepEqual(mixed.counts, { added: 1, removed: 0, changed: 1, unchanged: 1, changedCells: 1 }, "the newer file's first row (2024, 2025) is now a data row, so it is added");
+});

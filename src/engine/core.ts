@@ -148,6 +148,8 @@ export interface CompareFileInput {
   format: SpreadsheetFormat;
   /** Workbooks: the sheet to compare (default: the first visible sheet). */
   sheet?: string;
+  /** The first row holds column names (default: detected automatically). */
+  header?: boolean;
 }
 
 export interface CompareOptionsInput {
@@ -165,7 +167,10 @@ export interface CompareSideSummary {
   sheets: string[];
   rows: number;
   columns: number;
+  /** The first row is used as column names (as chosen, or as detected). */
   header: boolean;
+  /** What automatic detection found (shown when the choice differs). */
+  headerDetected: boolean;
 }
 
 export interface CompareSummary {
@@ -1764,7 +1769,8 @@ export class EngineCore {
   private async readCompareSide(input: CompareFileInput, label: string, keep: CompareSide | undefined, budget: number | undefined, onProgress: (loaded: number | null) => void, cancel?: CancelToken): Promise<CompareSide> {
     const { file, format } = input;
     const id = `${file.name}|${file.size}|${file.lastModified}|${format}|${input.sheet ?? ""}`;
-    if (keep?.id === id) return keep;
+    // The same file and sheet: keep what was read, and only apply the column-names choice again.
+    if (keep?.id === id) return this.compareSide(id, keep.sheet, format, keep.info.sheets, keep.info.headerDetected, input.header, keep.info.name);
     if (file.size === 0) throw new EngineError("empty-file", `The ${label} file, “${file.name}”, is empty (0 bytes).`);
     let sheet: SheetModel;
     let sheets: string[] = [];
@@ -1789,11 +1795,20 @@ export class EngineCore {
       if (e instanceof EngineError && e.code !== "cancelled") throw new EngineError(e.code, `The ${label} file, “${file.name}”: ${e.message}`, e.detail);
       throw e;
     }
-    const header = guessHeaderRow(sheet);
+    return this.compareSide(id, sheet, format, sheets, guessHeaderRow(sheet), input.header, file.name);
+  }
+
+  private compareSide(id: string, sheet: SheetModel, format: SpreadsheetFormat, sheets: string[], detected: boolean, chosen: boolean | undefined, name: string): CompareSide {
+    const header = chosen ?? detected;
     const g = sheet.grid;
     const excel = format !== "csv";
     const table: CompareTable = { rowCount: g.rowCount, rowLength: (r) => g.rowLength(r), text: (r, c) => cellOutText(sheet, r, c, excel), header };
-    return { id, sheet, table, info: { name: file.name, sheet: excel ? sheet.name : null, sheets, rows: Math.max(0, g.rowCount - (header ? 1 : 0)), columns: sheet.columnCount, header } };
+    return {
+      id,
+      sheet,
+      table,
+      info: { name, sheet: excel ? sheet.name : null, sheets, rows: Math.max(0, g.rowCount - (header ? 1 : 0)), columns: sheet.columnCount, header, headerDetected: detected },
+    };
   }
 
   /** Compare an older and a newer file (decisions 1A–5A). Files already read are kept for the next comparison. */
@@ -1817,7 +1832,8 @@ export class EngineCore {
     onProgress({ phase: "indexing", loaded: null, total: null });
     const columns = matchColumns(o.table, n.table);
     if (!columns.some((c) => c.older >= 0 && c.newer >= 0)) throw new EngineError("unsupported-format", "These two files have no columns in common, so they can't be compared. Check that you chose two versions of the same table.");
-    const suggested = prev && prev.older === o && prev.newer === n ? prev.suggested : await suggestKey(o.table, n.table, columns, cancel);
+    const same = (a: CompareSide | undefined, b: CompareSide) => a?.id === b.id && a.info.header === b.info.header;
+    const suggested = prev && same(prev.older, o) && same(prev.newer, n) ? prev.suggested : await suggestKey(o.table, n.table, columns, cancel);
     let keys: number[] | null;
     if (options.keys === undefined) keys = suggested === null ? null : [suggested];
     else if (options.keys === null || options.keys.length === 0) keys = null;

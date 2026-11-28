@@ -206,6 +206,37 @@ const listText = async (page: Page) => (await page.locator("main ul[aria-label$=
 }
 
 {
+  console.log("\nColumn names: overriding the automatic detection");
+  const page = await openPage({ width: 1280, height: 900 });
+  await pick(page, file("y1.csv", "2024,2025\n10,20\n11,21\n"), file("y2.csv", "2024,2025\n10,20\n11,22\n"));
+  await compare(page);
+  const older = page.getByLabel(/^First row of the older file contains column names/);
+  const newer = page.getByLabel(/^First row of the newer file contains column names/);
+  check(!(await older.isChecked()) && !(await newer.isChecked()), "years as column names are detected as data (both boxes unticked)");
+  check(await waitCounts(page, [1, 0, 0, 2]), "so the header row is compared as a row");
+  await older.check();
+  await page.getByText("(changed by you; detected: data)").first().waitFor({ timeout: 15000 });
+  await newer.check();
+  check(await waitCounts(page, [1, 0, 0, 1]), "ticked for both files: the years are column names");
+  check((await page.getByLabel("Match rows by").inputValue()) === "2024", "and the key is suggested again from the new names");
+  check((await page.getByText("(changed by you; detected: data)").count()) === 2, "the page says the choice differs from what was detected");
+  await page.getByRole("button", { name: "Choose other files" }).click();
+  await page.getByRole("button", { name: "Change the older file, y1.csv" }).click();
+  await page.getByRole("button", { name: "Change the newer file, y2.csv" }).click();
+  await pick(page, file("p1.csv", "Asha,Pune\nBen,Oslo\n"), file("p2.csv", "Asha,Pune\nBen,Rome\n"));
+  await compare(page);
+  check(await page.getByText(/Older: p1\.csv, 1 row · Newer: p2\.csv, 1 row/).isVisible(), "a first data row taken as column names leaves 1 row each");
+  await page.getByLabel(/^First row of the older file contains column names/).uncheck();
+  await page.getByText("(changed by you; detected: names)").first().waitFor({ timeout: 15000 });
+  await page.getByLabel(/^First row of the newer file contains column names/).uncheck();
+  check(await waitCounts(page, [1, 0, 0, 1]), "unticked for both files: Asha's row is compared too");
+  check(await page.getByText(/Older: p1\.csv, 2 rows · Newer: p2\.csv, 2 rows/).isVisible(), "both rows of each file are counted");
+  const a = await axe(page, false);
+  check(a.length === 0, `axe-core with the column-names boxes: ${JSON.stringify(a)}`);
+  await page.close();
+}
+
+{
   console.log("\nPhone layout (390 × 844)");
   const page = await openPage({ width: 390, height: 844 });
   await pick(page, MARCH, APRIL);

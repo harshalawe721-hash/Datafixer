@@ -30,8 +30,8 @@ No new dependencies. Files stay in the browser, and neither file is changed.
 | Suite | Result |
 |---|---|
 | Type check, lint | ✅ pass, 0 warnings |
-| Unit tests (`npm test`) | ✅ 586 / 586 (Stage 17 adds 16). Covers moved and extra columns, key suggestion, whole rows, chosen and two-column keys, both options, repeated keys, files without column names, a CSV against a chosen Excel sheet, empty lines, 60,000 rows in reverse order, the limits and memory stop, the CSV and Excel reports (contents, colours, repeated keys, no differences), cell colours in the writer and its check, and guide 36's date |
-| Compare in the browser (`test:compare`, new) | ✅ 40 / 40, three runs in a row. Covers choosing and swapping, the summary and notes, each filter, the Excel report read with openpyxl (values and colours), the CSV report without unchanged rows, two key columns, whole rows, both options, repeated keys, a CSV against a chosen Excel sheet, files with no columns in common, keyboard, axe-core light and dark, and phone 390 px |
+| Unit tests (`npm test`) | ✅ 586 / 586 at the final run (Stage 17 adds 16; 587 after the follow-up below). Covers moved and extra columns, key suggestion, whole rows, chosen and two-column keys, both options, repeated keys, files without column names, a CSV against a chosen Excel sheet, empty lines, 60,000 rows in reverse order, the limits and memory stop, the CSV and Excel reports (contents, colours, repeated keys, no differences), cell colours in the writer and its check, and guide 36's date |
+| Compare in the browser (`test:compare`, new) | ✅ 40 / 40, three runs in a row (49 / 49 after the follow-up below). Covers choosing and swapping, the summary and notes, each filter, the Excel report read with openpyxl (values and colours), the CSV report without unchanged rows, two key columns, whole rows, both options, repeated keys, a CSV against a chosen Excel sheet, files with no columns in common, keyboard, axe-core light and dark, and phone 390 px |
 | Earlier suites | ✅ smoke 129, SEO 57, a11y 71, split file 34, merge 27, xml 23, tsv 21, json 25, csv-json 19, duplicates 31, split column 28, combine 29, change case 27, fix 126, detector 33, validator 106, converter 45, engine 62 |
 | Guide (clock set to 25 December, 1 pm) | ✅ live and in the sitemap; SEO 84 / 84; link preview complete; links to /compare-files and the tool page lists it; axe-core clean in light and dark; no sideways scrolling at 390 px. With today's date it is hidden. |
 | Large files (`test:compare-perf`, new) | ✅ all ok: exact counts, both reports read back after download, both files unchanged (SHA-256). See below. |
@@ -67,9 +67,24 @@ In each newer file the columns are in another order and the rows are in another 
 
 - One sheet of each workbook is compared at a time. Formulas, formatting and comments aren't compared, only values as shown.
 - Without a key column, a row with one changed value shows as one removed and one added row (the page says so).
-- Header rows are detected automatically; there is no switch to override this on the Compare page.
 - The differences list shows 50 rows at a time (“Show more” loads the next 50). The report has every row.
 - Comparing about 130 MB needs 600–900 MB of browser memory. Devices with less memory stop safely.
+
+## Follow-up: column-names switch (28 November 2026, at the owner's request)
+
+Column names were detected automatically with no way to correct them, and detection can be wrong both ways:
+- **Names that look like data:** in a file with years as column names (2024, 2025), the names were taken as a data row.
+- **Data that looks like names:** in a file without names whose first row is “Asha, Pune”, that row was taken as names, so Asha's row was never compared.
+
+Now each file has a box, “First row of the older/newer file contains column names”.
+- It shows what was detected, and the page notes “changed by you; detected: …” when the choice differs.
+- Changing it compares again straight away, with the files kept, and suggests the key again from the new names.
+- Choosing another sheet detects its names again.
+
+Tests (same build):
+- **Unit tests:** 587 / 587 (1 new: both wrong-guess cases, and one file with names against one without).
+- **Compare browser test:** 49 / 49, three runs in a row (9 new checks: both cases fixed with the boxes, the key suggested again, the note, axe-core).
+- **Also passing:** a11y 71, smoke 125 (the link count follows the guides listed), and the large-file test (10 MB run, exact counts).
 
 ## Approval
 
