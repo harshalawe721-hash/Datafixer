@@ -1,6 +1,6 @@
 # Stage 18 plan: long-tail guides for the existing tools
 
-**Status:** plan prepared on 28 November 2026, after the owner said 15 tools are enough and suggested guides on long-tail keywords for the existing tools. **The owner approved it with decisions A for all (1A–4A) and said to start Stage 18.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 28 November 2026, after the owner said 15 tools are enough and suggested guides on long-tail keywords for the existing tools. **The owner approved it with decisions A for all (1A–4A) and said to start Stage 18. Stage 18 was approved as complete on 28 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -72,4 +72,4 @@ No new dependencies and no changes to the tools.
     - The Spreadsheet Cleaner lists invalid emails and phone numbers below its cleaning tools.
   - **Checked with the guide clock at 2 January 2027, 1 pm:** all 8 Stage 18 guides pass 96/96 (two descriptions were shortened to fit). Their tool pages list them, including the CSV Validator for guide 44. SEO 92/92.
   - **Unit tests:** 589.
-- **Step 3 (testing and report): done, 28 November 2026.** All 8 guides checked on their days (96/96, SEO 92/92), the publishing boundary checked, all hidden today, all suites passing. Report: `docs/stage-18-test-report.md`. **Waiting for the owner's approval.**
+- **Step 3 (testing and report): done, 28 November 2026.** All 8 guides checked on their days (96/96, SEO 92/92), the publishing boundary checked, all hidden today, all suites passing. Report: `docs/stage-18-test-report.md`. Approved by the owner on 28 November 2026.

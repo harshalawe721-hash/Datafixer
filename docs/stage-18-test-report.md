@@ -2,7 +2,7 @@
 
 **Date:** 28 November 2026
 
-**Status:** all three steps done and tested. **Waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 28 November 2026.
 
 The owner said 15 tools are enough and suggested guides on long-tail keywords for the existing tools. The plan (`docs/stage-18-plan.md`) was approved with decisions **A for all**: the proposed guides, the usual format (1,000–1,500 words), one a day after guide 36, and links between guides and tool pages.
 
@@ -64,4 +64,4 @@ No tool was changed, and there are no new dependencies.
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 18 on 28 November 2026 (“Approved”).
