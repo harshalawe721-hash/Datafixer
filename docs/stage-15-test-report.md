@@ -2,7 +2,7 @@
 
 **Date:** 27 November 2026
 
-**Status:** all four steps done and tested. **Waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 28 November 2026.
 
 The owner approved the plan (`docs/stage-15-plan.md`) on 27 November 2026 with decisions **A for all** (1A–6A): columns matched by name, ignoring capital letters and spaces around names; an optional “Source file” column, on by default; up to 50 files and 150 MB together, CSV/TSV/TXT and Excel mixed; optional removal of exact duplicate rows, off by default; CSV and Excel downloads; one guide on 23 December.
 
@@ -59,4 +59,4 @@ Every other file has its columns in a different order, so every merge has to mat
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 15 on 28 November 2026 (“Approve”), and asked for the Stage 16 plan for Split File next.

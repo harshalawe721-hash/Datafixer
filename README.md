@@ -100,6 +100,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 12 | JSON to CSV and CSV to JSON tool pages, strict JSON reader, JSON guides | **Complete** (approved 27 November 2026). See `docs/stage-12-test-report.md` |
 | 13 | TSV to CSV tool page (separator, line endings, BOM, Excel; CSV to TSV), TSV guide | **Complete** (approved 27 November 2026). See `docs/stage-13-test-report.md` |
 | 14 | XML to CSV tool page (streaming XML reader, records found automatically, CSV and Excel), XML guide | **Complete** (approved 27 November 2026). See `docs/stage-14-test-report.md` |
-| 15 | Merge Files tool page (CSV and Excel files mixed, columns matched by name, Source file column, duplicates), merge guide | **Done, waiting for owner approval.** See `docs/stage-15-test-report.md` |
+| 15 | Merge Files tool page (CSV and Excel files mixed, columns matched by name, Source file column, duplicates), merge guide | **Complete** (approved 28 November 2026). See `docs/stage-15-test-report.md` |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.
