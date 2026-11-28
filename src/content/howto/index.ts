@@ -43,6 +43,7 @@ import { convertTsvToCsv } from "./convert-tsv-to-csv";
 import { convertXmlToCsv } from "./convert-xml-to-csv";
 import { mergeCsvExcelFiles } from "./merge-csv-excel-files";
 import { splitLargeCsvExcelFile } from "./split-large-csv-excel-file";
+import { compareTwoExcelCsvFiles } from "./compare-two-excel-csv-files";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -93,6 +94,8 @@ export const GUIDES: readonly HowToGuide[] = [
   mergeCsvExcelFiles,
   // Guide 35 (Stage 16, owner decision 6A, 28 November 2026): 24 December 2026.
   splitLargeCsvExcelFile,
+  // Guide 36 (Stage 17, owner decision 6A, 28 November 2026): 25 December 2026.
+  compareTwoExcelCsvFiles,
 ];
 
 /**

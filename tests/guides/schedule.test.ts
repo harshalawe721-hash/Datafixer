@@ -55,9 +55,9 @@ test("the guide list puts Split and Combine right after Change case, and every r
   const index = readFileSync(new URL("index.ts", dir), "utf8");
   const list = index.slice(index.indexOf("export const GUIDES"), index.indexOf("];", index.indexOf("export const GUIDES")));
   const order = [...list.matchAll(/^\s+([A-Za-z0-9]+),$/gm)].map((m) => m[1]!);
-  assert.equal(order.length, 35);
+  assert.equal(order.length, 36);
   assert.equal(order[28], "findDuplicatesInExcel");
-  assert.deepEqual(order.slice(29), ["convertJsonToCsv", "convertCsvToJson", "convertTsvToCsv", "convertXmlToCsv", "mergeCsvExcelFiles", "splitLargeCsvExcelFile"]);
+  assert.deepEqual(order.slice(29), ["convertJsonToCsv", "convertCsvToJson", "convertTsvToCsv", "convertXmlToCsv", "mergeCsvExcelFiles", "splitLargeCsvExcelFile", "compareTwoExcelCsvFiles"]);
   assert.deepEqual(order.slice(15, 19), ["changeCaseProperCase", "splitCellsInExcel", "combineColumnsInExcel", "csvVsExcel"]);
   const files = readdirSync(dir).filter((f) => f.endsWith(".tsx"));
   const guides = files.map((f) => readFileSync(new URL(f, dir), "utf8"));
@@ -103,4 +103,10 @@ test("guide 35 (split a large file) follows on 24 December 2026 at 12:30 pm", ()
   assert.equal(indiaDate(publishTime(34, "2026-11-20")!), "2026-12-24");
   assert.equal(isPublished(34, "2026-11-20", at("2026-12-24T12:29:00+05:30")), false);
   assert.equal(isPublished(34, "2026-11-20", at("2026-12-24T12:30:00+05:30")), true);
+});
+
+test("guide 36 (compare two files) follows on 25 December 2026 at 12:30 pm", () => {
+  assert.equal(indiaDate(publishTime(35, "2026-11-20")!), "2026-12-25");
+  assert.equal(isPublished(35, "2026-11-20", at("2026-12-25T12:29:00+05:30")), false);
+  assert.equal(isPublished(35, "2026-11-20", at("2026-12-25T12:30:00+05:30")), true);
 });
