@@ -48,6 +48,10 @@ import { extractDomainFromEmail } from "./extract-domain-from-email";
 import { combineAddressLines } from "./combine-address-lines";
 import { convertAllExcelSheetsToCsv } from "./convert-all-excel-sheets-to-csv";
 import { removeDuplicateEmails } from "./remove-duplicate-emails";
+import { compareTwoLists } from "./compare-two-lists";
+import { separateDateAndTime } from "./separate-date-and-time";
+import { createUniqueIdFromColumns } from "./create-unique-id-from-columns";
+import { cleanCustomerListBeforeCrmImport } from "./clean-customer-list-before-crm-import";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -105,6 +109,10 @@ export const GUIDES: readonly HowToGuide[] = [
   combineAddressLines,
   convertAllExcelSheetsToCsv,
   removeDuplicateEmails,
+  compareTwoLists,
+  separateDateAndTime,
+  createUniqueIdFromColumns,
+  cleanCustomerListBeforeCrmImport,
 ];
 
 /**

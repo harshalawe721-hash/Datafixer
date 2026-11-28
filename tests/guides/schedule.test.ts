@@ -55,9 +55,9 @@ test("the guide list puts Split and Combine right after Change case, and every r
   const index = readFileSync(new URL("index.ts", dir), "utf8");
   const list = index.slice(index.indexOf("export const GUIDES"), index.indexOf("];", index.indexOf("export const GUIDES")));
   const order = [...list.matchAll(/^\s+([A-Za-z0-9]+),$/gm)].map((m) => m[1]!);
-  assert.equal(order.length, 40);
+  assert.equal(order.length, 44);
   assert.equal(order[28], "findDuplicatesInExcel");
-  assert.deepEqual(order.slice(29), ["convertJsonToCsv", "convertCsvToJson", "convertTsvToCsv", "convertXmlToCsv", "mergeCsvExcelFiles", "splitLargeCsvExcelFile", "compareTwoExcelCsvFiles", "extractDomainFromEmail", "combineAddressLines", "convertAllExcelSheetsToCsv", "removeDuplicateEmails"]);
+  assert.deepEqual(order.slice(29), ["convertJsonToCsv", "convertCsvToJson", "convertTsvToCsv", "convertXmlToCsv", "mergeCsvExcelFiles", "splitLargeCsvExcelFile", "compareTwoExcelCsvFiles", "extractDomainFromEmail", "combineAddressLines", "convertAllExcelSheetsToCsv", "removeDuplicateEmails", "compareTwoLists", "separateDateAndTime", "createUniqueIdFromColumns", "cleanCustomerListBeforeCrmImport"]);
   assert.deepEqual(order.slice(15, 19), ["changeCaseProperCase", "splitCellsInExcel", "combineColumnsInExcel", "csvVsExcel"]);
   const files = readdirSync(dir).filter((f) => f.endsWith(".tsx"));
   const guides = files.map((f) => readFileSync(new URL(f, dir), "utf8"));
@@ -118,4 +118,13 @@ test("guides 37–40 (Stage 18) follow on 26–29 December 2026 at 12:30 pm", ()
   assert.equal(isPublished(36, "2026-11-20", at("2026-12-26T12:30:00+05:30")), true);
   assert.equal(isPublished(39, "2026-11-20", at("2026-12-29T12:29:00+05:30")), false);
   assert.equal(isPublished(39, "2026-11-20", at("2026-12-29T12:30:00+05:30")), true);
+});
+
+test("guides 41–44 (Stage 18) follow on 30 December 2026 – 2 January 2027 at 12:30 pm", () => {
+  assert.equal(indiaDate(publishTime(40, "2026-11-20")!), "2026-12-30");
+  assert.equal(indiaDate(publishTime(41, "2026-11-20")!), "2026-12-31");
+  assert.equal(indiaDate(publishTime(42, "2026-11-20")!), "2027-01-01");
+  assert.equal(indiaDate(publishTime(43, "2026-11-20")!), "2027-01-02");
+  assert.equal(isPublished(43, "2026-11-20", at("2027-01-02T12:29:00+05:30")), false);
+  assert.equal(isPublished(43, "2026-11-20", at("2027-01-02T12:30:00+05:30")), true);
 });

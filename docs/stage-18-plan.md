@@ -57,4 +57,18 @@ No new dependencies and no changes to the tools.
   - Each is about 1,000–1,050 words. The tool steps use the tools' exact labels, which were read from the pages before writing (for example “At the first separator only (2 parts)”, “Skip empty values (no extra separators)”, “All … sheets (ZIP)”, “Which copy to keep”). The download wording matches what each tool offers.
   - **Checked with the guide clock at 29 December, 1 pm:** each is 200 and in the sitemap, its tool page lists it, the link preview is complete, the title and description are within the limits (three descriptions were shortened to fit), it links to its tool, every guide link resolves, axe-core is clean in light and dark, and there is no horizontal scroll at 390 px (48/48). SEO 88/88.
   - **With today's date:** all four are 404.
-  - **Unit tests:** 587 (schedule test updated).
+  - **Unit tests:** 588 (schedule test updated).
+- **Step 2 (guides 41–44): done, 28 November 2026.**
+  - The guides:
+    - “How to compare two lists and find missing or new items” (30 December);
+    - “How to separate date and time into two columns” (31 December);
+    - “How to combine columns into a unique ID or key” (1 January);
+    - “How to clean a customer list before importing it into a CRM” (2 January).
+  - Each is about 1,010–1,090 words. Each tool's behaviour was checked in the code before writing:
+    - Split a Column splits text only, so real Excel date-time cells (numbers) are copied unchanged. The date and time guide says so and gives INT and MOD for those.
+    - Combine Columns uses the values as shown.
+    - Remove Duplicates says “No duplicate rows found in the chosen columns” when every key is unique.
+    - Compare points out repeated values only when a column is chosen under “Match rows by”.
+    - The Spreadsheet Cleaner lists invalid emails and phone numbers below its cleaning tools.
+  - **Checked with the guide clock at 2 January 2027, 1 pm:** all 8 Stage 18 guides pass 96/96 (two descriptions were shortened to fit). Their tool pages list them, including the CSV Validator for guide 44. SEO 92/92.
+  - **Unit tests:** 589.
