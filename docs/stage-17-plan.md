@@ -106,3 +106,4 @@ No new dependencies. Files stay in the browser, and neither file is changed.
   - **Checked with the guide clock at 25 December, 1 pm:** 200 and in the sitemap; SEO 84/84; link preview complete; links to /compare-files, and the tool page lists it; axe-core clean in light and dark; no horizontal scroll at 390 px.
   - **With today's date:** it is 404.
   - **Unit tests:** 586.
+- **Step 5 (testing and report): done, 28 November 2026.** New large-file test `npm run test:compare-perf`. Two 66 MB files (2.1 million rows each, rows and columns reordered, changes spread through) were compared by key in 12 s and by whole rows in 9 s, with exact counts. The CSV report (every row, 91 MB) and the Excel report (differences, highlighted) were read back and were exact, and the files were unchanged. With a 512 MB heap, both 132 MB and 148 MB together succeed. All suites pass on the same build. Report: `docs/stage-17-test-report.md`. **Waiting for the owner's approval.**
