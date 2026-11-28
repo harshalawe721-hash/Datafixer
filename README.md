@@ -103,5 +103,6 @@ Adding a tool: add an entry to `src/config/tools.ts` (navigation, footer, homepa
 | 15 | Merge Files tool page (CSV and Excel files mixed, columns matched by name, Source file column, duplicates), merge guide | **Complete** (approved 28 November 2026). See `docs/stage-15-test-report.md` |
 | 16 | Split File tool page (rows per part, equal parts or one file per column value; CSV or Excel parts; all parts in a checked .zip), split guide | **Complete** (approved 28 November 2026). See `docs/stage-16-test-report.md` |
 | 17 | Compare Spreadsheets tool page (rows matched by key or whole row, every added, removed and changed row, Excel report with highlighted changes and CSV report), compare guide | **Complete** (approved 28 November 2026). See `docs/stage-17-test-report.md` |
+| 18 | Long-tail guides 37–44 for the existing tools (email domains, address lines, all sheets to CSV, duplicate emails, two lists, date and time, unique keys, CRM clean-up), 26 Dec 2026 – 2 Jan 2027 | **Done, waiting for owner approval.** See `docs/stage-18-test-report.md` |
 
 Until each tool is implemented, its page shows an honest "being built" notice with no upload control.

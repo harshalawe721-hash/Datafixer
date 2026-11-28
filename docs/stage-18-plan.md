@@ -72,3 +72,4 @@ No new dependencies and no changes to the tools.
     - The Spreadsheet Cleaner lists invalid emails and phone numbers below its cleaning tools.
   - **Checked with the guide clock at 2 January 2027, 1 pm:** all 8 Stage 18 guides pass 96/96 (two descriptions were shortened to fit). Their tool pages list them, including the CSV Validator for guide 44. SEO 92/92.
   - **Unit tests:** 589.
+- **Step 3 (testing and report): done, 28 November 2026.** All 8 guides checked on their days (96/96, SEO 92/92), the publishing boundary checked, all hidden today, all suites passing. Report: `docs/stage-18-test-report.md`. **Waiting for the owner's approval.**
