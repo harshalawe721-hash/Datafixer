@@ -42,6 +42,7 @@ import { convertCsvToJson } from "./convert-csv-to-json";
 import { convertTsvToCsv } from "./convert-tsv-to-csv";
 import { convertXmlToCsv } from "./convert-xml-to-csv";
 import { mergeCsvExcelFiles } from "./merge-csv-excel-files";
+import { splitLargeCsvExcelFile } from "./split-large-csv-excel-file";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -90,6 +91,8 @@ export const GUIDES: readonly HowToGuide[] = [
   convertXmlToCsv,
   // Guide 34 (Stage 15, owner decision 6A, 27 November 2026): 23 December 2026.
   mergeCsvExcelFiles,
+  // Guide 35 (Stage 16, owner decision 6A, 28 November 2026): 24 December 2026.
+  splitLargeCsvExcelFile,
 ];
 
 /**
