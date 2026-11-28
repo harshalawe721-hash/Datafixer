@@ -44,6 +44,10 @@ import { convertXmlToCsv } from "./convert-xml-to-csv";
 import { mergeCsvExcelFiles } from "./merge-csv-excel-files";
 import { splitLargeCsvExcelFile } from "./split-large-csv-excel-file";
 import { compareTwoExcelCsvFiles } from "./compare-two-excel-csv-files";
+import { extractDomainFromEmail } from "./extract-domain-from-email";
+import { combineAddressLines } from "./combine-address-lines";
+import { convertAllExcelSheetsToCsv } from "./convert-all-excel-sheets-to-csv";
+import { removeDuplicateEmails } from "./remove-duplicate-emails";
 import { indiaDate, isPublished, publishTime } from "./schedule";
 
 export type { HowToGuide } from "./types";
@@ -96,6 +100,11 @@ export const GUIDES: readonly HowToGuide[] = [
   splitLargeCsvExcelFile,
   // Guide 36 (Stage 17, owner decision 6A, 28 November 2026): 25 December 2026.
   compareTwoExcelCsvFiles,
+  // Guides 37–44 (Stage 18, long-tail guides for the existing tools, owner decisions A for all, 28 November 2026): 26 December 2026 – 2 January 2027.
+  extractDomainFromEmail,
+  combineAddressLines,
+  convertAllExcelSheetsToCsv,
+  removeDuplicateEmails,
 ];
 
 /**
