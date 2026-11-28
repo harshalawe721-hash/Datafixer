@@ -17,6 +17,8 @@ import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
 import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportOptions, JsonExportResult, JsonPreview } from "./core";
 import type { DuplicatePlanInput } from "./fix/duplicates";
+import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult } from "./core";
+import type { SplitFileInput } from "./split/split-file";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans";
 import type { FixOptions } from "./fix/fixes";
 import type { AnyFixId } from "./fix/fix-ids";
@@ -160,6 +162,19 @@ export class EngineClient {
   }
 
   /** Stage 6: CSV → new Excel workbook (stop with abortScans). */
+  /** Stage 16: Split File. */
+  previewSplitFile(sheet: string, input: SplitFileInput, output: SplitOutput): Promise<SplitFilePreview> {
+    return this.request<"previewSplitFile">({ type: "previewSplitFile", sheet, input, output });
+  }
+
+  exportSplitPart(sheet: string, input: SplitFileInput, index: number, output: SplitOutput, onProgress?: (p: ProgressEvent) => void): Promise<SplitPartResult> {
+    return this.request<"exportSplitPart">({ type: "exportSplitPart", sheet, input, index, output }, onProgress);
+  }
+
+  exportSplitZip(sheet: string, input: SplitFileInput, output: SplitOutput, onProgress?: (p: ProgressEvent) => void): Promise<SplitZipResult> {
+    return this.request<"exportSplitZip">({ type: "exportSplitZip", sheet, input, output }, onProgress);
+  }
+
   convertToXlsx(sheet: string, options: { headerRow: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<ConvertResult> {
     return this.request<"convertToXlsx">({ type: "convertToXlsx", sheet, options }, onProgress);
   }

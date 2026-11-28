@@ -4,6 +4,8 @@ import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportResult, JsonPreview } from "@/engine/core";
 import type { JsonLayout } from "@/engine/json/write";
 import type { DuplicateOptions } from "@/engine/fix/duplicates";
+import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult } from "@/engine/core";
+import type { SplitFileInput } from "@/engine/split/split-file";
 import type { CombinePlanInput, SplitPlanInput } from "@/engine/fix/split-combine-plans";
 
 /** The latest change, undo or redo, for the "Done" message. */
@@ -65,6 +67,10 @@ export interface ToolApi {
   /** Stage 15: merge files again (other files or options), or go back to choosing files. */
   openMerge(files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }): void;
   reset(): void;
+  /** Stage 16: Split File (header setting comes from the table; stop with abortScans). */
+  previewSplitFile(input: Omit<SplitFileInput, "headerRow">, output: SplitOutput): Promise<SplitFilePreview>;
+  exportSplitPart(input: Omit<SplitFileInput, "headerRow">, index: number, output: SplitOutput, onProgress?: (p: ProgressEvent) => void): Promise<SplitPartResult>;
+  exportSplitZip(input: Omit<SplitFileInput, "headerRow">, output: SplitOutput, onProgress?: (p: ProgressEvent) => void): Promise<SplitZipResult>;
   /** Apply a previewed fix; the workspace re-checks and refreshes the table. */
   applyFix(token: string): Promise<EditResult>;
   /** Create the corrected CSV and check it cell by cell (Step 6). */

@@ -1,6 +1,6 @@
 # Stage 16 plan: Split a large CSV or Excel file
 
-**Status:** plan prepared on 28 November 2026. **Waiting for the owner's decisions.**
+**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 16.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -73,3 +73,14 @@ No new dependencies. Files stay in the browser, and the original file is never c
 - Excel parts keep values as shown, not formulas or formatting.
 - “By column value” splits on exact values: “Pune” and “pune” become two parts (the page suggests Change Case first).
 - Very large files need a computer or a device with enough memory, as for the other tools.
+
+## Progress
+
+- **Step 1 (engine): done, 28 November 2026.**
+  - `src/engine/split/split-file.ts`: works out the parts without copying any data. Three ways: rows per part; a number of equal parts (sizes differ by at most one row); or one part per value of a column (exact values as shown, in order of first appearance, with empty values last as “(empty)”, at most 200 values). 2–1,000 parts. Each part is a view on the open table: the header row (when there is one) and its rows, in their original order. Part names: `name-part-01`… or `name-Value`, with characters that file names can't hold replaced, at most 60 characters, and same names told apart with “(2)”.
+  - Engine (`previewSplitFile`, `exportSplitPart`, `exportSplitZip`):
+    - CSV parts keep the original separator and line endings (Excel files: comma and Windows line endings), UTF-8 with BOM; TSV files give .tsv parts. Each part is read back cell by cell before it is offered.
+    - Excel parts use the values the table shows, converted as in CSV to Excel (codes keep their zeros), and each new workbook is read back.
+    - The ZIP holds every checked part. Each file is unzipped again and its size and CRC-32 must match the checked part.
+    - The usual memory check applies, and a clear message explains why a choice can't be split.
+  - Tests: 13 new (569 unit tests in total). They cover each way of splitting, refusals, separators and quotes, TSV, CSV and Excel parts from CSV and Excel files, the ZIP matching single downloads byte for byte, every row covered exactly once, the memory stop and file names.

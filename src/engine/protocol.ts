@@ -4,6 +4,8 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
+import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult } from "./core.ts";
+import type { SplitFileInput } from "./split/split-file.ts";
 import type { CellInfo, ConvertResult, WorkbookZipResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportOptions, JsonExportResult, JsonPreview } from "./core.ts";
 import type { DuplicatePlanInput } from "./fix/duplicates.ts";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans.ts";
@@ -45,6 +47,10 @@ export type EngineRequest =
   /** Stage 12: CSV / Excel → JSON (export cancellable with abortScans). */
   | { id: number; type: "previewJson"; sheet: string; options: JsonExportOptions }
   | { id: number; type: "exportJson"; sheet: string; options: JsonExportOptions }
+  /** Stage 16: Split File (cancellable with abortScans). */
+  | { id: number; type: "previewSplitFile"; sheet: string; input: SplitFileInput; output: SplitOutput }
+  | { id: number; type: "exportSplitPart"; sheet: string; input: SplitFileInput; index: number; output: SplitOutput }
+  | { id: number; type: "exportSplitZip"; sheet: string; input: SplitFileInput; output: SplitOutput }
   /** Apply exactly the previewed fix(es). */
   | { id: number; type: "applyFix"; sheet: string; token: string }
   | { id: number; type: "cellInfo"; sheet: string; row: number; col: number }
@@ -79,6 +85,9 @@ export interface EngineResults {
   previewDuplicates: DuplicatesPreview;
   previewJson: JsonPreview;
   exportJson: JsonExportResult;
+  previewSplitFile: SplitFilePreview;
+  exportSplitPart: SplitPartResult;
+  exportSplitZip: SplitZipResult;
   applyFix: EditResult;
   cellInfo: CellInfo;
   editCell: EditResult;

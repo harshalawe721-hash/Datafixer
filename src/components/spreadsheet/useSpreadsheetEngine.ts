@@ -11,7 +11,8 @@ import type { ProgressEvent, WorkbookSummary } from "@/engine/types";
 import type { RowPage, RowQuery } from "@/engine/query/query";
 import type { ScanOptions, ScanResult } from "@/engine/scan/scan";
 import type { ValidationResult } from "@/engine/validate/validate";
-import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult } from "@/engine/core";
+import type { ConvertResult, CsvDownloadOptions, WorkbookZipResult, SplitOutput } from "@/engine/core";
+import type { SplitFileInput } from "@/engine/split/split-file";
 import type { SpreadsheetFormat } from "@/lib/file-validation";
 import type { FixOptions } from "@/engine/fix/fixes";
 import type { AnyFixId } from "@/engine/fix/fix-ids";
@@ -138,6 +139,17 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
+  /** Stage 16: Split File. */
+  const previewSplitFile = useCallback((sheet: string, input: SplitFileInput, output: SplitOutput) => client().previewSplitFile(sheet, input, output), [client]);
+  const exportSplitPart = useCallback(
+    (sheet: string, input: SplitFileInput, index: number, output: SplitOutput, onProgress?: (p: ProgressEvent) => void) => client().exportSplitPart(sheet, input, index, output, onProgress),
+    [client],
+  );
+  const exportSplitZip = useCallback(
+    (sheet: string, input: SplitFileInput, output: SplitOutput, onProgress?: (p: ProgressEvent) => void) => client().exportSplitZip(sheet, input, output, onProgress),
+    [client],
+  );
+
   /** Stop running scans without unloading the file. */
   const abortScans = useCallback(() => void clientRef.current?.abortScans().catch(() => {}), []);
 
@@ -180,5 +192,5 @@ export function useSpreadsheetEngine() {
     [client],
   );
 
-  return { state, open, openMerge, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, previewJson, exportJson, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
+  return { state, open, openMerge, selectSheet, cancel, reset, getRows, scan, validate, convertToXlsx, exportWorkbookZip, previewSplitFile, exportSplitPart, exportSplitZip, abortScans, previewFix, previewFixAll, previewSplit, previewCombine, previewDuplicates, previewJson, exportJson, applyFix, cellInfo, editCell, exportCsv, exportXlsx, undo, redo, history, historyDetails };
 }

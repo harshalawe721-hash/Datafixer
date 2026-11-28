@@ -32,8 +32,8 @@ import { columnLetter } from "./query/query.ts";
 import { planFix, type FixId, type FixOptions, type FixPlan, type FixPreview, type PlanContext } from "./fix/fixes.ts";
 import { isRepairId, VALIDATOR_FIX_ALL, type AnyFixId } from "./fix/fix-ids.ts";
 import { planRepair } from "./validate/repairs.ts";
-import { writeXlsx, verifyNewXlsx, newEntry } from "./export/xlsx-writer.ts";
-import { PartWriter, writeZip, streamEntry, type OutputEntry } from "./xlsx/zip.ts";
+import { writeXlsx, verifyNewXlsx, newEntry, XLSX_MAX_ROWS } from "./export/xlsx-writer.ts";
+import { Crc32, PartWriter, writeZip, streamEntry, type OutputEntry } from "./xlsx/zip.ts";
 import { countConversion, KEPT_REASON_TEXT, planCsvToXlsx, type KeptReason } from "./convert/csv-to-xlsx.ts";
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
 import { classify } from "./scan/classify.ts";
@@ -47,6 +47,7 @@ import type { CellValue } from "./types.ts";
 import { familyOf } from "./scan/checks/dates.ts";
 import { planCombineColumns, planSplitColumn, type CombinePlanInput, type SplitCombinePlan, type SplitPlanInput } from "./fix/split-combine-plans.ts";
 import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./fix/duplicates.ts";
+import { partSheet, planSplitFile, type SplitFileInput, type SplitFilePlan } from "./split/split-file.ts";
 
 interface OpenState {
   file: Blob;
@@ -136,6 +137,42 @@ export interface WorkbookZipSummary {
 export interface WorkbookZipResult {
   blob: Blob;
   summary: WorkbookZipSummary;
+}
+
+/** Stage 16 (Split File): the format of the parts. */
+export type SplitOutput = "csv" | "xlsx";
+
+/** Stage 16: the parts a split would make (nothing is created yet). */
+export interface SplitFilePreview {
+  parts: { name: string; fileName: string; value: string | null; rows: number; firstRow: number; lastRow: number }[];
+  headerRow: boolean;
+  dataRows: number;
+  columnName: string | null;
+  output: SplitOutput;
+  /** CSV parts: how they are written. */
+  csv: { delimiter: string; lineEnding: "\r\n" | "\n"; bom: boolean } | null;
+  /** Excel parts: parts with more rows than one sheet holds continue on more sheets. */
+  overSheetLimit: number;
+}
+
+/** Stage 16: one part, created and checked. */
+export interface SplitPartResult {
+  blob: Blob;
+  fileName: string;
+  rows: number;
+  verification: { reader: string; rows: number; cells: number };
+}
+
+/** Stage 16: every part in one ZIP, each checked, and the ZIP read back. */
+export interface SplitZipResult {
+  blob: Blob;
+  summary: {
+    downloadName: string;
+    bytes: number;
+    output: SplitOutput;
+    files: { name: string; rows: number; bytes: number }[];
+    verification: { reader: string; rows: number; cells: number };
+  };
 }
 
 /** Shown after a successful, verified download (safeguard S3). */
@@ -1641,6 +1678,151 @@ export class EngineCore {
       if (isOutOfMemory(err)) {
         throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the Excel file. Nothing was created. Close other tabs or apps and try again, or use a device with more memory.", String((err as Error).message));
       }
+      throw err;
+    }
+  }
+
+  // ------------------------------------------------------------------ Stage 16: Split File
+
+  private splitCache: { key: string; plan: SplitFilePlan } | null = null;
+
+  /** The parts for this choice (cached until the table or the choice changes). */
+  private async splitPlan(sheetName: string, input: SplitFileInput, cancel?: CancelToken): Promise<{ plan: SplitFilePlan; view: SheetModel; excel: boolean }> {
+    const st = this.requireState();
+    const { sheet: view } = this.current(sheetName);
+    const excel = st.format !== "csv";
+    const version = st.loaded.get(sheetName)?.session?.version ?? 0;
+    const key = `${st.startedAt}|${sheetName}|${version}|${JSON.stringify(input)}`;
+    if (this.splitCache?.key !== key) {
+      const base = st.fileName.replace(/\.[^.]+$/, "") || "spreadsheet";
+      this.splitCache = { key, plan: await planSplitFile(view, input, excel ? `${base} - ${sheetName}` : base, excel, cancel) };
+    }
+    return { plan: this.splitCache.plan, view, excel };
+  }
+
+  /** How CSV parts are written: the original separator and line endings (Excel files: comma, Windows), UTF-8 with BOM. */
+  private splitCsvFormat(): { delimiter: "," | ";" | "\t"; lineEnding: "\r\n" | "\n"; bom: boolean } {
+    const st = this.requireState();
+    const d = st.format === "csv" ? st.csv?.delimiter : ",";
+    const delimiter = d === ";" || d === "\t" ? d : ",";
+    const lineEnding = st.format === "csv" && st.csv?.lineEnding === "\n" ? "\n" : "\r\n";
+    return { delimiter, lineEnding, bom: true };
+  }
+
+  private splitFileName(name: string, output: SplitOutput): string {
+    return `${name}.${output === "xlsx" ? "xlsx" : this.splitCsvFormat().delimiter === "\t" ? "tsv" : "csv"}`;
+  }
+
+  private splitMemoryCheck(view: SheetModel): void {
+    const st = this.requireState();
+    if (st.memoryBudgetBytes && view.grid.approxBytes * 1.6 + 32 * 1024 * 1024 > st.memoryBudgetBytes * 1.3) {
+      throw new EngineError(
+        "out-of-memory",
+        "This file is too large to split safely in this browser on this device. Nothing was created. Close other tabs and try again, or use a device with more memory.",
+      );
+    }
+  }
+
+  async previewSplitFile(sheetName: string, input: SplitFileInput, output: SplitOutput, cancel?: CancelToken): Promise<SplitFilePreview> {
+    if (output !== "csv" && output !== "xlsx") throw new EngineError("internal", "Unknown format for the parts.");
+    const { plan } = await this.splitPlan(sheetName, input, cancel);
+    const perSheet = XLSX_MAX_ROWS - (plan.headerRow ? 1 : 0);
+    return {
+      parts: plan.parts.map((p) => ({ name: p.name, fileName: this.splitFileName(p.name, output), value: p.value, rows: p.rows, firstRow: p.firstRow, lastRow: p.lastRow })),
+      headerRow: plan.headerRow,
+      dataRows: plan.dataRows,
+      columnName: plan.columnName,
+      output,
+      csv: output === "csv" ? this.splitCsvFormat() : null,
+      overSheetLimit: output === "xlsx" ? plan.parts.filter((p) => p.rows > perSheet).length : 0,
+    };
+  }
+
+  /** Create one part and check it (CSV: read back cell by cell; Excel: the new workbook read back). */
+  private async buildSplitPart(view: SheetModel, plan: SplitFilePlan, k: number, excel: boolean, output: SplitOutput, cancel?: CancelToken): Promise<SplitPartResult> {
+    const p = plan.parts[k];
+    if (!p) throw new EngineError("internal", "That part doesn't exist.");
+    const fileName = this.splitFileName(p.name, output);
+    if (output === "csv") {
+      const f = this.splitCsvFormat();
+      const sheet = partSheet(view, plan, k, { asText: false, useDisplay: excel });
+      const { blob } = await buildCsv(sheet, { ...f, useDisplay: excel, cancel });
+      const v = await verifyCsv(blob, sheet, { delimiter: f.delimiter, bom: f.bom, useDisplay: excel, cancel });
+      return { blob, fileName, rows: p.rows, verification: { reader: "MyDataFixer's CSV reader", rows: v.rows, cells: v.cells } };
+    }
+    // Excel parts: the values as the table shows them, converted as in CSV to Excel (codes keep their zeros).
+    const sheet = partSheet(view, plan, k, { asText: true, useDisplay: excel });
+    const xplan = planCsvToXlsx(sheet, { headerRow: plan.headerRow, name: (view.name || "Sheet").slice(0, 31) });
+    const written = await writeXlsx(xplan.sheets, { cancel });
+    const v = await verifyNewXlsx(written.blob, xplan.sheets, written.sheetNames, { cancel });
+    return { blob: written.blob, fileName, rows: p.rows, verification: { reader: "MyDataFixer's check of the new workbook", rows: v.rows, cells: v.cells } };
+  }
+
+  async exportSplitPart(sheetName: string, input: SplitFileInput, index: number, output: SplitOutput, onProgress: Progress, cancel?: CancelToken): Promise<SplitPartResult> {
+    const { plan, view, excel } = await this.splitPlan(sheetName, input, cancel);
+    this.splitMemoryCheck(view);
+    onProgress({ phase: "exporting", loaded: 0, total: 1 });
+    try {
+      const out = await this.buildSplitPart(view, plan, index, excel, output, cancel);
+      onProgress({ phase: "verifying", loaded: 1, total: 1 });
+      return out;
+    } catch (err) {
+      if (!(err instanceof EngineError) && isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create this part. Nothing was downloaded. Close other tabs or apps and try again.", String((err as Error).message));
+      throw err;
+    }
+  }
+
+  /** Every part, each checked, in one ZIP; the ZIP is read back and compared byte by byte before it is offered. */
+  async exportSplitZip(sheetName: string, input: SplitFileInput, output: SplitOutput, onProgress: Progress, cancel?: CancelToken): Promise<SplitZipResult> {
+    const st = this.requireState();
+    const { plan, view, excel } = await this.splitPlan(sheetName, input, cancel);
+    this.splitMemoryCheck(view);
+    const entries: OutputEntry[] = [];
+    const sums: { size: number; crc32: number }[] = [];
+    const files: SplitZipResult["summary"]["files"] = [];
+    let rows = 0;
+    let cells = 0;
+    try {
+      for (let k = 0; k < plan.parts.length; k++) {
+        onProgress({ phase: "exporting", loaded: k, total: plan.parts.length });
+        const part = await this.buildSplitPart(view, plan, k, excel, output, cancel);
+        const w = new PartWriter();
+        for (let off = 0; off < part.blob.size; off += 4 * 1024 * 1024) {
+          w.push(new Uint8Array(await part.blob.slice(off, off + 4 * 1024 * 1024).arrayBuffer()));
+          throwIfCancelled(cancel);
+        }
+        const done = w.finish();
+        entries.push({ kind: "new", entry: newEntry(part.fileName), ...done });
+        sums.push({ size: done.size, crc32: done.crc32 });
+        files.push({ name: part.fileName, rows: part.rows, bytes: part.blob.size });
+        rows += part.verification.rows;
+        cells += part.verification.cells;
+      }
+      const zip = await writeZip(new Blob([]), entries);
+      entries.length = 0;
+      const back = await readZipEntries(zip);
+      const failed = (detail: string) => new EngineError("internal", "The ZIP file didn't pass MyDataFixer's check, so it was not offered. Please try again, or download the parts one at a time.", detail);
+      if (back.length !== sums.length) throw failed("zip entry count");
+      for (let k = 0; k < back.length; k++) {
+        onProgress({ phase: "verifying", loaded: k, total: back.length });
+        // Unzip each file again: its size and CRC-32 must equal those of the part that was checked.
+        const crc = new Crc32();
+        let size = 0;
+        await streamEntry(zip, back[k]!, (d) => {
+          crc.update(d);
+          size += d.length;
+        }, { cancel, maxBytes: Number.MAX_SAFE_INTEGER });
+        const ok = back[k]!.name === files[k]!.name && size === sums[k]!.size && crc.value === sums[k]!.crc32 && back[k]!.crc32 === sums[k]!.crc32;
+        if (!ok) throw failed(`zip entry ${k}`);
+      }
+      onProgress({ phase: "verifying", loaded: back.length, total: back.length });
+      const base = (st.fileName.replace(/\.[^.]+$/, "") || "spreadsheet").replace(/[\\/:*?"<>|]+/g, "_");
+      return {
+        blob: new Blob([zip], { type: "application/zip" }),
+        summary: { downloadName: `${base} - split.zip`, bytes: zip.size, output, files, verification: { reader: output === "csv" ? "MyDataFixer's CSV reader" : "MyDataFixer's check of the new workbook", rows, cells } },
+      };
+    } catch (err) {
+      if (!(err instanceof EngineError) && isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the ZIP file. Nothing was downloaded. Download the parts one at a time instead, or close other tabs and try again.", String((err as Error).message));
       throw err;
     }
   }

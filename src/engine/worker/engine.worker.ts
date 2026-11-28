@@ -75,6 +75,23 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
         }
         break;
       }
+      case "previewSplitFile":
+      case "exportSplitPart":
+      case "exportSplitZip": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result =
+            req.type === "previewSplitFile"
+              ? await core.previewSplitFile(req.sheet, req.input, req.output, t)
+              : req.type === "exportSplitPart"
+                ? await core.exportSplitPart(req.sheet, req.input, req.index, req.output, onProgress, t)
+                : await core.exportSplitZip(req.sheet, req.input, req.output, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "convertToXlsx": {
         const t = { cancelled: false };
         scanTokens.add(t);
