@@ -2,7 +2,7 @@
 
 **Date:** 28 November 2026
 
-**Status:** all four steps done and tested. **Waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 28 November 2026.
 
 The owner approved the plan (`docs/stage-16-plan.md`) on 28 November 2026 with decisions **A for all** (1A–6A):
 - three ways to split (rows per part, equal parts, one part per column value);
@@ -66,4 +66,4 @@ No new dependencies (the existing ZIP code and fflate library are reused). Files
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 16 on 28 November 2026 (“Approved”).

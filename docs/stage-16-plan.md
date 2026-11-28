@@ -1,6 +1,6 @@
 # Stage 16 plan: Split a large CSV or Excel file
 
-**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 16.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 16. Stage 16 was approved as complete on 28 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -94,4 +94,4 @@ No new dependencies. Files stay in the browser, and the original file is never c
   - **Checked with the guide clock at 24 December, 1 pm:** 200 and in the sitemap; SEO 81/81; link preview complete; links to /split-file, and the tool page lists it; axe-core clean in light and dark; no horizontal scroll at 390 px.
   - **With today's date:** it is 404.
   - **Unit tests:** 570.
-- **Step 4 (testing and report): done, 28 November 2026.** New large-file test `npm run test:split-file-perf`. A 150 MB CSV (4.9 million rows) was split into 5 parts (21 s), 1,000 parts (31 s) and 60 city parts (19 s), and 2.1 million rows became 2 Excel parts that each continue on a second sheet (45 s). In every case each part was unzipped and read after download: every row was there exactly once, and the original was unchanged. With a 512 MB heap, the 64 MB Excel case still works and the 150 MB file stops safely when opened. All suites pass on the same build. One difference from the plan: part sizes are shown after download, not in the list beforehand. Report: `docs/stage-16-test-report.md`. **Waiting for the owner's approval.**
+- **Step 4 (testing and report): done, 28 November 2026.** New large-file test `npm run test:split-file-perf`. A 150 MB CSV (4.9 million rows) was split into 5 parts (21 s), 1,000 parts (31 s) and 60 city parts (19 s), and 2.1 million rows became 2 Excel parts that each continue on a second sheet (45 s). In every case each part was unzipped and read after download: every row was there exactly once, and the original was unchanged. With a 512 MB heap, the 64 MB Excel case still works and the 150 MB file stops safely when opened. All suites pass on the same build. One difference from the plan: part sizes are shown after download, not in the list beforehand. Report: `docs/stage-16-test-report.md`. Approved by the owner on 28 November 2026.
