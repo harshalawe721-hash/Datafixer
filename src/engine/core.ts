@@ -48,6 +48,7 @@ import { familyOf } from "./scan/checks/dates.ts";
 import { planCombineColumns, planSplitColumn, type CombinePlanInput, type SplitCombinePlan, type SplitPlanInput } from "./fix/split-combine-plans.ts";
 import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./fix/duplicates.ts";
 import { partSheet, planSplitFile, type SplitFileInput, type SplitFilePlan } from "./split/split-file.ts";
+import { compareTables, matchColumns, rowChanges, suggestKey, ADDED, CHANGED, UNCHANGED, type CompareResult, type CompareTable } from "./compare/compare.ts";
 
 interface OpenState {
   file: Blob;
@@ -137,6 +138,68 @@ export interface WorkbookZipSummary {
 export interface WorkbookZipResult {
   blob: Blob;
   summary: WorkbookZipSummary;
+}
+
+/** Stage 17 (Compare): one of the two files. */
+export interface CompareFileInput {
+  file: File;
+  format: SpreadsheetFormat;
+  /** Workbooks: the sheet to compare (default: the first visible sheet). */
+  sheet?: string;
+}
+
+export interface CompareOptionsInput {
+  /** Key column names; null compares whole rows; undefined: suggested automatically. */
+  keys?: string[] | null;
+  ignoreCase: boolean;
+  ignoreSpaces: boolean;
+  memoryBudgetBytes?: number;
+}
+
+export interface CompareSideSummary {
+  name: string;
+  /** Workbooks: the sheet compared, and every worksheet to choose from. */
+  sheet: string | null;
+  sheets: string[];
+  rows: number;
+  columns: number;
+  header: boolean;
+}
+
+export interface CompareSummary {
+  older: CompareSideSummary;
+  newer: CompareSideSummary;
+  columns: { name: string; inOlder: boolean; inNewer: boolean }[];
+  /** Key columns used; null: whole rows. */
+  keys: string[] | null;
+  /** The key MyDataFixer suggests (null: no column is suitable). */
+  suggestedKey: string | null;
+  counts: { added: number; removed: number; changed: number; unchanged: number; changedCells: number };
+  repeated: { older: number; newer: number; examples: string[] };
+  ignoreCase: boolean;
+  ignoreSpaces: boolean;
+}
+
+export type CompareKind = "changed" | "added" | "removed" | "unchanged";
+
+export interface CompareItem {
+  kind: CompareKind;
+  /** Row number in the newer file (1-based, counting every row), or null for a removed row. */
+  newerRow: number | null;
+  /** Row number in the older file, or null for an added row. */
+  olderRow: number | null;
+  /** The key values (or the first values, for whole-row comparisons). */
+  key: string;
+  repeated: boolean;
+  /** Changed rows: what changed. */
+  changes: { column: string; old: string; new: string }[];
+  /** Added and removed rows: the row's values, by column. */
+  values: { column: string; value: string }[];
+}
+
+export interface CompareReportResult {
+  blob: Blob;
+  summary: { downloadName: string; bytes: number; format: "csv" | "xlsx"; rows: number; sheets: number; includeUnchanged: boolean; verification: { reader: string; rows: number; cells: number } };
 }
 
 /** Stage 16 (Split File): the format of the parts. */
@@ -595,6 +658,15 @@ async function openXml(file: File, options: OpenOptions, onProgress: Progress, s
 /** Stage 15 (decision 5A): limits for merging. */
 export const MERGE_MAX_FILES = 50;
 export const MERGE_MAX_BYTES = 150 * 1024 * 1024;
+/** Stage 17 (decision 4A): both files together. */
+export const COMPARE_MAX_BYTES = 150 * 1024 * 1024;
+
+interface CompareSide {
+  id: string;
+  sheet: SheetModel;
+  table: CompareTable;
+  info: CompareSideSummary;
+}
 
 export class EngineCore {
   private state: OpenState | null = null;
@@ -1680,6 +1752,150 @@ export class EngineCore {
       }
       throw err;
     }
+  }
+
+  // ------------------------------------------------------------------ Stage 17: Compare
+
+  private compareState: { older: CompareSide; newer: CompareSide; result: CompareResult; suggested: number | null; lists: Partial<Record<CompareKind, Uint32Array>> } | null = null;
+
+  /** Read one file of a comparison (kept while the same file and sheet are compared again). */
+  private async readCompareSide(input: CompareFileInput, label: string, keep: CompareSide | undefined, budget: number | undefined, onProgress: (loaded: number | null) => void, cancel?: CancelToken): Promise<CompareSide> {
+    const { file, format } = input;
+    const id = `${file.name}|${file.size}|${file.lastModified}|${format}|${input.sheet ?? ""}`;
+    if (keep?.id === id) return keep;
+    if (file.size === 0) throw new EngineError("empty-file", `The ${label} file, “${file.name}”, is empty (0 bytes).`);
+    let sheet: SheetModel;
+    let sheets: string[] = [];
+    try {
+      if (format === "csv") sheet = (await parseCsv(file, "Sheet1", { memoryBudgetBytes: budget, cancel, onProgress: (loaded) => onProgress(loaded) })).sheet;
+      else if (format === "xlsx") {
+        const inspection = await inspectXlsx(file, { cancel });
+        const ws = inspection.sheets.map((x, i) => ({ x, i })).filter((w) => w.x.kind === "worksheet");
+        sheets = ws.map((w) => w.x.name);
+        const chosen = ws.find((w) => w.x.name === input.sheet) ?? ws.find((w) => w.x.state === "visible") ?? ws[0];
+        if (!chosen) throw new EngineError("unsupported-format", "This workbook has no sheets with cells.");
+        sheet = (await readExcelSheet(file, format, { sheetIndex: chosen.i, inspection, memoryBudgetBytes: budget, cancel })).sheet;
+      } else if (format === "xls") {
+        let read = await readExcelSheet(file, format, { sheetIndex: 0, inspection: null, memoryBudgetBytes: budget, cancel });
+        const all = read.sheets ?? [];
+        sheets = all.filter((x) => x.kind === "worksheet").map((x) => x.name);
+        const want = all.findIndex((x) => x.name === input.sheet && x.kind === "worksheet");
+        if (want > 0) read = await readExcelSheet(file, format, { sheetIndex: want, inspection: null, memoryBudgetBytes: budget, cancel });
+        sheet = read.sheet;
+      } else throw new EngineError("unsupported-format", "Only CSV, TSV, TXT and Excel files can be compared.");
+    } catch (e) {
+      if (e instanceof EngineError && e.code !== "cancelled") throw new EngineError(e.code, `The ${label} file, “${file.name}”: ${e.message}`, e.detail);
+      throw e;
+    }
+    const header = guessHeaderRow(sheet);
+    const g = sheet.grid;
+    const excel = format !== "csv";
+    const table: CompareTable = { rowCount: g.rowCount, rowLength: (r) => g.rowLength(r), text: (r, c) => cellOutText(sheet, r, c, excel), header };
+    return { id, sheet, table, info: { name: file.name, sheet: excel ? sheet.name : null, sheets, rows: Math.max(0, g.rowCount - (header ? 1 : 0)), columns: sheet.columnCount, header } };
+  }
+
+  /** Compare an older and a newer file (decisions 1A–5A). Files already read are kept for the next comparison. */
+  async compareFiles(older: CompareFileInput, newer: CompareFileInput, options: CompareOptionsInput, onProgress: Progress, cancel?: CancelToken): Promise<CompareSummary> {
+    this.close();
+    const total = older.file.size + newer.file.size;
+    if (total > COMPARE_MAX_BYTES) {
+      throw new EngineError("too-large-for-engine", `These files are ${(total / 1048576).toFixed(1)} MB together; up to ${COMPARE_MAX_BYTES / 1048576} MB can be compared at once.`);
+    }
+    const budget = options.memoryBudgetBytes;
+    const prev = this.compareState;
+    this.compareState = null;
+    const o = await this.readCompareSide(older, "older", prev?.older, budget, (l) => onProgress({ phase: "parsing", loaded: l, total }), cancel);
+    if (budget && o.sheet.grid.approxBytes > budget * 0.6) {
+      throw new EngineError("too-large-for-engine", "These files are too large to compare safely in this browser on this device. Nothing was changed. Compare smaller files, or use a computer.");
+    }
+    const n = await this.readCompareSide(newer, "newer", prev?.newer, budget, (l) => onProgress({ phase: "parsing", loaded: l === null ? null : older.file.size + l, total }), cancel);
+    if (budget && o.sheet.grid.approxBytes + n.sheet.grid.approxBytes > budget * 0.8) {
+      throw new EngineError("too-large-for-engine", "These files are too large to compare safely in this browser on this device. Nothing was changed. Compare smaller files, or use a computer.");
+    }
+    onProgress({ phase: "indexing", loaded: null, total: null });
+    const columns = matchColumns(o.table, n.table);
+    if (!columns.some((c) => c.older >= 0 && c.newer >= 0)) throw new EngineError("unsupported-format", "These two files have no columns in common, so they can't be compared. Check that you chose two versions of the same table.");
+    const suggested = prev && prev.older === o && prev.newer === n ? prev.suggested : await suggestKey(o.table, n.table, columns, cancel);
+    let keys: number[] | null;
+    if (options.keys === undefined) keys = suggested === null ? null : [suggested];
+    else if (options.keys === null || options.keys.length === 0) keys = null;
+    else {
+      keys = options.keys.map((name) => {
+        const k = columns.findIndex((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (k < 0 || columns[k]!.older < 0 || columns[k]!.newer < 0) throw new EngineError("internal", `The column “${name}” isn't in both files, so it can't be used to match rows.`);
+        return k;
+      });
+    }
+    const result = await compareTables(o.table, n.table, columns, { keys, ignoreCase: options.ignoreCase, ignoreSpaces: options.ignoreSpaces }, cancel);
+    this.compareState = { older: o, newer: n, result, suggested, lists: {} };
+    return {
+      older: o.info,
+      newer: n.info,
+      columns: columns.map((c) => ({ name: c.name, inOlder: c.older >= 0, inNewer: c.newer >= 0 })),
+      keys: keys ? keys.map((k) => columns[k]!.name) : null,
+      suggestedKey: suggested === null ? null : columns[suggested]!.name,
+      counts: result.counts,
+      repeated: result.repeated,
+      ignoreCase: options.ignoreCase,
+      ignoreSpaces: options.ignoreSpaces,
+    };
+  }
+
+  private requireCompare() {
+    if (!this.compareState) throw new EngineError("internal", "Compare two files first.");
+    return this.compareState;
+  }
+
+  /** One page of the differences of one kind, in file order. */
+  compareDetails(kind: CompareKind, offset: number, limit: number): { total: number; items: CompareItem[] } {
+    const cs = this.requireCompare();
+    const res = cs.result;
+    let list = cs.lists[kind];
+    if (!list) {
+      if (kind === "removed") list = res.removed;
+      else {
+        const want = kind === "added" ? ADDED : kind === "changed" ? CHANGED : UNCHANGED;
+        let count = 0;
+        for (let i = 0; i < res.newerRows; i++) if (res.status[i] === want) count++;
+        list = new Uint32Array(count);
+        for (let i = 0, k = 0; i < res.newerRows; i++) if (res.status[i] === want) list[k++] = i;
+      }
+      cs.lists[kind] = list;
+    }
+    const o = cs.older.table;
+    const n = cs.newer.table;
+    const text = (t: CompareTable, r: number, c: number) => (c >= 0 && c < t.rowLength(r) ? t.text(r, c) : "");
+    const keyCols = res.keys ?? res.columns.map((c, i) => ({ c, i })).filter((x) => x.c.older >= 0 && x.c.newer >= 0).slice(0, 2).map((x) => x.i);
+    const items: CompareItem[] = [];
+    const end = Math.min(list.length, Math.max(0, offset) + Math.max(0, Math.min(limit, 500)));
+    for (let k = Math.max(0, offset); k < end; k++) {
+      const x = list[k]!;
+      if (kind === "removed") {
+        const r = res.olderStart + x;
+        items.push({
+          kind,
+          newerRow: null,
+          olderRow: r + 1,
+          key: keyCols.map((c) => text(o, r, res.columns[c]!.older)).join(", "),
+          repeated: !!res.repeatedOlder?.[x],
+          changes: [],
+          values: res.columns.filter((c) => c.older >= 0).map((c) => ({ column: c.name, value: text(o, r, c.older) })),
+        });
+      } else {
+        const r = res.newerStart + x;
+        const m = res.match[x]!;
+        items.push({
+          kind,
+          newerRow: r + 1,
+          olderRow: m >= 0 ? res.olderStart + m + 1 : null,
+          key: keyCols.map((c) => text(n, r, res.columns[c]!.newer)).join(", "),
+          repeated: !!res.repeatedNewer?.[x],
+          changes: kind === "changed" ? rowChanges(o, n, res, x).map((ch) => ({ column: res.columns[ch.column]!.name, old: ch.old, new: ch.new })) : [],
+          values: kind === "added" ? res.columns.filter((c) => c.newer >= 0).map((c) => ({ column: c.name, value: text(n, r, c.newer) })) : [],
+        });
+      }
+    }
+    return { total: list.length, items };
   }
 
   // ------------------------------------------------------------------ Stage 16: Split File

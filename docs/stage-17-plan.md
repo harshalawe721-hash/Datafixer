@@ -1,6 +1,6 @@
 # Stage 17 plan: Compare two spreadsheets
 
-**Status:** plan prepared on 28 November 2026. **Waiting for the owner's decisions.**
+**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 17.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -68,3 +68,18 @@ No new dependencies. Files stay in the browser, and neither file is changed.
 - One sheet of each workbook is compared at a time. Formulas, formatting and comments aren't compared, only the values as shown.
 - Rows are matched by key or by whole row; without a key, a row with one changed value shows as one removed and one added row.
 - Very large comparisons need a computer or a device with enough memory, as for the other tools.
+
+## Progress
+
+- **Step 1 (engine): done, 28 November 2026.**
+  - `src/engine/compare/compare.ts`:
+    - **Columns** are matched by name, ignoring capital letters and spaces around names. When a file has no column names, they are matched by position. Columns found in only one file are reported, not counted as changes.
+    - **Key suggestion:** the first column in both files whose values are all filled in and all different. Names like id, code, SKU or email are tried first; if none suits, whole rows are compared.
+    - **Matching:** rows are matched by one or more key columns, or by whole row, using 52-bit hashes in sorted typed arrays. Every match is confirmed by comparing the texts, so it stays fast and compact with millions of rows.
+    - **Comparison:** values as shown, optionally ignoring capital letters and spaces at the start and end (keys too).
+    - **Repeated keys** are counted, with examples, and matched in order. Rows with no values are left out.
+  - Engine (`compareFiles`, `compareDetails`):
+    - CSV, TSV, TXT and Excel files in any combination, with a choice of sheet for workbooks, up to 150 MB together, with the memory check.
+    - A file that was already read is kept, so changing the key or an option compares again straight away. A problem names the older or newer file.
+    - Details list changed rows (old → new per column), added and removed rows (their values) and unchanged rows, each with its row numbers in both files.
+  - Tests: 10 new (580 unit tests in total). They cover moved and extra columns, key suggestion, whole rows, chosen and two-column keys, both options, repeated keys, files without column names, a CSV against a chosen Excel sheet, empty lines, 60,000 rows in reverse order with changes, and the limits and memory stop.
