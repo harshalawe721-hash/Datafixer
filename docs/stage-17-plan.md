@@ -83,3 +83,13 @@ No new dependencies. Files stay in the browser, and neither file is changed.
     - A file that was already read is kept, so changing the key or an option compares again straight away. A problem names the older or newer file.
     - Details list changed rows (old → new per column), added and removed rows (their values) and unchanged rows, each with its row numbers in both files.
   - Tests: 10 new (580 unit tests in total). They cover moved and extra columns, key suggestion, whole rows, chosen and two-column keys, both options, repeated keys, files without column names, a CSV against a chosen Excel sheet, empty lines, 60,000 rows in reverse order with changes, and the limits and memory stop.
+- **Step 2 (reports): done, 28 November 2026.**
+  - `src/engine/compare/report.ts` and `exportCompareReport`: every row of the newer file (rows with no values left out), then the removed rows. The columns are:
+    - “Change”: Added, Removed, Changed or Unchanged, with “(repeated key)” where it applies;
+    - every column, with columns only in the older file last;
+    - “What changed”: for example “price: 20 → 25; city: Oslo → (empty)”, kept within one Excel cell with a “… and N more changes” note if needed.
+  - Unchanged rows can be left out. The report is computed row by row, and nothing is copied.
+  - **Excel report:** values converted as in CSV to Excel (codes keep their zeros, numbers become numbers). The Change label is coloured (Added green, Removed red, Changed yellow), and so are changed cells, including a value that became empty. More rows than one sheet holds continue on more sheets. The new workbook is read back cell by cell, colours included.
+  - **CSV report:** the same columns, comma, Windows line endings, UTF-8 with BOM, read back cell by cell.
+  - **Excel writer:** now supports cell colours (and coloured empty cells), and its check compares every cell's colour. The existing Excel and CSV to Excel tests still pass. The colours were also confirmed with openpyxl.
+  - Tests: 5 new (585 unit tests in total).

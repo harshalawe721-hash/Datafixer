@@ -28,8 +28,11 @@ export const XLSX_MAX_ROWS = 1_048_576;
 export const XLSX_MAX_COLUMNS = 16_384;
 export const XLSX_MAX_CELL_CHARS = 32_767;
 
-/** A cell to write: text, or a number with an optional display format (a date is a number with a date format). */
-export type OutCell = null | { t: "s"; v: string } | { t: "n"; v: number; fmt?: string };
+/**
+ * A cell to write: text, or a number with an optional display format (a date is a number with a date format).
+ * `fill`: an optional background colour as six hex digits (Stage 17, the difference report); not used on a bold header row.
+ */
+export type OutCell = null | { t: "s"; v: string; fill?: string } | { t: "n"; v: number; fmt?: string; fill?: string };
 
 export interface SheetSource {
   name: string;
@@ -99,10 +102,15 @@ interface Styles {
   formats: Map<string, number>;
   /** Style index per format code (cellXfs). 0 = default, 1 = bold header. */
   xfOf: Map<string, number>;
+  /** Style index per “format code|fill” for filled cells (format code empty for text and plain numbers). */
+  xfFill: Map<string, number>;
   xml: string;
 }
 
-function buildStyles(formats: string[]): Styles {
+const FILL = /^[0-9A-F]{6}$/;
+const fillKey = (fmt: string | undefined, fill: string) => `${fmt ?? ""}|${fill}`;
+
+function buildStyles(formats: string[], filled: string[] = []): Styles {
   const fm = new Map<string, number>();
   const xfOf = new Map<string, number>();
   formats.forEach((f, i) => {
@@ -115,15 +123,26 @@ function buildStyles(formats: string[]): Styles {
     `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>`,
     ...formats.map((f) => `<xf numFmtId="${fm.get(f)}" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`),
   ];
+  // Filled cells: one fill per colour (fills 0 and 1 are reserved by Excel), one style per format and colour.
+  const colours = [...new Set(filled.map((k) => k.slice(k.lastIndexOf("|") + 1)))];
+  const fillId = new Map(colours.map((c, i) => [c, 2 + i]));
+  const xfFill = new Map<string, number>();
+  for (const k of filled) {
+    const fmt = k.slice(0, k.lastIndexOf("|"));
+    const colour = k.slice(k.lastIndexOf("|") + 1);
+    xfFill.set(k, xfs.length);
+    xfs.push(`<xf numFmtId="${fmt ? fm.get(fmt) : 0}" fontId="0" fillId="${fillId.get(colour)}" borderId="0" xfId="0" applyFill="1"${fmt ? ` applyNumberFormat="1"` : ""}/>`);
+  }
+  const fills = colours.map((c) => `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join("");
   const xml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="${MAIN_NS}">${numFmts}` +
     `<fonts count="2"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font></fonts>` +
-    `<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>` +
+    `<fills count="${2 + colours.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fills}</fills>` +
     `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
     `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
     `<cellXfs count="${xfs.length}">${xfs.join("")}</cellXfs>` +
     `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
-  return { formats: fm, xfOf, xml };
+  return { formats: fm, xfOf, xfFill, xml };
 }
 
 // ---------------------------------------------------------------- checks before writing
@@ -211,10 +230,17 @@ export async function writeXlsx(sheets: SheetSource[], o: XlsxWriteOptions = {})
 
   // Pass 1 (cheap): number formats used, and column widths from a sample.
   const formatSet = new Set<string>();
+  const filledSet = new Set<string>();
   const widths: number[][] = [];
   for (const s of sheets) {
     for (let r = 0; r < s.rowCount; r++) {
-      for (const cell of s.row(r)) if (cell?.t === "n" && cell.fmt) formatSet.add(cell.fmt);
+      for (const cell of s.row(r)) {
+        if (cell?.t === "n" && cell.fmt) formatSet.add(cell.fmt);
+        if (cell?.fill && !(s.header && r === 0)) {
+          if (!FILL.test(cell.fill)) throw new EngineError("internal", "Unknown cell colour.");
+          filledSet.add(fillKey(cell.t === "n" ? cell.fmt : undefined, cell.fill));
+        }
+      }
       if ((r & (BATCH_ROWS - 1)) === BATCH_ROWS - 1) {
         throwIfCancelled(o.cancel);
         await yieldToEventLoop();
@@ -222,7 +248,7 @@ export async function writeXlsx(sheets: SheetSource[], o: XlsxWriteOptions = {})
     }
     widths.push(estimateWidths(s));
   }
-  const styles = buildStyles([...formatSet]);
+  const styles = buildStyles([...formatSet], [...filledSet]);
   const counts = { text: 0, numbers: 0, dates: 0, empty: 0 };
   const isDateFmt = (f: string) => /[dmy]/i.test(f.replace(/"[^"]*"/g, "").replace(/\[[^\]]*\]/g, ""));
 
@@ -252,17 +278,19 @@ export async function writeXlsx(sheets: SheetSource[], o: XlsxWriteOptions = {})
         const cell = cells[c];
         if (!cell || (cell.t === "s" && cell.v === "")) {
           counts.empty++;
+          // An empty cell with a colour (a value that became empty, in the difference report).
+          if (cell?.fill && !(s.header && r === 0)) parts.push(`<c r="${cellRef(r, c)}" s="${styles.xfFill.get(fillKey(undefined, cell.fill))}"/>`);
           continue;
         }
         const ref = cellRef(r, c);
         if (cell.t === "s") {
           if (cell.v.length > XLSX_MAX_CELL_CHARS) throw tooLong(names[i]!, r, c, cell.v.length);
-          const style = s.header && r === 0 ? ` s="1"` : "";
+          const style = s.header && r === 0 ? ` s="1"` : cell.fill ? ` s="${styles.xfFill.get(fillKey(undefined, cell.fill))}"` : "";
           const space = /^\s|\s$/.test(cell.v) || /[\r\n\t]/.test(cell.v) ? ` xml:space="preserve"` : "";
           parts.push(`<c r="${ref}"${style} t="inlineStr"><is><t${space}>${escapeCellText(cell.v)}</t></is></c>`);
           counts.text++;
         } else {
-          const style = cell.fmt ? ` s="${styles.xfOf.get(cell.fmt)}"` : "";
+          const style = cell.fill && !(s.header && r === 0) ? ` s="${styles.xfFill.get(fillKey(cell.fmt, cell.fill))}"` : cell.fmt ? ` s="${styles.xfOf.get(cell.fmt)}"` : "";
           parts.push(`<c r="${ref}"${style}><v>${numberText(cell.v)}</v></c>`);
           if (cell.fmt && isDateFmt(cell.fmt)) counts.dates++;
           else counts.numbers++;
@@ -348,6 +376,8 @@ export async function verifyNewXlsx(blob: Blob, sheets: SheetSource[], sheetName
   const xfs = (styles.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)?.[1] ?? "").match(/<xf [^>]*\/>/g) ?? [];
   const xfFmt = xfs.map((x) => fmtCode.get(Number(/numFmtId="(\d+)"/.exec(x)?.[1] ?? "0")) ?? null);
   const xfBold = xfs.map((x) => /fontId="1"/.test(x));
+  const fillRgb = ((styles.match(/<fills[^>]*>([\s\S]*?)<\/fills>/)?.[1] ?? "").match(/<fill>[\s\S]*?<\/fill>/g) ?? []).map((f) => /fgColor rgb="FF([0-9A-F]{6})"/.exec(f)?.[1] ?? null);
+  const xfColour = xfs.map((x) => fillRgb[Number(/fillId="(\d+)"/.exec(x)?.[1] ?? "0")] ?? null);
 
   const totalRows = sheets.reduce((n, s) => n + s.rowCount, 0);
   let doneRows = 0;
@@ -362,19 +392,32 @@ export async function verifyNewXlsx(blob: Blob, sheets: SheetSource[], sheetName
       if (!m || Number(m[1]) !== r + 1) throw verifyFailed(`row order in sheet ${i + 1} at row ${r + 1}`);
       const want = s.row(r);
       const got = new Map<number, { style: number; t: "s" | "n"; v: string }>();
+      const colOf = (letters: string) => {
+        let col = 0;
+        for (const ch of letters) col = col * 26 + (ch.charCodeAt(0) - 64);
+        return col - 1;
+      };
       for (const c of rowXml.matchAll(/<c r="([A-Z]+)(\d+)"(?: s="(\d+)")?( t="inlineStr")?>(?:<is><t(?: xml:space="preserve")?>([\s\S]*?)<\/t><\/is>|<v>([^<]*)<\/v>)<\/c>/g)) {
         if (Number(c[2]) !== r + 1) throw verifyFailed(`cell row in sheet ${i + 1} row ${r + 1}`);
-        let col = 0;
-        for (const ch of c[1]!) col = col * 26 + (ch.charCodeAt(0) - 64);
-        got.set(col - 1, { style: Number(c[3] ?? 0), t: c[4] ? "s" : "n", v: c[4] ? unescapeCellText(c[5] ?? "") : c[6]! });
+        got.set(colOf(c[1]!), { style: Number(c[3] ?? 0), t: c[4] ? "s" : "n", v: c[4] ? unescapeCellText(c[5] ?? "") : c[6]! });
       }
-      const width = Math.max(want.length, got.size ? Math.max(...got.keys()) + 1 : 0);
+      // Empty cells that only carry a colour.
+      const colouredEmpty = new Map<number, number>();
+      for (const c of rowXml.matchAll(/<c r="([A-Z]+)(\d+)" s="(\d+)"\/>/g)) {
+        if (Number(c[2]) !== r + 1) throw verifyFailed(`cell row in sheet ${i + 1} row ${r + 1}`);
+        colouredEmpty.set(colOf(c[1]!), Number(c[3]));
+      }
+      const width = Math.max(want.length, got.size ? Math.max(...got.keys()) + 1 : 0, colouredEmpty.size ? Math.max(...colouredEmpty.keys()) + 1 : 0);
       for (let c = 0; c < width; c++) {
         const w = want[c] ?? null;
         const g = got.get(c);
         const where = `sheet ${i + 1}, ${cellRef(r, c)}`;
         if (!w || (w.t === "s" && w.v === "")) {
           if (g) throw verifyFailed(`${where} should be empty`);
+          const wantFill = w?.fill && !(s.header && r === 0) ? w.fill : null;
+          const style = colouredEmpty.get(c);
+          if ((style === undefined ? null : (xfColour[style] ?? null)) !== wantFill) throw verifyFailed(`${where} colour of an empty cell`);
+          if (wantFill) cells++;
           continue;
         }
         if (!g || g.t !== w.t) throw verifyFailed(`${where} type`);
@@ -385,6 +428,8 @@ export async function verifyNewXlsx(blob: Blob, sheets: SheetSource[], sheetName
           if (Number(g.v) !== w.v) throw verifyFailed(`${where} number`);
           if ((xfFmt[g.style] ?? null) !== (w.fmt ?? null)) throw verifyFailed(`${where} number format`);
         }
+        const wantFill = s.header && r === 0 ? null : (w.fill ?? null);
+        if ((xfColour[g.style] ?? null) !== wantFill) throw verifyFailed(`${where} colour`);
         cells++;
       }
       r++;

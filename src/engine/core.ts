@@ -32,7 +32,7 @@ import { columnLetter } from "./query/query.ts";
 import { planFix, type FixId, type FixOptions, type FixPlan, type FixPreview, type PlanContext } from "./fix/fixes.ts";
 import { isRepairId, VALIDATOR_FIX_ALL, type AnyFixId } from "./fix/fix-ids.ts";
 import { planRepair } from "./validate/repairs.ts";
-import { writeXlsx, verifyNewXlsx, newEntry, XLSX_MAX_ROWS } from "./export/xlsx-writer.ts";
+import { writeXlsx, verifyNewXlsx, newEntry, XLSX_MAX_ROWS, type OutCell, type SheetSource } from "./export/xlsx-writer.ts";
 import { Crc32, PartWriter, writeZip, streamEntry, type OutputEntry } from "./xlsx/zip.ts";
 import { countConversion, KEPT_REASON_TEXT, planCsvToXlsx, type KeptReason } from "./convert/csv-to-xlsx.ts";
 import { excelSerial, parseTextDate } from "./fix/choice-fixes.ts";
@@ -48,6 +48,8 @@ import { familyOf } from "./scan/checks/dates.ts";
 import { planCombineColumns, planSplitColumn, type CombinePlanInput, type SplitCombinePlan, type SplitPlanInput } from "./fix/split-combine-plans.ts";
 import { planDuplicates, type DuplicatePlan, type DuplicatePlanInput } from "./fix/duplicates.ts";
 import { partSheet, planSplitFile, type SplitFileInput, type SplitFilePlan } from "./split/split-file.ts";
+import { CHANGE_COLOURS, CompareReport, ReportGrid } from "./compare/report.ts";
+import { convertValue } from "./convert/csv-to-xlsx.ts";
 import { compareTables, matchColumns, rowChanges, suggestKey, ADDED, CHANGED, UNCHANGED, type CompareResult, type CompareTable } from "./compare/compare.ts";
 
 interface OpenState {
@@ -1896,6 +1898,65 @@ export class EngineCore {
       }
     }
     return { total: list.length, items };
+  }
+
+  /**
+   * The difference report (decision 3A), as Excel (changed cells coloured) or CSV, with or
+   * without the unchanged rows. Checked before it is offered: the CSV read back cell by cell,
+   * the workbook read back cell by cell with its colours.
+   */
+  async exportCompareReport(format: "csv" | "xlsx", options: { includeUnchanged: boolean }, onProgress: Progress, cancel?: CancelToken): Promise<CompareReportResult> {
+    const cs = this.requireCompare();
+    const report = new CompareReport(cs.older.table, cs.newer.table, cs.result, options.includeUnchanged);
+    const base = (cs.newer.info.name.replace(/\.[^.]+$/, "") || "newer").replace(/[\\/:*?"<>|]+/g, "_");
+    const sheet = createSheet("Differences");
+    sheet.grid = new ReportGrid(report);
+    sheet.columnCount = report.width;
+    const progress = (phase: "exporting" | "verifying", done: number, total: number) => onProgress({ phase, loaded: done, total });
+    try {
+      if (format === "csv") {
+        const { blob } = await buildCsv(sheet, { delimiter: ",", lineEnding: "\r\n", bom: true, useDisplay: false, cancel, onProgress: (d, t) => progress("exporting", d, t) });
+        const v = await verifyCsv(blob, sheet, { delimiter: ",", bom: true, useDisplay: false, cancel, onProgress: (d, t) => progress("verifying", d, t) });
+        return { blob, summary: { downloadName: `${base} - differences.csv`, bytes: blob.size, format, rows: report.rows.length, sheets: 1, includeUnchanged: options.includeUnchanged, verification: { reader: "MyDataFixer's CSV reader", rows: v.rows, cells: v.cells } } };
+      }
+      if (format !== "xlsx") throw new EngineError("internal", "Unknown report format.");
+      // Excel: values converted as in CSV to Excel (codes keep their zeros); the Change label and changed cells coloured.
+      const width = report.width;
+      const header: OutCell[] = report.header.map((v) => ({ t: "s", v }));
+      let cacheK = -1;
+      let cacheRow: OutCell[] = [];
+      const dataRow = (k: number): OutCell[] => {
+        if (k === cacheK) return cacheRow;
+        const r = report.row(k);
+        const out: OutCell[] = new Array(width);
+        const label = r.label + (r.repeated ? " (repeated key)" : "");
+        out[0] = r.label === "Unchanged" ? { t: "s", v: label } : { t: "s", v: label, fill: CHANGE_COLOURS[r.label] };
+        for (let c = 0; c < r.cells.length; c++) {
+          const cell = convertValue(r.cells[c]!).cell;
+          out[c + 1] = r.changed.has(c) ? (cell ? { ...cell, fill: CHANGE_COLOURS.Changed } : { t: "s", v: "", fill: CHANGE_COLOURS.Changed }) : cell;
+        }
+        out[width - 1] = r.whatChanged ? { t: "s", v: r.whatChanged } : null;
+        cacheK = k;
+        cacheRow = out;
+        return out;
+      };
+      const perSheet = XLSX_MAX_ROWS - 1;
+      const sheetCount = Math.max(1, Math.ceil(report.rows.length / perSheet));
+      const sheets: SheetSource[] = Array.from({ length: sheetCount }, (_, s) => {
+        const first = s * perSheet;
+        const count = Math.max(0, Math.min(perSheet, report.rows.length - first));
+        return { name: s === 0 ? "Differences" : `Differences (${s + 1})`, rowCount: count + 1, colCount: width, header: true, row: (r: number) => (r === 0 ? header : dataRow(first + r - 1)) };
+      });
+      const written = await writeXlsx(sheets, { cancel, onProgress: progress });
+      const v = await verifyNewXlsx(written.blob, sheets, written.sheetNames, { cancel, onProgress: progress });
+      return {
+        blob: written.blob,
+        summary: { downloadName: `${base} - differences.xlsx`, bytes: written.blob.size, format, rows: report.rows.length, sheets: sheetCount, includeUnchanged: options.includeUnchanged, verification: { reader: "MyDataFixer's check of the new workbook", rows: v.rows, cells: v.cells } },
+      };
+    } catch (err) {
+      if (!(err instanceof EngineError) && isOutOfMemory(err)) throw new EngineError("out-of-memory", "There wasn't enough memory on this device to create the report. Nothing was downloaded. Leave out the unchanged rows, or close other tabs and try again.", String((err as Error).message));
+      throw err;
+    }
   }
 
   // ------------------------------------------------------------------ Stage 16: Split File
