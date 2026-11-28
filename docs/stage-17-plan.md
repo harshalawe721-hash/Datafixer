@@ -93,3 +93,12 @@ No new dependencies. Files stay in the browser, and neither file is changed.
   - **CSV report:** the same columns, comma, Windows line endings, UTF-8 with BOM, read back cell by cell.
   - **Excel writer:** now supports cell colours (and coloured empty cells), and its check compares every cell's colour. The existing Excel and CSV to Excel tests still pass. The colours were also confirmed with openpyxl.
   - Tests: 5 new (585 unit tests in total).
+- **Step 3 (page): done, 28 November 2026.** New page `/compare-files`. It is in the tools registry, with related tools Merge Files, Remove Duplicates and CSV Validator.
+  - **Choosing files:** two boxes, “Older file” and “Newer file”, each with Change and a Swap button. Compare starts once both are chosen, with progress and Cancel.
+  - **Result:** the files and sheets compared. “Match rows by” has the suggested column marked, “Whole rows”, and up to 3 key columns. A sheet choice appears for workbooks with several sheets, and the two options are checkboxes. Any change compares again straight away, with “Comparing again…” shown, because the files stay read.
+  - **Summary:** tiles for changed (with the number of changed values), added, removed and unchanged rows. Notes cover columns in only one file, whole-row comparisons, repeated keys with examples, and identical data.
+  - **Differences:** filter buttons (Changed, Added, Removed, Unchanged, with counts), rows listed 50 at a time with “Show more”. Changed rows show each value as old → new, and added and removed rows show their values, with row numbers in both files.
+  - **Report:** Excel and CSV downloads, with “Include unchanged rows”.
+  - **Tests:** new browser suite `npm run test:compare`, 40/40, three runs in a row. It covers choosing and swapping, the summary and notes, each filter, the Excel report read with openpyxl (values and colours, including a value that became empty), the CSV report without unchanged rows, two key columns, whole rows, both options, repeated keys, a CSV against a chosen Excel sheet, files with no columns in common, keyboard, axe-core light and dark, and phone 390 px.
+  - **Found and fixed:** the “Change” buttons' screen-reader names didn't include their visible word (axe-core), and the key and row number ran together for screen readers.
+  - Smoke 130, SEO 57 and a11y 71 also pass; the smoke and SEO checks were updated for the fifteenth tool.

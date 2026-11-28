@@ -17,7 +17,7 @@ import type { ScanOptions, ScanResult } from "./scan/scan";
 import type { ValidationResult } from "./validate/validate";
 import type { ConvertResult, WorkbookZipResult, CsvDownloadOptions, CellInfo, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportOptions, JsonExportResult, JsonPreview } from "./core";
 import type { DuplicatePlanInput } from "./fix/duplicates";
-import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult } from "./core";
+import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult, CompareFileInput, CompareOptionsInput, CompareSummary, CompareKind, CompareItem, CompareReportResult } from "./core";
 import type { SplitFileInput } from "./split/split-file";
 import type { CombinePlanInput, SplitPlanInput } from "./fix/split-combine-plans";
 import type { FixOptions } from "./fix/fixes";
@@ -92,6 +92,19 @@ export class EngineClient {
   /** Stage 15: read several files and merge them into one table (cancel with cancel()). */
   openMerge(files: { file: File; format: SpreadsheetFormat }[], options: { sourceColumn: boolean; removeDuplicates: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {
     return this.request<"openMerge">({ type: "openMerge", files, options: { ...options, memoryBudgetBytes: computeMemoryBudget().bytes } }, onProgress);
+  }
+
+  /** Stage 17: compare an older and a newer file (cancel with cancel()). */
+  compareFiles(older: CompareFileInput, newer: CompareFileInput, options: Omit<CompareOptionsInput, "memoryBudgetBytes">, onProgress?: (p: ProgressEvent) => void): Promise<CompareSummary> {
+    return this.request<"compareFiles">({ type: "compareFiles", older, newer, options: { ...options, memoryBudgetBytes: computeMemoryBudget().bytes } }, onProgress);
+  }
+
+  compareDetails(kind: CompareKind, offset: number, limit: number): Promise<{ total: number; items: CompareItem[] }> {
+    return this.request<"compareDetails">({ type: "compareDetails", kind, offset, limit });
+  }
+
+  exportCompareReport(format: "csv" | "xlsx", options: { includeUnchanged: boolean }, onProgress?: (p: ProgressEvent) => void): Promise<CompareReportResult> {
+    return this.request<"exportCompareReport">({ type: "exportCompareReport", format, options }, onProgress);
   }
 
   loadSheet(sheet: string, onProgress?: (p: ProgressEvent) => void): Promise<WorkbookSummary> {

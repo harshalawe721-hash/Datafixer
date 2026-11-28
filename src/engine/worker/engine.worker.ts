@@ -42,6 +42,22 @@ self.onmessage = async (event: MessageEvent<EngineRequest>) => {
       case "loadSheet":
         result = await core.loadSheet(req.sheet, onProgress, token);
         break;
+      case "compareFiles":
+        result = await core.compareFiles(req.older, req.newer, req.options, onProgress, token);
+        break;
+      case "compareDetails":
+        result = core.compareDetails(req.kind, req.offset, req.limit);
+        break;
+      case "exportCompareReport": {
+        const t = { cancelled: false };
+        scanTokens.add(t);
+        try {
+          result = await core.exportCompareReport(req.format, req.options, onProgress, t);
+        } finally {
+          scanTokens.delete(t);
+        }
+        break;
+      }
       case "openMerge":
         result = await core.openMerge(req.files, req.options, onProgress, token);
         break;

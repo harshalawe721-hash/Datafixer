@@ -811,3 +811,58 @@ export const splitFileGuide: Guide = {
     },
   ],
 };
+
+export const compareGuide: Guide = {
+  how: {
+    title: "How Compare Spreadsheets works",
+    steps: [
+      "Choose the older and the newer version: CSV, TSV, TXT or Excel (.xlsx, .xls), even one of each. For a workbook, choose the sheet.",
+      "Columns are matched by name, ignoring capital letters and spaces around the names, so a column that moved isn't a change.",
+      "Rows are matched by a key column, such as an ID, SKU or email; MyDataFixer suggests one whose values are all different. Without a key, whole rows are compared.",
+      "See how many rows were added, removed and changed, and exactly which values changed. Download a report as Excel, with the changes highlighted, or as CSV.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        Last month&apos;s price list and this month&apos;s both have an id column. Matched by id, product 002 shows “price: 20 → 25”, product 005 is new, and product 003
+        is gone. The columns are in a different order in the new file, and a new stock column was added; neither counts as a change, and the page says that stock is only
+        in the newer file.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your files or change them. The report is a new file created in your browser.",
+    "Hide a difference: every added, removed and changed row is listed, and keys that appear more than once are pointed out.",
+    "Change a value in the report: codes keep their leading zeros and values from Excel are taken as they are shown.",
+    "Offer a report that doesn't match the comparison: every report is checked first, colours included.",
+  ],
+  limits: [
+    "Up to 150 MB for both files together. Very large files need a computer or a recent phone with enough memory; if they are too large for the device, MyDataFixer stops safely and says so.",
+    "One sheet of each workbook is compared at a time. Formulas, formatting and comments aren't compared, only the values as shown.",
+    "Without a key column, a row with one changed value shows as one removed and one added row.",
+  ],
+  faqs: [
+    {
+      q: "Are my files uploaded?",
+      a: "No. Your browser reads both files on your device and compares them there. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "Do the rows have to be in the same order?",
+      a: "No. Rows are matched by the key column, so sorting a file differently doesn't create differences.",
+    },
+    {
+      q: "Can I compare a CSV file with an Excel file?",
+      a: "Yes. Values are compared as they are shown, so a CSV export can be checked against the workbook it came from.",
+    },
+    {
+      q: "What does “repeated key” mean?",
+      a: "The key value appears in more than one row of a file, such as an email used twice. Those rows are matched in order and marked, so check them by hand or choose a better key.",
+    },
+    {
+      q: "Can I ignore differences in capital letters or spaces?",
+      a: "Yes. Tick “Ignore capital letters” or “Ignore spaces at the start and end” and the comparison updates straight away.",
+    },
+  ],
+};

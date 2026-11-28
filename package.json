@@ -31,6 +31,7 @@
     "test:xml": "node scripts/xml-to-csv-e2e.ts",
     "test:merge": "node scripts/merge-files-e2e.ts",
     "test:split-file": "node scripts/split-file-e2e.ts",
+    "test:compare": "node scripts/compare-files-e2e.ts",
     "test:export-perf": "node scripts/export-perf.ts",
     "test:validator-perf": "node scripts/validator-perf.ts",
     "test:converter-perf": "node scripts/converter-perf.ts",

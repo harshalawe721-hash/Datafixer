@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode, Files, Scissors } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode, Files, Scissors, GitCompare } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -15,7 +15,8 @@ export type ToolId =
   | "tsv-to-csv"
   | "xml-to-csv"
   | "merge-files"
-  | "split-file";
+  | "split-file"
+  | "compare-files";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -187,6 +188,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
     featured: false,
     related: ["merge-files", "csv-to-excel", "excel-to-csv"],
+  },
+  {
+    id: "compare-files",
+    name: "Compare Two Spreadsheets",
+    shortName: "Compare files",
+    href: "/compare-files",
+    summary: "Compare two versions of an Excel or CSV file and see every added, removed and changed row, with a highlighted report.",
+    icon: GitCompare,
+    accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
+    featured: false,
+    related: ["merge-files", "remove-duplicates", "csv-validator"],
   },
 ];
 

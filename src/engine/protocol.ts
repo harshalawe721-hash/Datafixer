@@ -4,7 +4,7 @@ import type { SerializedEngineError } from "./errors.ts";
 import type { ProgressEvent, WorkbookSummary } from "./types.ts";
 import type { RowPage, RowQuery } from "./query/query.ts";
 import type { ScanOptions, ScanResult } from "./scan/scan.ts";
-import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult } from "./core.ts";
+import type { SplitFilePreview, SplitOutput, SplitPartResult, SplitZipResult, CompareFileInput, CompareOptionsInput, CompareSummary, CompareKind, CompareItem, CompareReportResult } from "./core.ts";
 import type { SplitFileInput } from "./split/split-file.ts";
 import type { CellInfo, ConvertResult, WorkbookZipResult, CsvDownloadOptions, EditResult, ExportResult, FixAllPreview, FixPreviewResult, SplitCombinePreview, DuplicatesPreview, JsonExportOptions, JsonExportResult, JsonPreview } from "./core.ts";
 import type { DuplicatePlanInput } from "./fix/duplicates.ts";
@@ -47,6 +47,10 @@ export type EngineRequest =
   /** Stage 12: CSV / Excel → JSON (export cancellable with abortScans). */
   | { id: number; type: "previewJson"; sheet: string; options: JsonExportOptions }
   | { id: number; type: "exportJson"; sheet: string; options: JsonExportOptions }
+  /** Stage 17: compare two files (cancel with cancel(); the report with abortScans). */
+  | { id: number; type: "compareFiles"; older: CompareFileInput; newer: CompareFileInput; options: CompareOptionsInput }
+  | { id: number; type: "compareDetails"; kind: CompareKind; offset: number; limit: number }
+  | { id: number; type: "exportCompareReport"; format: "csv" | "xlsx"; options: { includeUnchanged: boolean } }
   /** Stage 16: Split File (cancellable with abortScans). */
   | { id: number; type: "previewSplitFile"; sheet: string; input: SplitFileInput; output: SplitOutput }
   | { id: number; type: "exportSplitPart"; sheet: string; input: SplitFileInput; index: number; output: SplitOutput }
@@ -85,6 +89,9 @@ export interface EngineResults {
   previewDuplicates: DuplicatesPreview;
   previewJson: JsonPreview;
   exportJson: JsonExportResult;
+  compareFiles: CompareSummary;
+  compareDetails: { total: number; items: CompareItem[] };
+  exportCompareReport: CompareReportResult;
   previewSplitFile: SplitFilePreview;
   exportSplitPart: SplitPartResult;
   exportSplitZip: SplitZipResult;
