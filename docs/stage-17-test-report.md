@@ -2,7 +2,7 @@
 
 **Date:** 28 November 2026
 
-**Status:** all five steps done and tested. **Waiting for the owner's approval.**
+**Status:** ✅ **COMPLETE.** Approved by the owner on 28 November 2026 (with the column-names follow-up).
 
 The owner approved the plan (`docs/stage-17-plan.md`) on 28 November 2026 with decisions **A for all** (1A–6A):
 - rows matched by key columns (suggested automatically), or by whole row when there is no key;
@@ -88,4 +88,4 @@ Tests (same build):
 
 ## Approval
 
-Waiting for the owner's approval.
+The owner approved Stage 17 on 28 November 2026 (“Approved”), after the column-names follow-up.

@@ -1,6 +1,6 @@
 # Stage 17 plan: Compare two spreadsheets
 
-**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 17.** Progress is recorded under “Progress” below.
+**Status:** plan prepared on 28 November 2026. **The owner approved it with decisions A for all (1A–6A) and said to start Stage 17. Stage 17 was approved as complete on 28 November 2026.** Progress is recorded under “Progress” below.
 
 ## Why
 
@@ -106,5 +106,5 @@ No new dependencies. Files stay in the browser, and neither file is changed.
   - **Checked with the guide clock at 25 December, 1 pm:** 200 and in the sitemap; SEO 84/84; link preview complete; links to /compare-files, and the tool page lists it; axe-core clean in light and dark; no horizontal scroll at 390 px.
   - **With today's date:** it is 404.
   - **Unit tests:** 586.
-- **Step 5 (testing and report): done, 28 November 2026.** New large-file test `npm run test:compare-perf`. Two 66 MB files (2.1 million rows each, rows and columns reordered, changes spread through) were compared by key in 12 s and by whole rows in 9 s, with exact counts. The CSV report (every row, 91 MB) and the Excel report (differences, highlighted) were read back and were exact, and the files were unchanged. With a 512 MB heap, both 132 MB and 148 MB together succeed. All suites pass on the same build. Report: `docs/stage-17-test-report.md`. **Waiting for the owner's approval.**
+- **Step 5 (testing and report): done, 28 November 2026.** New large-file test `npm run test:compare-perf`. Two 66 MB files (2.1 million rows each, rows and columns reordered, changes spread through) were compared by key in 12 s and by whole rows in 9 s, with exact counts. The CSV report (every row, 91 MB) and the Excel report (differences, highlighted) were read back and were exact, and the files were unchanged. With a 512 MB heap, both 132 MB and 148 MB together succeed. All suites pass on the same build. Report: `docs/stage-17-test-report.md`. Approved by the owner on 28 November 2026.
 - **Follow-up (column-names switch): done, 28 November 2026, at the owner's request.** Each file now has a “First row … contains column names” box that overrides the automatic detection, in both directions. Changing it compares again with the files kept, and the key is suggested again. Unit tests 587; Compare browser test 49/49. See the report's follow-up section.
