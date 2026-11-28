@@ -43,7 +43,7 @@ No new dependencies. Files stay in the browser, and neither file is changed.
    - **A (recommended):** values exactly as shown, with two options, both off by default: ignore capital letters, and ignore spaces at the start and end. Columns found in only one file are reported as added or removed columns, not as changes in every row.
    - B: exact values only, no options.
 3. **Difference report**
-   - **A (recommended):** an Excel report with every row of the newer file plus the removed rows, a first column “Change” (Added, Removed, Changed, Unchanged), changed cells coloured with the old value in a cell note column (“was: Pune”), and a “What changed” column listing each change. Also a CSV version (same columns, no colours), and an option to leave out unchanged rows.
+   - **A (recommended):** an Excel report with every row of the newer file plus the removed rows, a first column “Change” (Added, Removed, Changed, Unchanged), changed cells coloured, and a “What changed” column listing each change with its old value (“city: Pune → Oslo”). Also a CSV version (same columns, no colours), and an option to leave out unchanged rows.
    - B: CSV report only.
 4. **File types and limits**
    - **A (recommended):** CSV, TSV, TXT and Excel (.xlsx, .xls) in any combination (a CSV against an Excel file works); for a workbook, the sheet can be chosen. Up to 150 MB for both files together, with the usual memory check.
