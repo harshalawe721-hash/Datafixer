@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode, Files } from "lucide-react";
+import { ScanSearch, Sparkles, FileCheck2, FileSpreadsheet, Sheet, Split, Combine, CopyX, FileJson, Braces, ArrowRightLeft, FileCode, Files, Scissors } from "lucide-react";
 
 export type ToolId =
   | "spreadsheet-error-detector"
@@ -14,7 +14,8 @@ export type ToolId =
   | "csv-to-json"
   | "tsv-to-csv"
   | "xml-to-csv"
-  | "merge-files";
+  | "merge-files"
+  | "split-file";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -175,6 +176,17 @@ export const tools: readonly ToolDefinition[] = [
     accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
     featured: false,
     related: ["remove-duplicates", "csv-to-excel", "spreadsheet-cleaner"],
+  },
+  {
+    id: "split-file",
+    name: "Split a Large CSV or Excel File",
+    shortName: "Split file",
+    href: "/split-file",
+    summary: "Split a large CSV or Excel file into smaller files by number of rows, into equal parts, or one file per value of a column.",
+    icon: Scissors,
+    accepts: [".csv", ".tsv", ".txt", ".xlsx", ".xls"],
+    featured: false,
+    related: ["merge-files", "csv-to-excel", "excel-to-csv"],
   },
 ];
 

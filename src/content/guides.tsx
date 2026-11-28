@@ -757,3 +757,57 @@ export const mergeGuide: Guide = {
     },
   ],
 };
+
+export const splitFileGuide: Guide = {
+  how: {
+    title: "How Split File works",
+    steps: [
+      "Open a CSV, TSV, TXT or Excel file (.xlsx, .xls). For a workbook, choose the sheet to split.",
+      "Choose how to split it: a number of rows in each part (for example 100,000), a number of equal parts, or one part for each value in a column, such as one file per city or per month.",
+      "See the list of parts with their names and rows. With column names, they are repeated at the top of every part, and rows stay in their original order.",
+      "Download all the parts together as one .zip file, or each part on its own. Every part is read back and checked against your file before it is offered.",
+    ],
+  },
+  example: {
+    title: "Example",
+    body: (
+      <p>
+        customers.csv has 250,000 rows, but your mailing tool imports at most 100,000 at a time. With 100,000 rows per part you get customers-part-01.csv and
+        customers-part-02.csv with 100,000 rows each, and customers-part-03.csv with the last 50,000, each starting with the column names.
+      </p>
+    ),
+  },
+  never: [
+    "Upload your file or change it. The parts are new files created in your browser.",
+    "Change a value: codes keep their leading zeros, CSV parts keep your file's separator, and values from Excel are taken as they are shown.",
+    "Lose or repeat a row: every row of your file is in exactly one part.",
+    "Offer a part that doesn't match your file: every part is checked first, and the .zip file is checked again after it is made.",
+  ],
+  limits: [
+    "Files up to 150 MB and 2–1,000 parts. Very large files need a computer or a recent phone with enough memory; if a file is too large for the device, MyDataFixer stops safely and says so.",
+    "By column value: up to 200 different values, compared exactly as written, so “Pune” and “pune” become two parts.",
+    "One sheet of an Excel workbook is split at a time. Excel parts keep the values as shown, not formulas or formatting.",
+  ],
+  faqs: [
+    {
+      q: "Are my files uploaded?",
+      a: "No. Your browser reads the file on your device and creates the parts there. Nothing is sent to MyDataFixer's servers or to anyone else.",
+    },
+    {
+      q: "Does every part get the column names?",
+      a: "Yes, when “First row contains column names” is ticked: the names are repeated at the top of every part, so each part works on its own.",
+    },
+    {
+      q: "How do I split a file that is too big for Excel?",
+      a: "Excel shows at most 1,048,576 rows per sheet. Split the file into parts of up to 1,000,000 rows, then open each part in Excel.",
+    },
+    {
+      q: "Can I make one file per customer, city or month?",
+      a: "Yes. Choose “One part for each value in a column” and the column. Rows with no value in that column go in a part called “(empty)”.",
+    },
+    {
+      q: "How do I join the parts back together?",
+      a: "Use Merge Files: choose all the parts, and they become one table again.",
+    },
+  ],
+};
