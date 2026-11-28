@@ -121,7 +121,25 @@ const faqs = [
 ];
 
 export default function HomePage() {
-  const featured = tools.filter((t) => t.featured);
+  // Every tool appears in exactly one group (checked by the smoke test).
+  const groupOf: Record<string, string[]> = {
+    clean: ["spreadsheet-error-detector", "spreadsheet-cleaner", "csv-validator", "remove-duplicates"],
+    convert: ["excel-to-csv", "csv-to-excel", "json-to-csv", "csv-to-json", "tsv-to-csv", "xml-to-csv"],
+    reshape: ["split-column", "combine-columns", "merge-files", "split-file", "compare-files"],
+  };
+  const pick = (ids: string[]) => tools.filter((t) => ids.includes(t.id));
+  const grouped = new Set(Object.values(groupOf).flat());
+  const toolGroups = [
+    { id: "clean", title: "Find and clean problems", description: "Check a file for errors, fix them with a preview, and remove duplicates.", tools: pick(groupOf.clean!) },
+    { id: "convert", title: "Convert between formats", description: "Excel, CSV, TSV, JSON and XML, with every value kept exactly.", tools: pick(groupOf.convert!) },
+    {
+      id: "reshape",
+      title: "Split, combine and compare",
+      description: "Rearrange columns, merge or split whole files, and see what changed between two versions.",
+      // A tool not yet given a group still appears, here.
+      tools: [...pick(groupOf.reshape!), ...tools.filter((t) => !grouped.has(t.id))],
+    },
+  ];
 
   return (
     <>
@@ -184,58 +202,52 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* Popular tools */}
+      {/* All tools, in groups (all 15 as cards, so the newer tools are easy to find) */}
       <section id="tools" aria-labelledby="tools-heading" className="border-y border-line bg-surface py-20 sm:py-24">
         <Container>
           <SectionHeading
             id="tools-heading"
             eyebrow="Free tools"
-            title="Popular tools"
+            title={`All ${tools.length} tools`}
             description="Pick the tool that matches your problem. Each one works on its own, with no account."
           />
-          <ul className="mt-12 grid gap-5 sm:grid-cols-2">
-            {featured.map((tool) => {
-              const Icon = tool.icon;
-              return (
-                <li key={tool.id}>
-                  <Link
-                    href={tool.href}
-                    className="group flex h-full gap-4 rounded-2xl border border-line bg-background p-6 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
-                  >
-                    <IconBadge>
-                      <Icon className="size-5" />
-                    </IconBadge>
-                    <span className="flex-1">
-                      <span className="flex items-center gap-2 text-lg font-semibold">
-                        {tool.name}
-                        <ArrowRight
-                          className="size-4 text-primary transition-transform group-hover:translate-x-1"
-                          aria-hidden="true"
-                        />
-                      </span>
-                      <span className="mt-1.5 block text-sm leading-relaxed text-muted">{tool.summary}</span>
-                      <span className="mt-3 block text-xs font-medium text-muted">
-                        Accepts {tool.accepts.map((e) => e.slice(1).toUpperCase()).join(", ")}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-8 text-center text-sm text-muted">
-            Also available:{" "}
-            {tools
-              .filter((t) => !t.featured)
-              .map((t, i) => (
-                <span key={t.id}>
-                  {i > 0 && ", "}
-                  <Link href={t.href} className="font-medium text-primary hover:underline">
-                    {t.name}
-                  </Link>
-                </span>
-              ))}
-          </p>
+          <div className="mt-12 space-y-12">
+            {toolGroups.map((group) => (
+              <div key={group.id}>
+                <h3 id={`tools-${group.id}`} className="text-lg font-semibold">
+                  {group.title}
+                </h3>
+                <p className="mt-1 text-sm text-muted">{group.description}</p>
+                <ul aria-labelledby={`tools-${group.id}`} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.tools.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <li key={tool.id}>
+                        <Link
+                          href={tool.href}
+                          className="group flex h-full gap-4 rounded-2xl border border-line bg-background p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+                        >
+                          <IconBadge>
+                            <Icon className="size-5" />
+                          </IconBadge>
+                          <span className="flex-1">
+                            <span className="flex items-center gap-2 font-semibold">
+                              {tool.name}
+                              <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                            </span>
+                            <span className="mt-1.5 block text-sm leading-relaxed text-muted">{tool.summary}</span>
+                            <span className="mt-3 block text-xs font-medium text-muted">
+                              Accepts {tool.accepts.map((e) => e.slice(1).toUpperCase()).join(", ")}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </Container>
       </section>
 

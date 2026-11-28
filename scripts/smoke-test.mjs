@@ -110,6 +110,11 @@ console.log("\nHeader interactions (desktop)");
   check((await toolsBtn.getAttribute("aria-expanded")) === "true", "Tools menu opens on click");
   const menuLinks = page.locator("[data-menu-item]");
   check((await menuLinks.count()) === 15, "Tools menu lists 15 tools");
+  // The homepage shows every tool as a card, once, in three groups.
+  const cardHrefs = await page.locator("#tools ul a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  const menuHrefs = await menuLinks.evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  check(cardHrefs.length === 15 && new Set(cardHrefs).size === 15 && menuHrefs.every((h) => cardHrefs.includes(h)), `homepage shows all 15 tools as cards (${cardHrefs.length})`);
+  check((await page.locator("#tools h3").allTextContents()).join(" | ") === "Find and clean problems | Convert between formats | Split, combine and compare", "in three groups");
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, "desktop-tools-menu.png") });
   await page.keyboard.press("Escape");
   check((await toolsBtn.getAttribute("aria-expanded")) === "false", "Escape closes Tools menu");
